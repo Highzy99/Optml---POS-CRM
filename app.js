@@ -39,7 +39,8 @@ const Store = {
   LS_KEY: 'optml_crm_v1',
 
   async init(){
-    const conn = JSON.parse(localStorage.getItem('optml_conn')||'null');
+    let conn = JSON.parse(localStorage.getItem('optml_conn')||'null');
+    if(!conn && !localStorage.getItem('optml_skip_setup') && window.DEFAULT_CONN_OK!==false) conn = DEFAULT_CONN;
     if(conn && conn.url && conn.key && window.supabase){
       this.sb = window.supabase.createClient(conn.url, conn.key);
       this.mode = 'cloud';
@@ -226,14 +227,16 @@ const Data = {
 // ============================================================
 // AUTH
 // ============================================================
+const DEFAULT_CONN = {url:'https://suhxeslmyugjedjqwgtz.supabase.co', key:'sb_publishable_qnqBl5G9ybuh_9n9YpXSPw_kptUSiZi'};
 const Auth = {
   showSetup(fromApp){
-    const c=JSON.parse(localStorage.getItem('optml_conn')||'{}'); $('s-url').value=c.url||''; $('s-key').value=c.key||'';
+    const c=JSON.parse(localStorage.getItem('optml_conn')||'null')||DEFAULT_CONN; $('s-url').value=c.url||''; $('s-key').value=c.key||'';
     if(fromApp){ $('auth').classList.add('on'); $('app').classList.remove('on'); $('nav').classList.remove('on'); }
     $('auth-login').style.display='none'; $('auth-setup').style.display='block'; $('auth-sub').textContent='Connect to Supabase';
   },
   showLogin(){ $('auth-login').style.display='block'; $('auth-setup').style.display='none'; $('auth-sub').textContent='Sign in to continue'; },
   saveConn(){ const url=$('s-url').value.trim().replace(/\/$/,''), key=$('s-key').value.trim(); if(!url||!key){ toast('Both fields required','err'); return; } localStorage.setItem('optml_conn',JSON.stringify({url,key})); localStorage.removeItem('optml_skip_setup'); location.reload(); },
+  connectCloud(){ localStorage.removeItem('optml_skip_setup'); localStorage.setItem('optml_conn',JSON.stringify(DEFAULT_CONN)); location.reload(); },
   useLocal(){ localStorage.removeItem('optml_conn'); localStorage.setItem('optml_skip_setup','1'); location.reload(); },
   async login(){ $('auth-err').style.display='none'; const {error}=await Store.sb.auth.signInWithPassword({email:$('a-email').value.trim(),password:$('a-pass').value}); if(error){ $('auth-err').textContent=error.message; $('auth-err').style.display='block'; return; } await App.start(); },
   async logout(){ if(!confirm('Sign out?')) return; if(Store.sb) await Store.sb.auth.signOut(); location.reload(); },
@@ -458,6 +461,7 @@ const Home = {
     const rev=sum(weekS,s=>s.total), prev=sum(prevW,s=>s.total); const d=prev?Math.round((rev-prev)/prev*100):null;
     const open=S.filter(s=>['New','Paid','Sent to Courier'].includes(s.status)).length;
     $('home-strip').innerHTML=`<div class="s"><div class="k">Today</div><div class="v go">${money(sum(todayS,s=>s.total))}</div><div class="d">${money(Profit.sumOf(todayS).net)} net</div></div><div class="s"><div class="k">This week</div><div class="v">${money(rev)}</div><div class="d ${d===null?'':d>=0?'up':'down'}">${money(Profit.sumOf(weekS).net)} net${d!==null?` · ${d>=0?'▲':'▼'}${Math.abs(d)}%`:''}</div></div><div class="s"><div class="k">To dispatch</div><div class="v ${open?'amber':''}">${open}</div><div class="d">open</div></div>`;
+    const lb=$('local-banner'); if(lb) lb.style.display=Store.mode==='local'?'block':'none';
     this.spark(S);
     // attention
     const att=[];
@@ -920,7 +924,9 @@ const App = {
       $('auth').classList.add('on'); Auth.showLogin(); return;
     }
     if(skip){ Store.mode='local'; await this.start(); return; }
-    $('auth').classList.add('on'); Auth.showSetup();
+    $('auth').classList.add('on');
+    if(!window.supabase){ Auth.showSetup(); $('auth-sub').textContent="Couldn't reach the sync service — check your internet, or continue on this device only"; return; }
+    Auth.showLogin();
   },
   async start(){
     try{ await Store.loadAll(); }catch(e){ console.error(e); $('auth').classList.add('on'); Auth.showLogin(); $('auth-err').textContent='Could not load data: '+e.message+' — check the connection settings or run the SQL schema.'; $('auth-err').style.display='block'; return; }

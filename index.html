@@ -30,7 +30,7 @@
       <div style="text-align:center;margin-top:18px"><button class="btn ghost sm" onclick="Auth.showSetup()">Connection settings</button></div>
     </div>
     <div id="auth-setup" style="display:none">
-      <div class="note" style="margin-bottom:14px">Paste your Supabase project URL and anon key — found under Project Settings → API.</div>
+      <div class="note" style="margin-bottom:14px">Your OPTML cloud is already filled in below — just tap Save &amp; continue. Only change these if you move to a different Supabase project.</div>
       <div class="f"><label>Supabase URL</label><input class="in" id="s-url" placeholder="https://xxxx.supabase.co"></div>
       <div class="f"><label>Anon public key</label><input class="in" id="s-key" placeholder="eyJhbGci…"></div>
       <button class="btn ink block" onclick="Auth.saveConn()">Save &amp; continue</button>
@@ -46,6 +46,7 @@
   <section class="screen on" id="sc-home">
     <div class="topbar"><img src="assets/optml-wordmark-dark.svg" alt="optml" class="logo wordmark"><span style="display:flex;gap:10px;align-items:center"><span class="sync" id="sync-home" onclick="App.refresh();toast('Refreshing…')" style="cursor:pointer"><i></i><span id="sync-home-t"></span></span><span class="date" id="home-date"></span></span></div>
     <div class="sh" style="margin-top:0"><h1>Good <em id="greet">morning</em></h1></div>
+    <div class="note amber" id="local-banner" style="display:none;margin-bottom:12px"><b>This phone isn't synced.</b> Sales and stock here stay on this device only. <a href="#" onclick="Auth.connectCloud();return false" style="color:inherit;font-weight:600;text-decoration:underline">Connect to the cloud →</a></div>
     <div class="strip" id="home-strip"></div>
     <div class="card tap" onclick="Insights.open()" style="cursor:pointer"><div class="pad" style="padding-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="lab" style="margin:0">Last 14 days</span><span class="mono" style="font-size:12px;color:var(--ink-2)"><span id="spark-total"></span> · <span style="color:var(--go);font-family:var(--sans);font-weight:500">Insights ›</span></span></div><div id="spark"></div></div></div>
     <div class="sec">Needs attention <small id="att-count"></small></div>
