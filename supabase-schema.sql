@@ -295,3 +295,14 @@ insert into settings (key, value) values
  ('courier_template', '"📦 NEW ORDER #{sale_no}\n\n👤 {name}\n📱 {phone}\n📍 {address}\n\n{items}\n{bac}\n\n💬 {notes}"'),
  ('dispatch_template', '"Hi {first_name}! Your order has been dispatched and dropped to the post office 😊\n\nYou''ll receive a notification once it''s been scanned into the network. If you have any questions don''t hesitate to reach out 😊 📦\n\nTrack here 👉 https://auspost.com.au/mypost/track/#/details/{tracking}"')
 on conflict (key) do nothing;
+
+-- Live sync between devices: publish the tables for Supabase Realtime (safe to re-run)
+do $$
+declare t text;
+begin
+  foreach t in array array['products','customers','sales','purchase_orders','movements','settings','courier_payments'] loop
+    if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename=t) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;

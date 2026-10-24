@@ -257,7 +257,7 @@ const Nav = {
     set('dot-home',open); set('dot-sales',open); set('dot-stock',low);
     const po=$('po-n'); if(po) po.textContent=Store.cache.purchase_orders.filter(o=>o.status==='pending').length;
   },
-  sync(state,txt){ const s=$('sync'); if(!s) return; s.className='sync '+state; $('sync-t').textContent=txt; },
+  sync(state,txt){ [['sync','sync-t'],['sync-home','sync-home-t']].forEach(([a,b])=>{ const s=$(a); if(!s) return; s.className='sync '+state; $(b).textContent=txt; }); },
 };
 const Sheet = { open(id){ $(id).classList.add('on'); }, close(id){ $(id).classList.remove('on'); } };
 $$('.drawer-bg').forEach(d=>d.addEventListener('click',e=>{ if(e.target===d) d.classList.remove('on'); }));
@@ -929,9 +929,15 @@ const App = {
     Sell.applyShipping(); Nav.go('home'); this.realtime();
   },
   async reload(){ await Store.loadAll(); Nav.go(Nav.cur); },
+  async refresh(){ if(Store.mode!=='cloud'||this._busy) return; this._busy=true; try{ await Store.loadAll(); Nav.go(Nav.cur); Nav.sync('ok','Synced'); }catch(e){ Nav.sync('err','Offline'); } this._busy=false; },
   realtime(){
     if(Store.mode!=='cloud'||this._rt) return; this._rt=true;
-    try{ Store.sb.channel('optml').on('postgres_changes',{event:'*',schema:'public'},()=>{ clearTimeout(this._t); this._t=setTimeout(async()=>{ await Store.loadAll(); Nav.go(Nav.cur); Nav.sync('ok','Synced'); },800); }).subscribe(); }catch(e){ console.warn('realtime',e); }
+    const bump=()=>{ clearTimeout(this._t); this._t=setTimeout(()=>this.refresh(),600); };
+    try{ Store.sb.channel('optml').on('postgres_changes',{event:'*',schema:'public'},bump).subscribe(st=>{ if(st==='SUBSCRIBED') Nav.sync('ok','Live'); }); }catch(e){ console.warn('realtime',e); }
+    // belt and braces: refresh when the app comes back to the foreground, and every 60s while open
+    document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') this.refresh(); });
+    window.addEventListener('focus',()=>this.refresh());
+    setInterval(()=>{ if(document.visibilityState==='visible') this.refresh(); },60000);
   },
 };
 window.addEventListener('DOMContentLoaded',()=>App.boot());

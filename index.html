@@ -44,7 +44,7 @@
 
   <!-- HOME -->
   <section class="screen on" id="sc-home">
-    <div class="topbar"><img src="assets/optml-wordmark-dark.svg" alt="optml" class="logo wordmark"><span class="date" id="home-date"></span></div>
+    <div class="topbar"><img src="assets/optml-wordmark-dark.svg" alt="optml" class="logo wordmark"><span style="display:flex;gap:10px;align-items:center"><span class="sync" id="sync-home" onclick="App.refresh();toast('Refreshing…')" style="cursor:pointer"><i></i><span id="sync-home-t"></span></span><span class="date" id="home-date"></span></span></div>
     <div class="sh" style="margin-top:0"><h1>Good <em id="greet">morning</em></h1></div>
     <div class="strip" id="home-strip"></div>
     <div class="card tap" onclick="Insights.open()" style="cursor:pointer"><div class="pad" style="padding-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="lab" style="margin:0">Last 14 days</span><span class="mono" style="font-size:12px;color:var(--ink-2)"><span id="spark-total"></span> · <span style="color:var(--go);font-family:var(--sans);font-weight:500">Insights ›</span></span></div><div id="spark"></div></div></div>
@@ -56,7 +56,7 @@
 
   <!-- SALES -->
   <section class="screen" id="sc-sales">
-    <div class="sh"><h1>Sales</h1><span class="sync" id="sync"><i></i><span id="sync-t"></span></span></div>
+    <div class="sh"><h1>Sales</h1><span class="sync" id="sync" onclick="App.refresh();toast('Refreshing…')" style="cursor:pointer"><i></i><span id="sync-t"></span></span></div>
     <div class="seg scroll" id="sales-seg"></div>
     <div class="search" style="margin:12px 0"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="sales-q" placeholder="Search name, phone, tracking" oninput="Sales.render()"></div>
     <div class="card" id="sales-list"></div>
