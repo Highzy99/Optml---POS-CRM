@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F6F4EE">
+<title>OPTML</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23222326'/><text x='50' y='68' font-size='54' text-anchor='middle' font-family='Helvetica,Arial,sans-serif' font-weight='700' fill='white'>o</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23222326'/><text x='50' y='68' font-size='54' text-anchor='middle' font-family='Helvetica,Arial,sans-serif' font-weight='700' fill='white'>o</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<!-- ================= AUTH ================= -->
+<div id="auth">
+  <div class="authbox">
+    <h1><img src="assets/optml-wordmark-dark.svg" alt="optml" class="wordmark"></h1>
+    <p id="auth-sub">Sign in to continue</p>
+    <div id="auth-login">
+      <div class="f"><label>Email</label><input class="in" id="a-email" type="email" autocomplete="username" placeholder="you@email.com"></div>
+      <div class="f"><label>Password</label><input class="in" id="a-pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+      <button class="btn ink block" onclick="Auth.login()">Sign in</button>
+      <div id="auth-err" class="note red" style="display:none;margin-top:12px"></div>
+      <div style="text-align:center;margin-top:18px"><button class="btn ghost sm" onclick="Auth.showSetup()">Connection settings</button></div>
+    </div>
+    <div id="auth-setup" style="display:none">
+      <div class="note" style="margin-bottom:14px">Paste your Supabase project URL and anon key — found under Project Settings → API.</div>
+      <div class="f"><label>Supabase URL</label><input class="in" id="s-url" placeholder="https://xxxx.supabase.co"></div>
+      <div class="f"><label>Anon public key</label><input class="in" id="s-key" placeholder="eyJhbGci…"></div>
+      <button class="btn ink block" onclick="Auth.saveConn()">Save &amp; continue</button>
+      <div style="text-align:center;margin-top:14px"><button class="btn ghost sm" onclick="Auth.useLocal()">Skip — this device only</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+
+  <!-- HOME -->
+  <section class="screen on" id="sc-home">
+    <div class="topbar"><img src="assets/optml-wordmark-dark.svg" alt="optml" class="logo wordmark"><span class="date" id="home-date"></span></div>
+    <div class="sh" style="margin-top:0"><h1>Good <em id="greet">morning</em></h1></div>
+    <div class="strip" id="home-strip"></div>
+    <div class="card tap" onclick="Insights.open()" style="cursor:pointer"><div class="pad" style="padding-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="lab" style="margin:0">Last 14 days</span><span class="mono" style="font-size:12px;color:var(--ink-2)"><span id="spark-total"></span> · <span style="color:var(--go);font-family:var(--sans);font-weight:500">Insights ›</span></span></div><div id="spark"></div></div></div>
+    <div class="sec">Needs attention <small id="att-count"></small></div>
+    <div class="card" id="att-list"></div>
+    <div class="sec">Recent sales <a class="act" onclick="Nav.go('sales')">See all</a></div>
+    <div class="card" id="home-recent"></div>
+  </section>
+
+  <!-- SALES -->
+  <section class="screen" id="sc-sales">
+    <div class="sh"><h1>Sales</h1><span class="sync" id="sync"><i></i><span id="sync-t"></span></span></div>
+    <div class="seg scroll" id="sales-seg"></div>
+    <div class="search" style="margin:12px 0"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="sales-q" placeholder="Search name, phone, tracking" oninput="Sales.render()"></div>
+    <div class="card" id="sales-list"></div>
+    <button class="btn block" onclick="Reports.sales()">Sales report</button>
+  </section>
+
+  <!-- STOCK -->
+  <section class="screen" id="sc-stock">
+    <div class="sh"><h1>Stock</h1><button class="btn sm" onclick="Inv.openEdit()">+ Product</button></div>
+    <div class="seg" id="stock-seg"><button class="on" data-v="inv" onclick="Inv.view('inv')">Inventory</button><button data-v="po" onclick="Inv.view('po')">Incoming <b id="po-n">0</b></button><button data-v="mov" onclick="Inv.view('mov')">Movements</button></div>
+    <div id="stock-inv" style="margin-top:12px">
+      <div class="strip" id="inv-strip"></div>
+      <div id="inv-alert"></div>
+      <div class="actions" style="margin-bottom:12px"><button class="btn sm" onclick="Reports.launch()">🚀 Reorder report</button><button class="btn sm" onclick="Reports.inventory()">Inventory report</button><button class="btn sm" onclick="Mov.open()">± Adjust</button></div>
+      <div class="search" style="margin-bottom:10px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="inv-q" placeholder="Search product or SKU" oninput="Inv.render()"><select id="inv-cat" onchange="Inv.render()" style="border:none;background:none;font-size:13px;color:var(--ink-2);max-width:110px"></select></div>
+      <div class="card" id="inv-list"></div>
+    </div>
+    <div id="stock-po" style="display:none;margin-top:12px">
+      <div class="strip" id="po-strip"></div>
+      <div class="actions" style="margin-bottom:12px"><button class="btn go" onclick="PO.open()">+ Incoming order</button><button class="btn sm" onclick="Reports.orders()">Report</button></div>
+      <div class="sec" style="margin-top:0">Pending</div><div class="card" id="po-pending"></div>
+      <div class="sec">Arrived</div><div class="card" id="po-arrived"></div>
+    </div>
+    <div id="stock-mov" style="display:none;margin-top:12px">
+      <div class="actions" style="margin-bottom:12px"><button class="btn go" onclick="Mov.open()">+ Log movement</button><button class="btn sm" onclick="Reports.movements()">Report</button></div>
+      <div class="card" id="mov-list"></div>
+    </div>
+  </section>
+
+  <!-- CUSTOMERS -->
+  <section class="screen" id="sc-customers">
+    <div class="sh"><h1>Customers</h1><button class="btn sm" onclick="Cust.openEdit()">+ Add</button></div>
+    <div class="strip" id="cust-strip"></div>
+    <div class="search" style="margin-bottom:12px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="cust-q" placeholder="Search customers" oninput="Cust.render()"></div>
+    <div class="card" id="cust-list"></div>
+    <button class="btn block" onclick="Reports.customers()">Customer report</button>
+  </section>
+
+  <!-- MORE -->
+  <section class="screen" id="sc-more">
+    <div class="sh"><h1>More</h1></div>
+    <div class="sec" style="margin-top:0">Reports</div>
+    <div class="card menu-list">
+      <div class="row tap" onclick="Insights.open()"><div class="ic"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"/></svg></div><div class="m"><div class="t">Insights</div><div class="u">Profit, trends, top products, customers, stock cover</div></div><span class="chev">›</span></div>
+      <div class="row tap" onclick="Courier.open()"><div class="ic"><svg viewBox="0 0 24 24"><path d="M1 5h13v11H1zM14 9h5l3 3v4h-8z"/><circle cx="5" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></div><div class="m"><div class="t">Courier payments</div><div class="u" id="more-courier">What's owed and what's been paid</div></div><span class="chev">›</span></div>
+      <div class="row tap" onclick="Reports.full()"><div class="ic"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h8"/></svg></div><div class="m"><div class="t">Full business report</div><div class="u">Everything — inventory, sales, orders, customers</div></div><span class="chev">›</span></div>
+      <div class="row tap" onclick="Reports.sales()"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></div><div class="m"><div class="t">Sales report</div><div class="u">Daily, weekly, monthly or custom range</div></div><span class="chev">›</span></div>
+      <div class="row tap" onclick="Reports.launch()"><div class="ic"><svg viewBox="0 0 24 24"><path d="M5 16c-1 1-1.5 4-1.5 4s3-.5 4-1.5M14.5 3.5c3-1 6 2 5 5-1.5 4.5-6 8.5-8.5 9.5L7 14c1-2.5 5-7 7.5-10.5z"/><circle cx="14.5" cy="9.5" r="1.5"/><path d="M7 14l-3-1 3-3M11 18l1 3 3-3"/></svg></div><div class="m"><div class="t">Launch &amp; reorder</div><div class="u">Supplier order in 10-packs</div></div><span class="chev">›</span></div>
+    </div>
+    <div class="sec">Data</div>
+    <div class="card menu-list">
+      <div class="row tap" onclick="Data.exportJSON()"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg></div><div class="m"><div class="t">Backup to file</div></div><span class="chev">›</span></div>
+      <div class="row tap" onclick="document.getElementById('import-file').click()"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg></div><div class="m"><div class="t">Restore from file</div><div class="u">Accepts old stocktake backups too</div></div><span class="chev">›</span></div>
+    </div>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="Data.importJSON(this)">
+    <div class="sec">Settings</div>
+    <div class="card menu-list">
+      <div class="row tap" onclick="Settings.open()"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div><div class="m"><div class="t">Courier, templates, shipping</div><div class="u" id="more-tg">Telegram not set</div></div><span class="chev">›</span></div>
+      <div class="row tap" onclick="Auth.showSetup(true)"><div class="ic">☁</div><div class="m"><div class="t">Connection</div><div class="u" id="more-conn"></div></div><span class="chev">›</span></div>
+      <div class="row tap" onclick="Auth.logout()"><div class="ic" style="background:var(--red-soft)">→</div><div class="m"><div class="t" style="color:var(--red)">Sign out</div></div></div>
+    </div>
+  </section>
+</div>
+
+<!-- ================= BOTTOM NAV ================= -->
+<nav id="nav">
+  <button class="nb on" data-s="home" onclick="Nav.go('home')"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/></svg>Home<span class="dot" id="dot-home" style="display:none"></span></button>
+  <button class="nb" data-s="sales" onclick="Nav.go('sales')"><svg viewBox="0 0 24 24"><path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/></svg>Sales<span class="dot" id="dot-sales" style="display:none"></span></button>
+  <button class="nb sell" onclick="Sell.open()"><div class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div><span>Sell</span></button>
+  <button class="nb" data-s="stock" onclick="Nav.go('stock')"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg>Stock<span class="dot" id="dot-stock" style="display:none"></span></button>
+  <button class="nb" data-s="customers" onclick="Nav.go('customers')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>People</button>
+</nav>
+<!-- "More" lives behind the Customers tab on phone via header; expose as hidden 6th target -->
+<button id="more-btn" onclick="Nav.go('more')" style="position:fixed;top:calc(10px + var(--safe-t));right:14px;z-index:80;width:38px;height:38px;border-radius:50%;border:1px solid var(--rule-2);background:rgba(255,255,255,.85);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--ink-2)">⋯</button>
+
+<!-- ================= SELL SHEET ================= -->
+<div class="sheet" id="sh-sell">
+  <div class="sheet-h"><button class="iconb" onclick="Sell.close()">×</button><h2>New <em>sale</em></h2><button class="btn ghost sm" onclick="Sell.openQuote()">Quote</button><button class="btn ghost sm" onclick="Sell.reset(true)">Clear</button></div>
+  <div class="sheet-b">
+    <div class="stepper" id="sell-steps"><div class="st on"><i>1</i>Items</div><div class="st"><i>2</i>Customer</div><div class="st"><i>3</i>Review</div></div>
+
+    <!-- step 1 -->
+    <div id="sell-1">
+      <div class="search dark" style="margin-bottom:12px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="sell-q" placeholder="Search product or SKU" oninput="Sell.search()" autocomplete="off"></div>
+      <div id="sell-results"></div>
+      <div class="sec">In cart <small id="cart-n"></small></div>
+      <div class="card"><div class="pad" id="cart-lines"><div class="empty">Search above to add products</div></div></div>
+      <div class="sec">Bac water <small>auto from cart — adjust if needed</small></div>
+      <div class="card"><div class="pad" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <div class="ctr"><span class="k">3ml</span><button onclick="Sell.bacAdj('bac3',-1)">−</button><b id="bac3">0</b><button onclick="Sell.bacAdj('bac3',1)">+</button></div>
+        <div class="ctr"><span class="k">10ml</span><button onclick="Sell.bacAdj('bac10',-1)">−</button><b id="bac10">0</b><button onclick="Sell.bacAdj('bac10',1)">+</button></div>
+        <span class="hint" id="bac-stock" style="margin:0"></span></div></div>
+      <div class="sec">Manual amount <small>off-catalogue or custom</small></div>
+      <div class="card"><div class="pad" style="display:flex;align-items:center;gap:10px"><span class="mono" style="font-size:20px;color:var(--ink-3)">$</span><input id="manual-amt" type="number" inputmode="decimal" placeholder="0" oninput="Sell.calc()" style="flex:1;border:none;background:none;outline:none;font-family:var(--mono);font-size:22px;font-weight:600"></div></div>
+    </div>
+
+    <!-- step 2 -->
+    <div id="sell-2" style="display:none">
+      <div class="seg" style="margin-bottom:14px"><button class="on" id="ful-ship" onclick="Sell.fulfil('Shipped')">Courier</button><button id="ful-self" onclick="Sell.fulfil('Self')">I'll post it</button><button id="ful-walk" onclick="Sell.fulfil('Walk-in')">Walk-in</button></div>
+      <div class="hint" id="ful-hint" style="margin:-6px 0 12px">Courier gets the Telegram order and earns their share. "I'll post it" keeps it off the courier entirely.</div>
+      <div style="position:relative;margin-bottom:12px">
+        <div style="display:flex;gap:8px">
+          <div class="search" style="flex:1"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="c-search" placeholder="Find existing customer" oninput="Sell.suggest()" autocomplete="off"></div>
+          <button class="btn sm" id="paste-btn" onclick="Sell.togglePaste()">Paste</button>
+        </div>
+        <div class="sugg" id="c-sugg"></div>
+      </div>
+      <div id="recent-cust" class="chips" style="margin-bottom:14px"></div>
+      <div id="paste-wrap" style="display:none;margin-bottom:12px"><textarea class="in" id="paste-box" rows="4" placeholder="Paste name / address / phone — any order" oninput="Sell.parsePaste(this.value)"></textarea><div class="hint" id="paste-status"></div></div>
+      <div class="f"><input class="in" id="c-name" placeholder="Full name" autocomplete="off"></div>
+      <div class="g2"><div class="f"><input class="in" id="c-phone" placeholder="Phone" inputmode="tel"></div><div class="f"><input class="in" id="c-email" placeholder="Email" inputmode="email"></div></div>
+      <div class="f"><input class="in" id="c-address" placeholder="Street address"></div>
+      <div class="g3"><div class="f"><input class="in" id="c-city" placeholder="Suburb"></div><div class="f"><input class="in" id="c-state" placeholder="State"></div><div class="f"><input class="in" id="c-postcode" placeholder="Postcode" inputmode="numeric"></div></div>
+      <div class="f"><input class="in" id="c-notes" placeholder="Note for courier (optional)"></div>
+      <div class="card"><div class="pad"><div class="lab">Also save to customer</div><div class="g2"><input class="in" id="c-tags" placeholder="Tags: VIP, Repeat" style="min-height:40px;font-size:14px"><select class="in" id="c-source" style="min-height:40px;font-size:14px"><option value="">Source…</option><option>Instagram</option><option>Referral</option><option>Website</option><option>Word of mouth</option><option>Other</option></select></div></div></div>
+    </div>
+
+    <!-- step 3 -->
+    <div id="sell-3" style="display:none">
+      <div class="card"><div class="pad" id="review-lines"></div></div>
+      <div class="sec" style="margin-top:14px">Shipping</div>
+      <div class="chips"><button class="chip on go" id="ship-free" onclick="Sell.ship('free')">Free</button><button class="chip" id="ship-paid" onclick="Sell.ship('paid')">$<span id="ship-flat">15</span> Express</button><span class="hint" id="free-note" style="display:none;margin:0;align-self:center">✓ auto free over $<span id="free-over">200</span></span></div>
+      <div class="sec">Discount</div>
+      <div class="chips"><button class="chip" id="disc-none" onclick="Sell.disc('none')">None</button><button class="chip" id="disc-pct" onclick="Sell.disc('pct')">% off</button><button class="chip" id="disc-flat" onclick="Sell.disc('flat')">$ off</button><input class="in" id="disc-val" type="number" inputmode="decimal" placeholder="0" oninput="Sell.calc()" style="width:90px;min-height:38px;display:none;text-align:center"></div>
+      <div class="sec">Payment</div>
+      <div class="chips" id="pay-chips"><button class="chip on" data-p="Cash" onclick="Sell.pay('Cash')">Cash</button><button class="chip" data-p="BKP" onclick="Sell.pay('BKP')">BKP</button><button class="chip" data-p="KJ" onclick="Sell.pay('KJ')">KJ</button><button class="chip" data-p="Split" onclick="Sell.pay('Split')">Split</button></div>
+      <div id="split-wrap" style="display:none;margin-top:10px" class="card"><div class="pad" id="split-rows"></div><div class="pad" style="padding-top:0;display:flex;justify-content:space-between;align-items:center"><button class="btn xs" onclick="Sell.addSplit()">+ Add</button><span class="mono" style="font-size:12px" id="split-bal"></span></div></div>
+      <div class="sec">Status</div>
+      <div class="chips"><button class="chip on go" id="ps-paid" onclick="Sell.paidNow(true)">Paid — notify courier</button><button class="chip" id="ps-wait" onclick="Sell.paidNow(false)">Awaiting payment</button></div>
+      <div class="card" style="margin-top:18px"><div class="pad">
+        <div class="tl"><span class="k">Subtotal</span><span class="v" id="t-sub">$0</span></div>
+        <div class="tl amber" id="t-disc-line" style="display:none"><span class="k">Discount</span><span class="v" id="t-disc"></span></div>
+        <div class="tl"><span class="k">Shipping</span><span class="v" id="t-ship">Free</span></div>
+        <div class="tl big"><span class="k">Total</span><span class="v" id="t-total">$0</span></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="sheet-f">
+    <div class="tot"><small id="sell-foot-k">Cart total</small><span id="sell-foot-v">$0</span></div>
+    <button class="btn" id="sell-back" onclick="Sell.step(-1)" style="display:none">Back</button>
+    <button class="btn ink" id="sell-next" onclick="Sell.step(1)" style="min-width:120px">Next</button>
+  </div>
+</div>
+
+<!-- ================= SALE DETAIL SHEET ================= -->
+<div class="sheet" id="sh-sale">
+  <div class="sheet-h"><button class="iconb" onclick="Sheet.close('sh-sale')">×</button><h2 id="sd-title">Sale</h2><button class="iconb" onclick="Sales.delCurrent()" style="color:var(--red)">🗑</button></div>
+  <div class="sheet-b" id="sd-body" style="padding-bottom:40px"></div>
+</div>
+
+<!-- ================= CUSTOMER DETAIL SHEET ================= -->
+<div class="sheet" id="sh-cust">
+  <div class="sheet-h"><button class="iconb" onclick="Sheet.close('sh-cust')">×</button><h2 id="cd-title">Customer</h2><button class="btn sm" id="cd-edit">Edit</button></div>
+  <div class="sheet-b" id="cd-body" style="padding-bottom:40px"></div>
+</div>
+
+<!-- ================= SETTINGS SHEET ================= -->
+<div class="sheet" id="sh-courier">
+  <div class="sheet-h"><button class="iconb" onclick="Sheet.close('sh-courier')">×</button><h2>Courier <em>payments</em></h2></div>
+  <div class="sheet-b" id="co-body" style="padding-bottom:40px"></div>
+</div>
+
+<div class="drawer-bg" id="dr-cpay"><div class="drawer"><div class="grab"></div><h3>Record courier payment</h3>
+  <div class="g2"><div class="f"><label>Amount $</label><input class="in" id="cp-amount" type="number" inputmode="decimal" step="0.01" oninput="Courier.payPreview()"></div><div class="f"><label>Date</label><input class="in" id="cp-date" type="date"></div></div>
+  <div class="g2"><div class="f"><label>Method</label><select class="in" id="cp-method"><option>BKP</option><option>Cash</option><option>KJ</option><option>Bank</option><option>Other</option></select></div><div class="f"><label>Note</label><input class="in" id="cp-note" placeholder="optional"></div></div>
+  <div class="hint" id="cp-preview" style="margin-bottom:14px"></div>
+  <div class="actions"><button class="btn" onclick="Sheet.close('dr-cpay')">Cancel</button><button class="btn go" onclick="Courier.save()">Save payment</button></div>
+</div></div>
+
+<div class="sheet" id="sh-insights">
+  <div class="sheet-h"><button class="iconb" onclick="Sheet.close('sh-insights')">×</button><h2><em>Insights</em></h2><button class="btn ghost sm" onclick="Reports.sales(Insights.r==='7'?'week':Insights.r==='30'?'30':Insights.r==='90'?'90':'all')">Report</button></div>
+  <div class="sheet-b" id="ins-body" style="padding-bottom:40px"></div>
+</div>
+
+<div class="sheet" id="sh-settings">
+  <div class="sheet-h"><button class="iconb" onclick="Sheet.close('sh-settings')">×</button><h2>Settings</h2></div>
+  <div class="sheet-b">
+    <div class="sec" style="margin-top:0">Courier — Telegram <small id="tg-status">not set</small></div>
+    <div class="card"><div class="pad">
+      <div class="f"><label>Bot token</label><input class="in" id="st-tg-token" placeholder="123456:ABC-DEF…"><div class="hint">Telegram → @BotFather → /newbot → copy token</div></div>
+      <div class="f"><label>Chat ID</label><input class="in" id="st-tg-chat" placeholder="-100… or 123…"><div class="hint">Add the bot to your courier chat, send a message, then tap Find</div></div>
+      <div class="actions"><button class="btn sm" onclick="Settings.findChat()">Find chat ID</button><button class="btn sm" onclick="Settings.testTg()">Send test</button></div>
+    </div></div>
+    <div class="sec">Customers — WhatsApp <small id="wa-status">opens app</small></div>
+    <div class="card"><div class="pad">
+      <div class="seg" style="margin-bottom:12px" id="wa-mode"><button class="on" data-m="app" onclick="Settings.waMode('app')">Open WhatsApp</button><button data-m="api" onclick="Settings.waMode('api')">Business API (auto-send)</button></div>
+      <div id="wa-app-help" class="hint" style="margin:0 0 4px">One tap opens WhatsApp (or WhatsApp Business) on this phone with the customer's number and the message filled in — you just press send. No setup needed.</div>
+      <div id="wa-api-wrap" style="display:none">
+        <div class="hint" style="margin:0 0 12px">Sends automatically through the WhatsApp Business Platform (Meta Cloud API). Needs a Meta business app, a registered WhatsApp number, a permanent access token and an approved message template — see the README. Falls back to opening WhatsApp if the send fails.</div>
+        <div class="f"><label>Phone number ID</label><input class="in" id="st-wa-phone-id" placeholder="1234567890" autocomplete="off"></div>
+        <div class="f"><label>Permanent access token</label><input class="in" id="st-wa-token" placeholder="EAAG…" autocomplete="off"></div>
+        <div class="g2"><div class="f"><label>Dispatch template name</label><input class="in" id="st-wa-tpl" placeholder="order_dispatched"></div><div class="f"><label>Language</label><input class="in" id="st-wa-lang" placeholder="en"></div></div>
+        <div class="hint" style="margin:0 0 12px">Template body must use {{1}} = first name and {{2}} = tracking number.</div>
+        <div class="actions"><button class="btn sm" onclick="Settings.testWa()">Send test to my number</button></div>
+        <div class="f" style="margin-top:10px"><label>Your number for the test</label><input class="in" id="st-wa-test" placeholder="04xx xxx xxx" inputmode="tel"></div>
+      </div>
+      <div class="f" style="margin-top:12px"><label>Courier's WhatsApp number (optional)</label><input class="in" id="st-wa-courier" placeholder="04xx xxx xxx" inputmode="tel"></div>
+      <div class="hint" style="margin:0">If set, every sale gets a "Courier on WhatsApp" button that opens the order message to them — handy alongside or instead of Telegram.</div>
+    </div></div>
+    <div class="sec">Courier message</div>
+    <div class="card"><div class="pad"><textarea class="in" id="st-courier-tpl" rows="7"></textarea><div class="hint">{sale_no} {name} {phone} {address} {items} {bac} {notes} {total}</div></div></div>
+    <div class="sec">Customer dispatch message</div>
+    <div class="card"><div class="pad"><textarea class="in" id="st-dispatch-tpl" rows="6"></textarea><div class="hint">{first_name} {name} {tracking} {sale_no}</div></div></div>
+    <div class="sec">Quote message</div>
+    <div class="card"><div class="pad"><textarea class="in" id="st-quote-tpl" rows="7" style="font-size:13px"></textarea><div class="hint">{first_name} {name} {items} {bac} {subtotal} {discount} {shipping} {total}</div></div></div>
+    <div class="sec">Shipping</div>
+    <div class="card"><div class="pad g2"><div class="f"><label>Express rate $</label><input class="in" id="st-ship-flat" type="number" inputmode="decimal"></div><div class="f"><label>Free over $</label><input class="in" id="st-ship-free" type="number" inputmode="decimal"></div></div></div>
+    <div class="sec">Profit</div>
+    <div class="card"><div class="pad"><div class="g2"><div class="f"><label>USD → AUD rate</label><input class="in" id="st-fx" type="number" inputmode="decimal" step="0.01" placeholder="1.55"></div><div class="f"><label>Courier share of profit %</label><input class="in" id="st-courier-pct" type="number" inputmode="decimal" placeholder="25"></div></div><div class="hint" style="margin-top:0">Product cost is the supplier price in USD per vial, converted at this rate. The courier takes this share of gross profit on shipped orders. Net profit = sale total − product cost − courier share.</div></div></div>
+  </div>
+  <div class="sheet-f"><button class="btn ink block" onclick="Settings.save()">Save settings</button></div>
+</div>
+
+<!-- ================= DRAWERS ================= -->
+<div class="drawer-bg" id="dr-pack"><div class="drawer"><div class="grab"></div><h3 id="pack-title">Pack size</h3><div class="packs" id="pack-grid"></div><button class="btn ink block" onclick="Sell.addPack()">Add to cart</button></div></div>
+
+<div class="drawer-bg" id="dr-prod"><div class="drawer"><div class="grab"></div><h3 id="prod-title">Product</h3>
+  <div class="f"><label>Name</label><input class="in" id="p-name"></div>
+  <div class="g2"><div class="f"><label>SKU</label><input class="in" id="p-sku" style="text-transform:uppercase"></div><div class="f"><label>Category</label><input class="in" id="p-cat" list="cat-list"><datalist id="cat-list"></datalist></div></div>
+  <div class="g2"><div class="f"><label>Stock</label><input class="in" id="p-stock" type="number" inputmode="numeric"></div><div class="f"><label>Reorder min</label><input class="in" id="p-reorder" type="number" inputmode="numeric"></div></div>
+  <div class="g3"><div class="f"><label>Single $</label><input class="in" id="p-sell1" type="number" inputmode="decimal"></div><div class="f"><label>3-pack $</label><input class="in" id="p-sell3" type="number" inputmode="decimal"></div><div class="f"><label>10-pack $</label><input class="in" id="p-sell10" type="number" inputmode="decimal"></div></div>
+  <div class="g2"><div class="f"><label>Cost USD / vial</label><input class="in" id="p-cost" type="number" inputmode="decimal" step="0.1"></div><div class="f"><label>Supplier code</label><input class="in" id="p-supsku" placeholder="e.g. RT10"></div></div>
+  <div class="g2"><div class="f"><label>Bac water</label><select class="in" id="p-bac"><option value="3ml">3ml</option><option value="10ml">10ml</option><option value="none">None</option></select></div></div>
+  <div class="chips" style="margin:4px 0 16px"><button class="chip" id="p-launch" onclick="this.classList.toggle('on')">🚀 Launch product</button><button class="chip" id="p-soon" onclick="this.classList.toggle('on')">Coming soon</button><button class="chip" id="p-hidden" onclick="this.classList.toggle('on')">Hidden</button></div>
+  <div class="actions"><button class="btn red" id="p-del" onclick="Inv.del()" style="display:none;flex:0 0 auto">Delete</button><button class="btn" onclick="Sheet.close('dr-prod')">Cancel</button><button class="btn ink" onclick="Inv.save()">Save</button></div>
+</div></div>
+
+<div class="drawer-bg" id="dr-po"><div class="drawer"><div class="grab"></div><h3>Incoming order</h3>
+  <div class="g2"><div class="f"><label>Supplier</label><input class="in" id="po-supplier" placeholder="HXTNT"></div><div class="f"><label>Ref / PO</label><input class="in" id="po-ref"></div></div>
+  <div class="g2"><div class="f"><label>Ordered</label><input class="in" id="po-date" type="date"></div><div class="f"><label>Expected</label><input class="in" id="po-eta" type="date"></div></div>
+  <div class="lab">Deliver to</div>
+  <div class="g2"><div class="f"><input class="in" id="po-dname" placeholder="Name"></div><div class="f"><input class="in" id="po-dphone" placeholder="Phone"></div></div>
+  <div class="g2"><div class="f"><input class="in" id="po-demail" placeholder="Email"></div><div class="f"><input class="in" id="po-daddr" placeholder="Address"></div></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 8px"><span class="lab" style="margin:0">Items</span><button class="btn xs" onclick="PO.addLine()" id="po-add">+ Line</button></div>
+  <div id="po-lines" style="display:flex;flex-direction:column;gap:6px;max-height:230px;overflow-y:auto;margin-bottom:14px"></div>
+  <div class="actions"><button class="btn" onclick="Sheet.close('dr-po')">Cancel</button><button class="btn ink" onclick="PO.save()">Save order</button></div>
+</div></div>
+
+<div class="drawer-bg" id="dr-mov"><div class="drawer"><div class="grab"></div><h3>Stock movement</h3>
+  <div class="seg" style="margin-bottom:12px" id="mov-type"><button class="on" data-t="in" onclick="Mov.type('in')">In</button><button data-t="out" onclick="Mov.type('out')">Out</button><button data-t="adj" onclick="Mov.type('adj')">Set to</button></div>
+  <div class="f"><label>Product</label><select class="in" id="mov-prod"></select></div>
+  <div class="f"><label>Quantity</label><input class="in" id="mov-qty" type="number" inputmode="numeric"></div>
+  <div class="f"><label>Note</label><input class="in" id="mov-note" placeholder="Optional"></div>
+  <div class="actions"><button class="btn" onclick="Sheet.close('dr-mov')">Cancel</button><button class="btn ink" onclick="Mov.save()">Log</button></div>
+</div></div>
+
+<div class="drawer-bg" id="dr-cust"><div class="drawer"><div class="grab"></div><h3 id="cust-title">Customer</h3>
+  <div class="f"><label>Name</label><input class="in" id="cu-name"></div>
+  <div class="g2"><div class="f"><label>Phone</label><input class="in" id="cu-phone"></div><div class="f"><label>Email</label><input class="in" id="cu-email"></div></div>
+  <div class="f"><label>Address</label><input class="in" id="cu-address"></div>
+  <div class="g3"><div class="f"><label>Suburb</label><input class="in" id="cu-city"></div><div class="f"><label>State</label><input class="in" id="cu-state"></div><div class="f"><label>Postcode</label><input class="in" id="cu-postcode"></div></div>
+  <div class="g2"><div class="f"><label>Tags</label><input class="in" id="cu-tags" placeholder="VIP, Repeat"></div><div class="f"><label>Source</label><select class="in" id="cu-source"><option value="">—</option><option>Instagram</option><option>Referral</option><option>Website</option><option>Word of mouth</option><option>Other</option></select></div></div>
+  <div class="f"><label>Notes</label><textarea class="in" id="cu-notes" rows="3"></textarea></div>
+  <div class="actions"><button class="btn red" id="cu-del" onclick="Cust.del()" style="display:none;flex:0 0 auto">Delete</button><button class="btn" onclick="Sheet.close('dr-cust')">Cancel</button><button class="btn ink" onclick="Cust.save()">Save</button></div>
+</div></div>
+
+<div class="drawer-bg" id="dr-quote"><div class="drawer"><div class="grab"></div><h3>Quote</h3>
+  <div class="f"><label>Customer's WhatsApp number</label><input class="in" id="q-phone" placeholder="04xx xxx xxx" inputmode="tel"></div>
+  <div class="f"><label>Message <span style="text-transform:none;letter-spacing:0">— edit before sending if you like</span></label><textarea class="in" id="q-text" rows="9" style="font-size:14px"></textarea></div>
+  <div class="actions" style="margin-bottom:8px"><button class="btn go block" onclick="Sell.sendQuote()">Send on WhatsApp</button></div>
+  <div class="actions"><button class="btn" onclick="Sheet.close('dr-quote')">Close</button><button class="btn ink" onclick="Sell.copyQuote()">Copy</button></div>
+</div></div>
+
+<div class="drawer-bg" id="dr-dispatch"><div class="drawer"><div class="grab"></div><h3>Dispatch message</h3>
+  <div class="f"><label>Tracking number</label><input class="in" id="dp-tracking" placeholder="Paste or type" oninput="Sales.dispatchPreview()" autocomplete="off"></div>
+  <button class="btn block" style="margin-bottom:12px" onclick="Sales.scanTracking()">Read barcode from photo</button>
+  <div class="hint" id="dp-scan-status" style="display:none;margin-bottom:10px"></div>
+  <div class="copybox" id="dp-preview" style="margin-bottom:14px"></div>
+  <div class="actions" style="margin-bottom:8px"><button class="btn go block" onclick="Sales.waDispatch()" id="dp-wa">Send on WhatsApp &amp; mark dispatched</button></div>
+  <div class="actions"><button class="btn" onclick="Sheet.close('dr-dispatch')">Close</button><button class="btn ink" onclick="Sales.copyDispatch()">Copy &amp; mark dispatched</button></div>
+  <div class="hint" id="dp-wa-hint" style="margin-top:10px"></div>
+</div></div>
+
+<div id="toast"></div>
+<div id="pf"><iframe id="pf-i"></iframe></div>
+<script src="app.js"></script>
+</body>
+</html>
