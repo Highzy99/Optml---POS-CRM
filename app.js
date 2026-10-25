@@ -73,7 +73,7 @@ const Store = {
       this.persistLocal();
     }
     if(!this.cache.settings.shipping) this.cache.settings.shipping = DEFAULT_SETTINGS.shipping;
-    if(!this.cache.settings.courier_template) this.cache.settings.courier_template = DEFAULT_SETTINGS.courier_template;
+    if(!this.cache.settings.courier_template || this.cache.settings.courier_template===DEFAULT_SETTINGS.courier_template_legacy) this.cache.settings.courier_template = DEFAULT_SETTINGS.courier_template;
     if(!this.cache.settings.dispatch_template) this.cache.settings.dispatch_template = DEFAULT_SETTINGS.dispatch_template;
   },
   persistLocal(){ if(this.mode==='local') localStorage.setItem(this.LS_KEY, JSON.stringify(this.cache)); },
@@ -81,9 +81,19 @@ const Store = {
   // ---- generic upsert / delete ----
   async upsert(table, row){
     const list = this.cache[table]; const i = list.findIndex(x=>x.id===row.id);
-    if(i>=0) list[i] = {...list[i], ...row}; else list.unshift(row);
-    if(this.mode==='cloud'){ const {error} = await this.sb.from(table).upsert(row); if(error){ toast('Save failed: '+error.message,'err',4000); throw error; } }
-    else this.persistLocal();
+    const existed = i>=0; const prev = existed ? list[i] : null;
+    if(existed) list[i] = {...list[i], ...row}; else list.unshift(row);
+    if(this.mode==='cloud'){
+      // Existing rows are UPDATEd (a partial upsert would try to insert NULLs into required columns).
+      let error;
+      if(existed){ ({error} = await this.sb.from(table).update(row).eq('id',row.id)); }
+      else { ({error} = await this.sb.from(table).upsert(row,{defaultToNull:false})); }
+      if(error){
+        // roll the cache back so the screen never shows something the database rejected
+        if(existed) list[i]=prev; else { const j=list.findIndex(x=>x.id===row.id); if(j>=0) list.splice(j,1); }
+        toast('Save failed: '+error.message,'err',4000); throw error;
+      }
+    } else this.persistLocal();
     return row;
   },
   async remove(table, id){
@@ -114,7 +124,8 @@ const DEFAULT_SETTINGS = {
   profit: {fx:1.55, courier_pct:25},
   quote_template: "Hi {first_name}! Here's your OPTML quote 😊\n\n{items}\n{bac}\nSubtotal {subtotal}\n{discount}Shipping {shipping}\nTotal {total}\n\nPay by cash, BKP or KJ — reply here and I'll get it packed and sent today 📦",
   whatsapp: {mode:'app', phone_id:'', token:'', dispatch_template:'', lang:'en', courier:''},
-  courier_template: "📦 NEW ORDER #{sale_no}\n\n👤 {name}\n📱 {phone}\n📍 {address}\n\n{items}\n{bac}\n\n💬 {notes}",
+  courier_template: "📦 *OPTML ORDER #{sale_no}*\n{date}\n\n*PACK*\n{items}\n{bac}\n{count}\n\n*SHIP TO*\n{ship_to}\n📱 {phone}\n\n*NOTE*\n{notes}",
+  courier_template_legacy: "📦 NEW ORDER #{sale_no}\n\n👤 {name}\n📱 {phone}\n📍 {address}\n\n{items}\n{bac}\n\n💬 {notes}",
   dispatch_template: "Hi {first_name}! Your order has been dispatched and dropped to the post office 😊\n\nYou'll receive a notification once it's been scanned into the network. If you have any questions don't hesitate to reach out 😊 📦\n\nTrack here 👉 https://auspost.com.au/mypost/track/#/details/{tracking}",
   telegram: {token:'', chat:''},
 };
@@ -170,25 +181,35 @@ const SEED_PRODUCTS = (()=>{
 // TELEGRAM
 // ============================================================
 const Telegram = {
-  async send(text, cfg){
+  async send(text, cfg, parse_mode){
     cfg = cfg || Store.get('telegram') || {};
     if(!cfg.token || !cfg.chat) return false;
     try{
-      const r=await fetch(`https://api.telegram.org/bot${cfg.token}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:cfg.chat,text,disable_web_page_preview:true})});
+      const body={chat_id:cfg.chat,text,disable_web_page_preview:true}; if(parse_mode) body.parse_mode=parse_mode;
+      const r=await fetch(`https://api.telegram.org/bot${cfg.token}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const j=await r.json(); return !!j.ok;
     }catch(e){ console.error(e); return false; }
   },
-  courierMessage(sale){
+  // mode: 'plain' (copy / WhatsApp, *bold* markers) or 'tg' (Telegram HTML)
+  courierMessage(sale, mode='plain'){
     const c=sale.customer||{};
-    const addr=[c.address,c.city,c.state,c.postcode].filter(Boolean).join(', ');
-    const items=(sale.items||[]).map(i=>`• ${i.name} ×${i.count}${i.pack_qty>1?' ('+i.pack_qty+'-pack)':''}`).join('\n') || '• (no products)';
-    const bac=[sale.bac3?`${sale.bac3}× Bac Water 3ml`:'', sale.bac10?`${sale.bac10}× Bac Water 10ml`:''].filter(Boolean).join('\n');
-    const tpl=Store.get('courier_template')||DEFAULT_SETTINGS.courier_template;
-    return tpl.replace('{sale_no}',sale.sale_no||sale.id.slice(-5).toUpperCase()).replace('{name}',c.name||'—').replace('{phone}',c.phone||'—').replace('{address}',addr||'—')
-      .replace('{items}',items).replace('{bac}',bac).replace('{notes}',sale.notes||'—').replace('{total}',money(sale.total)).replace(/\n{3,}/g,'\n\n').trim();
+    const tidy=s=>String(s||'').trim().replace(/\s+/g,' ');
+    const nameCase=s=>tidy(s).split(' ').map(w=>/^[a-z]/.test(w)?w[0].toUpperCase()+w.slice(1):w).join(' ');
+    const fmtPhone=p=>{ const d=String(p||'').replace(/\D/g,''); const m=d.match(/^(?:61|0)?(4\d{2})(\d{3})(\d{3})$/); return m?`0${m[1]} ${m[2]} ${m[3]}`:(p||'—'); };
+    const lines=(sale.items||[]).map(i=>`${(i.pack_qty||1)*(i.count||1)} × ${i.name}`);
+    const bacLines=[sale.bac3?`${sale.bac3} × Bac Water 3ml`:'', sale.bac10?`${sale.bac10} × Bac Water 10ml`:''].filter(Boolean);
+    const vials=(sale.items||[]).reduce((n,i)=>n+(i.pack_qty||1)*(i.count||1),0)+(+sale.bac3||0)+(+sale.bac10||0);
+    const shipTo=[nameCase(c.name)||'—', tidy(c.address), [tidy(c.city),tidy(c.state).toUpperCase(),tidy(c.postcode)].filter(Boolean).join(' ')].filter(Boolean).join('\n');
+    const when=sale.created_at?new Date(sale.created_at).toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'}):fmtDateFull(sale.date);
+    const V={sale_no:sale.sale_no||sale.id.slice(-5).toUpperCase(), date:when, items:lines.join('\n')||'(no products)', bac:bacLines.join('\n'),
+      count:vials?`= ${vials} vial${vials===1?'':'s'} total`:'', ship_to:shipTo, name:nameCase(c.name)||'—', phone:fmtPhone(c.phone),
+      address:[tidy(c.address),tidy(c.city),tidy(c.state).toUpperCase(),tidy(c.postcode)].filter(Boolean).join(', ')||'—', notes:tidy(sale.notes)||'None', total:money(sale.total)};
+    let tpl=Store.get('courier_template')||DEFAULT_SETTINGS.courier_template;
+    if(mode==='tg'){ const h=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); tpl=h(tpl).replace(/\*([^*\n]+)\*/g,'<b>$1</b>'); for(const k in V) V[k]=h(V[k]); V.ship_to='<pre>'+V.ship_to+'</pre>'; }
+    return tpl.replace(/\{(\w+)\}/g,(m,k)=>k in V?V[k]:m).replace(/\n{3,}/g,'\n\n').trim();
   },
   async sendOrder(sale){
-    const ok=await this.send(this.courierMessage(sale));
+    const ok=await this.send(this.courierMessage(sale,'tg'),null,'HTML');
     if(ok){ sale.courier_sent_at=new Date().toISOString(); if(sale.status==='Paid') sale.status='Sent to Courier'; await Store.upsert('sales',{id:sale.id,courier_sent_at:sale.courier_sent_at,status:sale.status}); }
     return ok;
   },
@@ -217,7 +238,7 @@ const Data = {
       const movements=(d.movements||[]).map(m=>({id:m.id,product_id:m.product_id||m.skuId,product_name:m.product_name||m.skuName,sku:m.sku||m.skuCode,type:m.type,qty:+m.qty||0,note:m.note||'',date:m.date,created_at:m.created_at||new Date(m.date||today()).toISOString()}));
       if(!confirm(`Restore ${products.length} products, ${sales.length} sales, ${customers.length} customers, ${orders.length} orders?\n\nThis MERGES by id (existing rows with same id are overwritten).`)) return;
       UI.sync('','Restoring…');
-      const chunk=async(t,rows)=>{ for(let i=0;i<rows.length;i+=200){ const c=rows.slice(i,i+200); if(Store.mode==='cloud'){ const {error}=await Store.sb.from(t).upsert(c); if(error) throw error; } } };
+      const chunk=async(t,rows)=>{ for(let i=0;i<rows.length;i+=200){ const c=rows.slice(i,i+200); if(Store.mode==='cloud'){ const {error}=await Store.sb.from(t).upsert(c,{defaultToNull:false}); if(error) throw error; } } };
       if(Store.mode==='cloud'){ await chunk('products',products); await chunk('customers',customers); await chunk('sales',sales); await chunk('purchase_orders',orders); await chunk('movements',movements); if(d.courier_payments) await chunk('courier_payments',d.courier_payments); if(d.settings) for(const [k,v] of Object.entries(d.settings)) await Store.setSetting(k,v); }
       else { const merge=(a,b)=>{ const m=new Map(a.map(x=>[x.id,x])); b.forEach(x=>m.set(x.id,{...(m.get(x.id)||{}),...x})); return [...m.values()]; }; Store.cache.courier_payments=merge(Store.cache.courier_payments||[],d.courier_payments||[]); Store.cache.products=merge(Store.cache.products,products); Store.cache.customers=merge(Store.cache.customers,customers); Store.cache.sales=merge(Store.cache.sales,sales); Store.cache.purchase_orders=merge(Store.cache.purchase_orders,orders); Store.cache.movements=merge(Store.cache.movements,movements); Store.cache.settings={...Store.cache.settings,...(d.settings||{})}; Store.persistLocal(); }
       await App.reload(); toast('Restored ✓','ok',4000);
@@ -644,9 +665,11 @@ parsePaste(text){
       const sale={id:uid('s'),date:today(),customer_id:customerId,customer:cust,items:this.cart.map(c=>{ const p=Store.cache.products.find(x=>x.id===c.product_id); return {product_id:c.product_id,name:c.name,sku:c.sku,pack_qty:c.pack_qty,count:c.count,price:c.price,cost_usd:p?(+p.cost||0):0}; }),bac3:this.bac.bac3,bac10:this.bac.bac10,bac3_cost_usd:(Store.cache.products.find(p=>p.sku==='BW03')||{}).cost||0,bac10_cost_usd:(Store.cache.products.find(p=>p.sku==='BW10')||{}).cost||0,manual_amount:t.manual,subtotal:t.sub,discount:t.disc,shipping:t.ship,total:t.total,payment:this.payment,split_payments:this.payment==='Split'?this.splits.filter(s=>s.amount).map(s=>({method:s.method,amount:+s.amount})):[],fulfilment:this.fulfilment,status,tracking:'',notes,created_at:new Date().toISOString()};
       if(Store.mode==='local') sale.sale_no=Math.max(0,...Store.cache.sales.map(s=>+s.sale_no||0))+1;
       await Store.upsert('sales',sale);
+      try{
       if(Store.mode==='cloud'){ const {data}=await Store.sb.from('sales').select('sale_no').eq('id',sale.id).single(); if(data){ sale.sale_no=data.sale_no; const i=Store.cache.sales.findIndex(x=>x.id===sale.id); if(i>=0) Store.cache.sales[i].sale_no=data.sale_no; } }
       for(const c of this.cart){ const p=Store.cache.products.find(x=>x.id===c.product_id); if(p) await Store.adjustStock(p,-(c.pack_qty*c.count),'sale',`#${sale.sale_no} ${cust.name||'Walk-in'}`); }
       const b3=Store.cache.products.find(p=>p.sku==='BW03'),b10=Store.cache.products.find(p=>p.sku==='BW10'); if(this.bac.bac3&&b3) await Store.adjustStock(b3,-this.bac.bac3,'sale',`#${sale.sale_no}`); if(this.bac.bac10&&b10) await Store.adjustStock(b10,-this.bac.bac10,'sale',`#${sale.sale_no}`);
+      }catch(e){ try{ await Store.remove('sales',sale.id); }catch(_){} throw e; }
       let msg=`Sale #${sale.sale_no} saved`; if(status==='Paid'&&this.fulfilment==='Shipped'){ const ok=await Telegram.sendOrder(sale); msg+=ok?' · courier notified ✓':' · courier NOT sent (set up Telegram)'; }
       this.reset(); Sheet.close('sh-sell'); toast(msg,'ok',4000); Nav.go('sales'); Sales.detail(sale.id);
     }catch(e){ console.error(e); toast('Failed: '+e.message,'err',5000); }

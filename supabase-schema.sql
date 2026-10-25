@@ -351,3 +351,7 @@ alter table sales add column if not exists dispatched_at timestamptz;
 alter table sales add column if not exists delivered_at timestamptz;
 alter table sales add column if not exists customer_notified_at timestamptz;
 alter table sales add column if not exists customer_notified_via text;
+
+-- Courier message: simpler pack-list format (Oct 2026). Only replaces the untouched default.
+update settings set value = to_jsonb('📦 *OPTML ORDER #{sale_no}*\n{date}\n\n*PACK*\n{items}\n{bac}\n{count}\n\n*SHIP TO*\n{ship_to}\n📱 {phone}\n\n*NOTE*\n{notes}'::text)
+ where key='courier_template' and value #>> '{}' like '📦 NEW ORDER #{sale_no}%';
