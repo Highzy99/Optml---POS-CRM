@@ -201,7 +201,7 @@ select.in{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 .tile .q.low{color:var(--amber)}.tile .q.out{color:var(--red)}
 
 /* pack picker */
-.packs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 6px}
+.packs{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0 6px}
 .pack{border:1.5px solid var(--rule-2);border-radius:14px;padding:16px 10px;text-align:center;background:var(--paper-2)}
 .pack.on{border-color:var(--ink);background:var(--ink);color:#fff}
 .pack.off{opacity:.3;pointer-events:none}

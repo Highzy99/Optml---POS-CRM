@@ -17,6 +17,7 @@ create table if not exists products (
   sell1       numeric default 0,
   sell3       numeric default 0,
   sell10      numeric default 0,
+  sell5       numeric,                 -- 5-vial pack price (AUD)
   launch      boolean default false,
   soon        boolean default false,
   bac_size    text default '3ml',   -- '3ml' | '10ml' | 'none'
@@ -309,3 +310,35 @@ end $$;
 
 -- Every visible product is a launch product
 update products set launch = not hidden;
+
+alter table products add column if not exists sell5 numeric;
+-- Current prices (AUD): retail 1/3/5 from otpml-pricelist, 10-vial wholesale from optml-wholesale-catalogue. Safe to re-run.
+update products p set sell1=v.s1, sell3=v.s3, sell5=v.s5, sell10=coalesce(v.s10,p.sell10) from (values
+ ('RE10',149,402,649,799),
+ ('RE20',239,645,999,1199),
+ ('RE30',299,807,1249,1499),
+ ('GH50',59,149,219,389),
+ ('GH100',79,209,299,539),
+ ('ME10',79,209,299,489),
+ ('WO20',129,348,549,739),
+ ('GL70',149,402,633,889),
+ ('KL80',179,483,739,989),
+ ('MO10',69,179,249,389),
+ ('MO40',209,564,839,1089),
+ ('TE10',149,402,649,889),
+ ('BA50',89,240,369,439),
+ ('BP10',69,179,249,489),
+ ('CJ10',129,348,509,null::numeric),
+ ('DS10',89,240,399,539),
+ ('GH10',59,159,259,439),
+ ('KI10',89,240,399,589),
+ ('KP10',89,239,349,439),
+ ('NA10',169,456,749,939),
+ ('SK10',79,209,319,439),
+ ('SL10',89,219,359,589),
+ ('SX10',79,209,319,439),
+ ('TB10',119,319,479,699),
+ ('TI10',119,319,479,589),
+ ('TI20',179,479,719,879),
+ ('TI30',219,589,879,1089)
+) as v(sku,s1,s3,s5,s10) where p.sku=v.sku;

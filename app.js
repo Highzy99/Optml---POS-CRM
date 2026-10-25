@@ -68,7 +68,7 @@ const Store = {
       const raw = JSON.parse(localStorage.getItem(this.LS_KEY)||'null');
       if(raw) this.cache = {...this.cache, ...raw}; if(!this.cache.courier_payments) this.cache.courier_payments=[];
       if(!this.cache.products.length) this.cache.products = SEED_PRODUCTS.map(p=>({...p}));
-      this.cache.products.forEach(p=>{ if(p.hidden===undefined) p.hidden=HIDDEN_DEFAULT.has(p.id); p.launch=!p.hidden; if(LEGACY_CAT[p.category]) p.category=LEGACY_CAT[p.category]; const s=SUPPLIER_COST[p.id]; if(s&&!p.supplier_sku){ p.supplier_sku=s[0]; if(!p.cost) p.cost=s[1]; } });
+      this.cache.products.forEach(p=>{ if(p.hidden===undefined) p.hidden=HIDDEN_DEFAULT.has(p.id); p.launch=!p.hidden; if(p.sell5===undefined&&PRICES[p.sku]){ const pr=PRICES[p.sku]; p.sell1=pr[0]; p.sell3=pr[1]; p.sell5=pr[2]; if(pr[3]!=null) p.sell10=pr[3]; } if(LEGACY_CAT[p.category]) p.category=LEGACY_CAT[p.category]; const s=SUPPLIER_COST[p.id]; if(s&&!p.supplier_sku){ p.supplier_sku=s[0]; if(!p.cost) p.cost=s[1]; } });
       this.cache.settings = {...DEFAULT_SETTINGS, ...(this.cache.settings||{})};
       this.persistLocal();
     }
@@ -141,8 +141,10 @@ const ICON={
 };
 const SUPPLIER_COST = {p01:['RT10',7],p02:['RT20',9.8],p03:['RT30',14],p04:['TR10',4.3],p05:['TR20',6.3],p06:['TR30',7.7],p07:['CGL5',8.8],p08:['CGL10',14.5],p09:['TSM10',15],p10:['10AD',15],p11:['50AM',9],p13:['MS10',5],p14:['MS40',15],p15:['NJ500',7],p16:['NJ1000',10],p17:['2S10',6.5],p18:['2S50',27],p19:['BC10',6],p20:['RA10',4.8],p21:['KPV10',4.8],p22:['BT10',12],p23:['BB20',14.5],p24:['BBG70',16.3],p25:['Klow',18],p27:['CP10',7.5],p28:['G610',4.6],p29:['SMO10',12],p30:['IG1',17],p31:['SK10',5.5],p32:['XA10',5.5],p33:['VIP10',12],p35:['KS10',7],p36:['P41',5],p37:['G10K',11],p38:['G75',5],p39:['DS10',5.8],p40:['TA10',14],p41:['LL37',6.5],p42:['CU',3.2],p43:['CU100',4.5],p44:['MT1',4],p45:['ML10',4],p46:['ET10',4.6],p47:['ET50',12],p48:['NP810',4],p49:['F410',21],p50:['BA3',1],p51:['BA10',1.4]}; // HXTNT price list (Oct 2026) — USD per vial (kit of 10 ÷ 10)
 const HIDDEN_DEFAULT = new Set(["p11", "p10", "p08", "p07", "p15", "p17", "p18", "p20", "p30", "p29", "p33", "p36", "p34", "p38", "p41", "p40", "p44", "p49", "p48"]);
+// Current prices (AUD): retail single / 3 / 5 vials from otpml-pricelist, 10-vial wholesale from optml-wholesale-catalogue
+const PRICES = {RE10:[149,402,649,799],RE20:[239,645,999,1199],RE30:[299,807,1249,1499],GH50:[59,149,219,389],GH100:[79,209,299,539],ME10:[79,209,299,489],WO20:[129,348,549,739],GL70:[149,402,633,889],KL80:[179,483,739,989],MO10:[69,179,249,389],MO40:[209,564,839,1089],TE10:[149,402,649,889],BA50:[89,240,369,439],BP10:[69,179,249,489],CJ10:[129,348,509,null],DS10:[89,240,399,539],GH10:[59,159,259,439],KI10:[89,240,399,589],KP10:[89,239,349,439],NA10:[169,456,749,939],SK10:[79,209,319,439],SL10:[89,219,359,589],SX10:[79,209,319,439],TB10:[119,319,479,699],TI10:[119,319,479,589],TI20:[179,479,719,879],TI30:[219,589,879,1089]};
 const SEED_PRODUCTS = (()=>{
-  const mk=(id,name,sku,cat,s1,s3,s10,bac='3ml',soon=false)=>({id,name,sku,category:cat,stock:0,reorder:5,cost:0,sell1:s1,sell3:s3,sell10:s10,launch:false,soon,bac_size:bac});
+  const mk=(id,name,sku,cat,s1,s3,s10,bac='3ml',soon=false)=>({id,name,sku,category:cat,stock:0,reorder:5,cost:0,sell1:s1,sell3:s3,sell5:null,sell10:s10,launch:false,soon,bac_size:bac});
   return [
     mk('p01','Retatrutide 10mg','RE10','Weight',180,500,1100),mk('p02','Retatrutide 20mg','RE20','Weight',320,800,1500),mk('p03','Retatrutide 30mg','RE30','Weight',400,1000,1750),
     mk('p04','Tirzepatide 10mg','TI10','Weight',150,400,750),mk('p05','Tirzepatide 20mg','TI20','Weight',250,680,1125),mk('p06','Tirzepatide 30mg','TI30','Weight',320,800,1500),
@@ -161,7 +163,7 @@ const SEED_PRODUCTS = (()=>{
     mk('p42','GHK-Cu 50mg','GH50','Glow',100,240,500),mk('p43','GHK-Cu 100mg','GH100','Glow',0,0,0),mk('p44','Melanotan I 10mg','M110','Glow',0,0,0),mk('p45','Melanotan II 10mg','ME10','Glow',100,240,500),
     mk('p46','Epithalon 10mg','EP10','Glow',0,0,0),mk('p47','Epithalon 50mg','EP50','Glow',0,0,0),mk('p48','SNAP-8 10mg','SN10','Glow',80,192,400),mk('p49','FOXO1-DRI 10mg','FO10','Glow',0,0,0),
     mk('p50','Bacteriostatic Water 3ml','BW03','Essentials',15,35,100,'none'),mk('p51','Bacteriostatic Water 10ml','BW10','Essentials',30,70,150,'none'),
-  ].map(p=>{ const s=SUPPLIER_COST[p.id]; const q=s?{...p,supplier_sku:s[0],cost:s[1]}:{...p}; q.hidden=HIDDEN_DEFAULT.has(p.id); q.launch=!q.hidden; return q; });
+  ].map(p=>{ const s=SUPPLIER_COST[p.id]; const q=s?{...p,supplier_sku:s[0],cost:s[1]}:{...p}; q.hidden=HIDDEN_DEFAULT.has(p.id); q.launch=!q.hidden; const pr=PRICES[q.sku]; if(pr){ q.sell1=pr[0]; q.sell3=pr[1]; q.sell5=pr[2]; if(pr[3]!=null) q.sell10=pr[3]; } return q; });
 })();
 
 // ============================================================
@@ -208,7 +210,7 @@ const Data = {
       const d=JSON.parse(await f.text());
       if(!d.skus && !d.products){ toast('Not a valid backup','err'); return; }
       // accept old stocktake format too
-      const products=(d.products||d.skus||[]).map(p=>({id:p.id,name:p.name,sku:p.sku||p.skuCode||'',category:p.category||p.cat||'Uncategorised',stock:+p.stock||0,reorder:+p.reorder||5,cost:+p.cost||0,sell1:+p.sell1||0,sell3:+p.sell3||0,sell10:+p.sell10||0,launch:!!p.launch,soon:!!p.soon,bac_size:p.bac_size||(/NAD/i.test(p.name)?'10ml':/water|caps/i.test(p.name)?'none':'3ml')}));
+      const products=(d.products||d.skus||[]).map(p=>({id:p.id,name:p.name,sku:p.sku||p.skuCode||'',category:p.category||p.cat||'Uncategorised',stock:+p.stock||0,reorder:+p.reorder||5,cost:+p.cost||0,sell1:+p.sell1||0,sell3:+p.sell3||0,sell5:+p.sell5||null,sell10:+p.sell10||0,launch:!!p.launch,soon:!!p.soon,bac_size:p.bac_size||(/NAD/i.test(p.name)?'10ml':/water|caps/i.test(p.name)?'none':'3ml')}));
       const customers=(d.customers||[]).map(c=>({id:c.id,name:c.name||'',phone:c.phone||'',email:c.email||'',address:c.address||'',city:c.city||'',state:c.state||'',postcode:c.postcode||'',notes:c.notes||'',tags:c.tags||'',source:c.source||'',order_count:+c.order_count||+c.orderCount||0,total_spent:+c.total_spent||0,last_seen:c.last_seen||c.lastSeen||null,created_at:c.created_at||c.created||new Date().toISOString()}));
       const sales=(d.sales||[]).map(s=>({id:s.id,sale_no:s.sale_no||null,date:s.date,customer_id:s.customer_id||null,customer:s.customer||{},items:(s.items||[]).map(i=>({product_id:i.product_id||i.skuId,name:i.name,sku:i.sku||i.skuCode,pack_qty:i.pack_qty||i.packQty||1,count:i.count||1,price:+i.price||0})),bac3:+s.bac3||0,bac10:+s.bac10||0,manual_amount:+s.manual_amount||0,subtotal:+s.subtotal||0,discount:+s.discount||0,shipping:+s.shipping||0,total:+s.total||0,payment:s.payment||'Cash',split_payments:s.split_payments||s.splitPayments||[],fulfilment:s.fulfilment||'Shipped',status:s.status||'Delivered',tracking:s.tracking||'',notes:s.notes||'',created_at:s.created_at||new Date(s.date||today()).toISOString()}));
       const orders=(d.purchase_orders||d.orders||[]).map(o=>({id:o.id,product_id:o.product_id||o.skuId,qty:+o.qty||0,ref:o.ref||'',supplier:o.supplier||o.supplierName||'',order_date:o.order_date||o.orderDate||null,eta:o.eta||null,delivery:o.delivery||(typeof o.supplier==='object'?o.supplier:{}),status:o.status||'pending',arrived_date:o.arrived_date||o.arrivedDate||null,created_at:o.created_at||new Date().toISOString()}));
@@ -517,13 +519,13 @@ const Sell = {
   },
   openPack(id){
     const p=Store.cache.products.find(x=>x.id===id); this.packP=p; this.packI=null; $('pack-title').innerHTML=`${goalBadge(p.category)}${esc(p.name)}`;
-    const o=[['Single',1,p.sell1],['3 pack',3,p.sell3],['10 pack',10,p.sell10]];
+    const o=[['Single',1,p.sell1],['3 pack',3,p.sell3],['5 pack',5,p.sell5],['10 · wholesale',10,p.sell10]];
     $('pack-grid').innerHTML=o.map(([l,q,pr],i)=>{ const off=!pr||p.stock<q; const sv=q>1&&p.sell1?Math.round((1-pr/(p.sell1*q))*100):0; return `<button class="pack ${off?'off':''}" id="pk${i}" onclick="Sell.selPack(${i})"><div class="l">${l}</div><div class="p">${pr?'$'+pr:'—'}</div><div class="s">${off?(p.stock<q?'need '+q:'n/a'):(sv>0?'save '+sv+'%':'')}</div></button>`; }).join('');
     Sheet.open('dr-pack'); const f=o.findIndex(([,q,pr])=>pr&&p.stock>=q); if(f>=0) this.selPack(f);
   },
-  selPack(i){ this.packI=i; [0,1,2].forEach(j=>$('pk'+j).classList.toggle('on',j===i)); },
+  selPack(i){ this.packI=i; [0,1,2,3].forEach(j=>$('pk'+j)&&$('pk'+j).classList.toggle('on',j===i)); },
   addPack(){
-    if(this.packI===null) return; const p=this.packP, q=[1,3,10][this.packI], pr=[p.sell1,p.sell3,p.sell10][this.packI];
+    if(this.packI===null) return; const p=this.packP, q=[1,3,5,10][this.packI], pr=[p.sell1,p.sell3,p.sell5,p.sell10][this.packI];
     const ex=this.cart.find(c=>c.product_id===p.id&&c.pack_qty===q); if(ex) ex.count++; else this.cart.push({product_id:p.id,name:p.name,sku:p.sku,pack_qty:q,count:1,price:pr,bac_size:p.bac_size||'3ml'});
     this.autoBac(); Sheet.close('dr-pack'); $('sell-q').value=''; this.search(); this.renderCart(); toast(`Added ${p.name}`);
   },
@@ -762,7 +764,7 @@ const Inv = {
   openEdit(id){
     const p=id?Store.cache.products.find(x=>x.id===id):null; this.cur=p;
     $('prod-title').textContent=p?'Edit product':'New product'; $('p-del').style.display=p?'inline-flex':'none';
-    $('p-name').value=p?.name||''; $('p-sku').value=p?.sku||''; $('p-cat').value=p?.category||''; $('p-stock').value=p?p.stock:0; $('p-reorder').value=p?p.reorder:5; $('p-sell1').value=p?.sell1||''; $('p-sell3').value=p?.sell3||''; $('p-sell10').value=p?.sell10||''; $('p-cost').value=p?.cost||''; $('p-supsku').value=p?.supplier_sku||''; $('p-bac').value=p?.bac_size||'3ml';
+    $('p-name').value=p?.name||''; $('p-sku').value=p?.sku||''; $('p-cat').value=p?.category||''; $('p-stock').value=p?p.stock:0; $('p-reorder').value=p?p.reorder:5; $('p-sell1').value=p?.sell1||''; $('p-sell3').value=p?.sell3||''; $('p-sell5').value=p?.sell5||''; $('p-sell10').value=p?.sell10||''; $('p-cost').value=p?.cost||''; $('p-supsku').value=p?.supplier_sku||''; $('p-bac').value=p?.bac_size||'3ml';
     $('p-soon').classList.toggle('on',!!p?.soon); $('p-hidden').classList.toggle('on',!!p?.hidden);
     const cats=[...new Set(Store.cache.products.map(x=>x.category))].sort(); $('cat-list').innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join('');
     Sheet.open('dr-prod');
@@ -770,7 +772,7 @@ const Inv = {
   async save(){
     const name=$('p-name').value.trim(); if(!name){ toast('Name required','err'); return; }
     const p=this.cur||{id:uid('p'),stock:0,created_at:new Date().toISOString()}; const oldStock=this.cur?+this.cur.stock:null;
-    Object.assign(p,{name,sku:$('p-sku').value.trim().toUpperCase(),category:$('p-cat').value.trim()||'Other',stock:+$('p-stock').value||0,reorder:+$('p-reorder').value||0,sell1:+$('p-sell1').value||null,sell3:+$('p-sell3').value||null,sell10:+$('p-sell10').value||null,cost:+$('p-cost').value||null,supplier_sku:$('p-supsku').value.trim(),bac_size:$('p-bac').value,launch:true,soon:$('p-soon').classList.contains('on'),hidden:$('p-hidden').classList.contains('on')});
+    Object.assign(p,{name,sku:$('p-sku').value.trim().toUpperCase(),category:$('p-cat').value.trim()||'Other',stock:+$('p-stock').value||0,reorder:+$('p-reorder').value||0,sell1:+$('p-sell1').value||null,sell3:+$('p-sell3').value||null,sell5:+$('p-sell5').value||null,sell10:+$('p-sell10').value||null,cost:+$('p-cost').value||null,supplier_sku:$('p-supsku').value.trim(),bac_size:$('p-bac').value,launch:true,soon:$('p-soon').classList.contains('on'),hidden:$('p-hidden').classList.contains('on')});
     await Store.upsert('products',p); if(oldStock!==null&&oldStock!==p.stock) await Store.logMove(p,'adj',p.stock-oldStock,'manual edit');
     Sheet.close('dr-prod'); toast('Saved'); this.render(); Nav.badges();
   },
