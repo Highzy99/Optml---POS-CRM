@@ -342,3 +342,12 @@ update products p set sell1=v.s1, sell3=v.s3, sell5=v.s5, sell10=coalesce(v.s10,
  ('TI20',179,479,719,879),
  ('TI30',219,589,879,1089)
 ) as v(sku,s1,s3,s5,s10) where p.sku=v.sku;
+
+-- Sale timeline, cost snapshots and customer-notification fields (safe to re-run)
+alter table sales add column if not exists bac3_cost_usd numeric;
+alter table sales add column if not exists bac10_cost_usd numeric;
+alter table sales add column if not exists paid_at timestamptz;
+alter table sales add column if not exists dispatched_at timestamptz;
+alter table sales add column if not exists delivered_at timestamptz;
+alter table sales add column if not exists customer_notified_at timestamptz;
+alter table sales add column if not exists customer_notified_via text;
