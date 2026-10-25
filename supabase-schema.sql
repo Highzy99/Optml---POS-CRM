@@ -306,3 +306,6 @@ begin
     end if;
   end loop;
 end $$;
+
+-- Every visible product is a launch product
+update products set launch = not hidden;

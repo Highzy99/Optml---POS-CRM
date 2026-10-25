@@ -258,8 +258,8 @@ select.in{appearance:none;-webkit-appearance:none;background-image:url("data:ima
 /* ---------- inventory rows ---------- */
 .inv{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--rule);background:var(--paper-2)}
 .inv:last-child{border-bottom:none}
-.inv .rk{font-size:18px;width:28px;text-align:center;opacity:.2;filter:grayscale(1);flex-shrink:0}
-.inv .rk.on{opacity:1;filter:none}
+.inv .rk{width:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.inv .rk .goal-badge{width:26px;height:26px;margin:0}
 .inv .m{flex:1;min-width:0}
 .inv .n{font-weight:500;font-size:14px;line-height:1.25}
 .inv .s{font-family:var(--mono);font-size:10px;color:var(--ink-3);display:flex;gap:8px;margin-top:2px;white-space:nowrap;overflow:hidden}

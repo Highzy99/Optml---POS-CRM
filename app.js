@@ -68,7 +68,7 @@ const Store = {
       const raw = JSON.parse(localStorage.getItem(this.LS_KEY)||'null');
       if(raw) this.cache = {...this.cache, ...raw}; if(!this.cache.courier_payments) this.cache.courier_payments=[];
       if(!this.cache.products.length) this.cache.products = SEED_PRODUCTS.map(p=>({...p}));
-      this.cache.products.forEach(p=>{ if(p.hidden===undefined) p.hidden=HIDDEN_DEFAULT.has(p.id); if(LEGACY_CAT[p.category]) p.category=LEGACY_CAT[p.category]; const s=SUPPLIER_COST[p.id]; if(s&&!p.supplier_sku){ p.supplier_sku=s[0]; if(!p.cost) p.cost=s[1]; } });
+      this.cache.products.forEach(p=>{ if(p.hidden===undefined) p.hidden=HIDDEN_DEFAULT.has(p.id); p.launch=!p.hidden; if(LEGACY_CAT[p.category]) p.category=LEGACY_CAT[p.category]; const s=SUPPLIER_COST[p.id]; if(s&&!p.supplier_sku){ p.supplier_sku=s[0]; if(!p.cost) p.cost=s[1]; } });
       this.cache.settings = {...DEFAULT_SETTINGS, ...(this.cache.settings||{})};
       this.persistLocal();
     }
@@ -161,7 +161,7 @@ const SEED_PRODUCTS = (()=>{
     mk('p42','GHK-Cu 50mg','GH50','Glow',100,240,500),mk('p43','GHK-Cu 100mg','GH100','Glow',0,0,0),mk('p44','Melanotan I 10mg','M110','Glow',0,0,0),mk('p45','Melanotan II 10mg','ME10','Glow',100,240,500),
     mk('p46','Epithalon 10mg','EP10','Glow',0,0,0),mk('p47','Epithalon 50mg','EP50','Glow',0,0,0),mk('p48','SNAP-8 10mg','SN10','Glow',80,192,400),mk('p49','FOXO1-DRI 10mg','FO10','Glow',0,0,0),
     mk('p50','Bacteriostatic Water 3ml','BW03','Essentials',15,35,100,'none'),mk('p51','Bacteriostatic Water 10ml','BW10','Essentials',30,70,150,'none'),
-  ].map(p=>{ const s=SUPPLIER_COST[p.id]; const q=s?{...p,supplier_sku:s[0],cost:s[1]}:{...p}; q.hidden=HIDDEN_DEFAULT.has(p.id); return q; });
+  ].map(p=>{ const s=SUPPLIER_COST[p.id]; const q=s?{...p,supplier_sku:s[0],cost:s[1]}:{...p}; q.hidden=HIDDEN_DEFAULT.has(p.id); q.launch=!q.hidden; return q; });
 })();
 
 // ============================================================
@@ -255,7 +255,7 @@ const Nav = {
   },
   badges(){
     const S=Store.cache.sales; const open=S.filter(s=>['New','Paid','Sent to Courier'].includes(s.status)).length;
-    const low=Store.cache.products.filter(p=>!p.soon&&!p.hidden&&p.launch&&p.stock<=p.reorder).length;
+    const low=Store.cache.products.filter(p=>!p.soon&&!p.hidden&&p.stock<=p.reorder).length;
     const set=(id,n)=>{ const e=$(id); if(!e) return; e.textContent=n; e.style.display=n?'flex':'none'; };
     set('dot-home',open); set('dot-sales',open); set('dot-stock',low);
     const po=$('po-n'); if(po) po.textContent=Store.cache.purchase_orders.filter(o=>o.status==='pending').length;
@@ -354,8 +354,8 @@ const Insights = {
     const topC=Object.entries(byC).sort((a,b)=>b[1].r-a[1].r).slice(0,5).map(([id,v])=>{ const c=Store.cache.customers.find(x=>x.id===id)||{name:'?'}; return `<div class="row tap" onclick="Cust.detail('${id}')"><div class="av">${esc((c.name||'?')[0].toUpperCase())}</div><div class="m"><div class="t">${esc(c.name)}</div><div class="u">${v.n} order${v.n!==1?'s':''}</div></div><div class="e"><span class="amt">${money(v.r)}</span></div></div>`; }).join('')||'<div class="empty">—</div>';
     // stock cover: velocity over last 30d → days of cover for launch products
     const v30={}; all.filter(s=>s.date>=addDays(-29)).forEach(s=>(s.items||[]).forEach(i=>v30[i.product_id]=(v30[i.product_id]||0)+i.pack_qty*i.count));
-    const cover=Store.cache.products.filter(p=>!p.soon&&!p.hidden&&(p.launch||v30[p.id])).map(p=>{ const perDay=(v30[p.id]||0)/30; const inc=Inv.incoming(p.id); return {p,perDay,days:perDay?Math.round((p.stock+inc)/perDay):null,inc}; }).sort((a,b)=>(a.days??9999)-(b.days??9999)).slice(0,8);
-    const coverH=cover.map(r=>`<div class="row"><div class="m"><div class="t">${r.p.launch?'🚀 ':''}${esc(r.p.name)}</div><div class="u">${r.p.stock} in stock${r.inc?' +'+r.inc+' incoming':''} · ${(r.perDay*7).toFixed(1)} vials/wk</div></div><div class="e"><span class="amt" style="color:${r.days===null?'var(--ink-4)':r.days<14?'var(--red)':r.days<30?'var(--amber)':'var(--go)'}">${r.days===null?'—':r.days+'d'}</span><span class="hint" style="margin:0">cover</span></div></div>`).join('')||'<div class="empty">No sales velocity yet</div>';
+    const cover=Store.cache.products.filter(p=>!p.soon&&!p.hidden).map(p=>{ const perDay=(v30[p.id]||0)/30; const inc=Inv.incoming(p.id); return {p,perDay,days:perDay?Math.round((p.stock+inc)/perDay):null,inc}; }).sort((a,b)=>(a.days??9999)-(b.days??9999)).slice(0,8);
+    const coverH=cover.map(r=>`<div class="row"><div class="m"><div class="t">${esc(r.p.name)}</div><div class="u">${r.p.stock} in stock${r.inc?' +'+r.inc+' incoming':''} · ${(r.perDay*7).toFixed(1)} vials/wk</div></div><div class="e"><span class="amt" style="color:${r.days===null?'var(--ink-4)':r.days<14?'var(--red)':r.days<30?'var(--amber)':'var(--go)'}">${r.days===null?'—':r.days+'d'}</span><span class="hint" style="margin:0">cover</span></div></div>`).join('')||'<div class="empty">No sales velocity yet</div>';
     const stockVal=sum(Store.cache.products.filter(p=>!p.hidden),p=>p.stock*(+p.cost||0))*pc.fx;
     $('ins-body').innerHTML=`
       <div class="seg" style="margin-bottom:14px">${[['7','7 days'],['30','30 days'],['90','90 days'],['all','All time']].map(([k,l])=>`<button class="${this.r===k?'on':''}" onclick="Insights.set('${k}')">${l}</button>`).join('')}</div>
@@ -469,8 +469,8 @@ const Home = {
     S.filter(s=>s.status==='Paid'&&s.fulfilment==='Shipped'&&!s.courier_sent_at).forEach(s=>att.push({k:`Send to courier · #${s.sale_no}`,sku:sku(s),ic:ICON.send,c:'violet',t:`${(s.customer||{}).name||'Walk-in'}`,u:(s.items||[]).map(i=>i.name+' ×'+i.count).join(', '),a:`<button class="btn xs go" onclick="Sales.resend('${s.id}')">Send to courier</button><button class="btn xs" onclick="Sales.detail('${s.id}')">Open</button>`}));
     S.filter(s=>s.status==='Sent to Courier').forEach(s=>att.push({k:`With courier · #${s.sale_no}`,sku:sku(s),ic:ICON.box,c:'blue',t:`${(s.customer||{}).name||'Walk-in'}`,u:'Waiting on a tracking number',a:`<button class="btn xs ink" onclick="Sales.openDispatch('${s.id}')">Add tracking</button>`}));
     S.filter(s=>s.status==='New').forEach(s=>att.push({k:`Awaiting payment · #${s.sale_no}`,sku:sku(s),ic:ICON.clock,c:'amber',t:`${(s.customer||{}).name||'Walk-in'}`,u:money(s.total)+' by '+s.payment,a:`<button class="btn xs go" onclick="Sales.markPaid('${s.id}')">Mark paid</button><button class="btn xs" onclick="Sales.detail('${s.id}')">Open</button>`}));
-    const low=Store.cache.products.filter(p=>!p.soon&&!p.hidden&&p.launch&&p.stock<=p.reorder);
-    if(low.length) att.push({k:'Reorder',sku:low[0].sku,ic:ICON.rocket,c:low.some(p=>p.stock<=0)?'red':'amber',t:`${low.length} launch product${low.length>1?'s':''} below minimum`,u:low.slice(0,4).map(p=>p.name+' ('+p.stock+')').join(', ')+(low.length>4?'…':''),a:`<button class="btn xs" onclick="Reports.launch()">Reorder report</button>`});
+    const low=Store.cache.products.filter(p=>!p.soon&&!p.hidden&&p.stock<=p.reorder);
+    if(low.length) att.push({k:'Reorder',sku:low[0].sku,ic:ICON.rocket,c:low.some(p=>p.stock<=0)?'red':'amber',t:`${low.length} product${low.length>1?'s':''} below minimum`,u:low.slice(0,4).map(p=>p.name+' ('+p.stock+')').join(', ')+(low.length>4?'…':''),a:`<button class="btn xs" onclick="Reports.launch()">Reorder report</button>`});
     const od=Store.cache.purchase_orders.filter(o=>o.status==='pending'&&o.eta&&o.eta<t);
     const CT=Courier.totals(); if(CT.balance>0&&CT.oldest&&CT.oldest<=addDays(-7)) att.push({k:'Courier owed',ic:ICON.truck,c:'amber',t:`${money(CT.balance)} owed to courier`,u:`${CT.unpaidN} dispatched order${CT.unpaidN!==1?'s':''} unpaid · oldest ${fmtDate(CT.oldest)}`,a:`<button class="btn xs go" onclick="Courier.open()">Open tracker</button>`});
     if(od.length) att.push({k:'Incoming',ic:ICON.truck,c:'amber',t:`${od.length} incoming order${od.length>1?'s':''} overdue`,u:od.map(o=>(Store.cache.products.find(p=>p.id===o.product_id)||{}).name).filter(Boolean).slice(0,3).join(', '),a:`<button class="btn xs" onclick="Nav.go('stock');Inv.view('po')">View</button>`});
@@ -746,9 +746,9 @@ const Inv = {
   render(){
     const P=Store.cache.products; const cats=[...new Set(P.map(p=>p.category))].sort();
     const sel=$('inv-cat'); const cur=sel.value; cats.sort((x,y)=>(GOAL_ORDER.indexOf(x)+1||99)-(GOAL_ORDER.indexOf(y)+1||99)); sel.innerHTML=`<option value="">All</option>`+cats.map(c=>`<option ${c===cur?'selected':''}>${esc(c)}</option>`).join(''); $('cat-list').innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join('');
-    const V=P.filter(p=>!p.hidden); const units=sum(V,p=>p.stock), val=sum(V,p=>p.stock*(+p.cost||0)), low=V.filter(p=>!p.soon&&p.stock<=p.reorder), launchLow=low.filter(p=>p.launch), out=V.filter(p=>!p.soon&&p.stock<=0).length;
+    const V=P.filter(p=>!p.hidden); const units=sum(V,p=>p.stock), val=sum(V,p=>p.stock*(+p.cost||0)), low=V.filter(p=>!p.soon&&p.stock<=p.reorder), launchLow=low, out=V.filter(p=>!p.soon&&p.stock<=0).length;
     $('inv-strip').innerHTML=`<div class="s"><div class="k">Units</div><div class="v">${units}</div><div class="d">${V.length} products</div></div><div class="s"><div class="k">Stock cost</div><div class="v">US$${Math.round(val).toLocaleString()}</div><div class="d">at supplier cost</div></div><div class="s"><div class="k">Low / out</div><div class="v ${out?'red':low.length?'amber':''}">${low.length}</div><div class="d">${out} out</div></div>`;
-    $('inv-alert').innerHTML=launchLow.length?`<div class="note ${launchLow.some(p=>p.stock<=0)?'red':'amber'}" style="margin-bottom:12px"><b>${launchLow.length} launch product${launchLow.length>1?'s need':' needs'} reordering</b> — ${launchLow.slice(0,3).map(p=>p.name).join(', ')}${launchLow.length>3?'…':''}. <a href="#" onclick="Reports.launch();return false" style="color:inherit;font-weight:500">Reorder report →</a></div>`:'';
+    $('inv-alert').innerHTML=launchLow.length?`<div class="note ${launchLow.some(p=>p.stock<=0)?'red':'amber'}" style="margin-bottom:12px"><b>${launchLow.length} product${launchLow.length>1?'s need':' needs'} reordering</b> — ${launchLow.slice(0,3).map(p=>p.name).join(', ')}${launchLow.length>3?'…':''}. <a href="#" onclick="Reports.launch();return false" style="color:inherit;font-weight:500">Reorder report →</a></div>`:'';
     const q=$('inv-q').value.trim().toLowerCase(); const cat=sel.value;
     const hiddenN=P.filter(p=>p.hidden).length;
     let L=P.filter(p=>(this.showHidden||!p.hidden||(q&&(p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q))))&&(!cat||p.category===cat)&&(!q||p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q)));
@@ -756,22 +756,21 @@ const Inv = {
     $('inv-list').innerHTML=Object.keys(groups).sort((x,y)=>(GOAL_ORDER.indexOf(x)+1||99)-(GOAL_ORDER.indexOf(y)+1||99)||x.localeCompare(y)).map(c=>`<div class="cat-h"><span class="cn">${goalBadge(c)}${esc(c)}</span><small>${groups[c].length}</small></div>${groups[c].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>this.row(p)).join('')}`).join('')||'<div class="empty">No products</div>';
   },
   row(p){ const st=p.soon?'':stockStatus(p); const inc=this.incoming(p.id); const pct=p.reorder?Math.min(100,Math.round(p.stock/(p.reorder*2)*100)):(p.stock>0?100:0);
-    return `<div class="inv"><div class="rk ${p.launch?'on':''}" onclick="Inv.toggleLaunch('${p.id}')" title="Launch product">🚀</div><div class="m" onclick="Inv.openEdit('${p.id}')"><div class="n">${esc(p.name)}${p.soon?' <span class="tag gray">soon</span>':''}${p.hidden?' <span class="tag gray">hidden</span>':''}</div><div class="s"><span class="sku">${esc(p.sku||'')}</span>${p.supplier_sku?`<span>${esc(p.supplier_sku)}</span>`:''}<span>min ${p.reorder}</span>${inc?`<span style="color:var(--blue)">+${inc} incoming</span>`:''}${p.sell1?`<span>$${p.sell1}</span>`:''}</div></div><div class="stk" onclick="Inv.openEdit('${p.id}')"><div class="st ${st}">${p.stock}</div><div class="bar"><i class="${st}" style="width:${pct}%"></i></div></div><div class="ctr"><button onclick="Inv.quick('${p.id}',-1)">−</button><button onclick="Inv.quick('${p.id}',1)">+</button></div></div>`; },
+    return `<div class="inv"><div class="rk" onclick="Inv.openEdit('${p.id}')">${goalBadge(p.category)||'<span class="goal-badge" style="background:var(--paper-3)"></span>'}</div><div class="m" onclick="Inv.openEdit('${p.id}')"><div class="n">${esc(p.name)}${p.soon?' <span class="tag gray">soon</span>':''}${p.hidden?' <span class="tag gray">hidden</span>':''}</div><div class="s"><span class="sku">${esc(p.sku||'')}</span>${p.supplier_sku?`<span>${esc(p.supplier_sku)}</span>`:''}<span>min ${p.reorder}</span>${inc?`<span style="color:var(--blue)">+${inc} incoming</span>`:''}${p.sell1?`<span>$${p.sell1}</span>`:''}</div></div><div class="stk" onclick="Inv.openEdit('${p.id}')"><div class="st ${st}">${p.stock}</div><div class="bar"><i class="${st}" style="width:${pct}%"></i></div></div><div class="ctr"><button onclick="Inv.quick('${p.id}',-1)">−</button><button onclick="Inv.quick('${p.id}',1)">+</button></div></div>`; },
   goal(c){ $('inv-cat').value=c; this.render(); },
-  async toggleLaunch(id){ const p=Store.cache.products.find(x=>x.id===id); p.launch=!p.launch; await Store.upsert('products',p); this.render(); Nav.badges(); toast(p.launch?p.name+' added to launch list':p.name+' removed from launch list'); },
   async quick(id,d){ const p=Store.cache.products.find(x=>x.id===id); if(p.stock+d<0) return; await Store.adjustStock(p,d,d>0?'in':'out','quick count'); this.render(); },
   openEdit(id){
     const p=id?Store.cache.products.find(x=>x.id===id):null; this.cur=p;
     $('prod-title').textContent=p?'Edit product':'New product'; $('p-del').style.display=p?'inline-flex':'none';
     $('p-name').value=p?.name||''; $('p-sku').value=p?.sku||''; $('p-cat').value=p?.category||''; $('p-stock').value=p?p.stock:0; $('p-reorder').value=p?p.reorder:5; $('p-sell1').value=p?.sell1||''; $('p-sell3').value=p?.sell3||''; $('p-sell10').value=p?.sell10||''; $('p-cost').value=p?.cost||''; $('p-supsku').value=p?.supplier_sku||''; $('p-bac').value=p?.bac_size||'3ml';
-    $('p-launch').classList.toggle('on',!!p?.launch); $('p-soon').classList.toggle('on',!!p?.soon); $('p-hidden').classList.toggle('on',!!p?.hidden);
+    $('p-soon').classList.toggle('on',!!p?.soon); $('p-hidden').classList.toggle('on',!!p?.hidden);
     const cats=[...new Set(Store.cache.products.map(x=>x.category))].sort(); $('cat-list').innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join('');
     Sheet.open('dr-prod');
   },
   async save(){
     const name=$('p-name').value.trim(); if(!name){ toast('Name required','err'); return; }
     const p=this.cur||{id:uid('p'),stock:0,created_at:new Date().toISOString()}; const oldStock=this.cur?+this.cur.stock:null;
-    Object.assign(p,{name,sku:$('p-sku').value.trim().toUpperCase(),category:$('p-cat').value.trim()||'Other',stock:+$('p-stock').value||0,reorder:+$('p-reorder').value||0,sell1:+$('p-sell1').value||null,sell3:+$('p-sell3').value||null,sell10:+$('p-sell10').value||null,cost:+$('p-cost').value||null,supplier_sku:$('p-supsku').value.trim(),bac_size:$('p-bac').value,launch:$('p-launch').classList.contains('on'),soon:$('p-soon').classList.contains('on'),hidden:$('p-hidden').classList.contains('on')});
+    Object.assign(p,{name,sku:$('p-sku').value.trim().toUpperCase(),category:$('p-cat').value.trim()||'Other',stock:+$('p-stock').value||0,reorder:+$('p-reorder').value||0,sell1:+$('p-sell1').value||null,sell3:+$('p-sell3').value||null,sell10:+$('p-sell10').value||null,cost:+$('p-cost').value||null,supplier_sku:$('p-supsku').value.trim(),bac_size:$('p-bac').value,launch:true,soon:$('p-soon').classList.contains('on'),hidden:$('p-hidden').classList.contains('on')});
     await Store.upsert('products',p); if(oldStock!==null&&oldStock!==p.stock) await Store.logMove(p,'adj',p.stock-oldStock,'manual edit');
     Sheet.close('dr-prod'); toast('Saved'); this.render(); Nav.badges();
   },
@@ -877,17 +876,17 @@ const Reports = {
     this.show('Sales report',label,this.salesBody(from,to),tb);
   },
   launchBody(){
-    const P=Store.cache.products.filter(p=>p.launch&&!p.hidden); const rows=P.map(p=>{ const inc=Inv.incoming(p.id); const deficit=Math.max(0,p.reorder-(p.stock+inc)); const packs=Math.ceil(deficit/10); return {p,inc,deficit,packs}; });
+    const P=Store.cache.products.filter(p=>!p.hidden&&!p.soon); const rows=P.map(p=>{ const inc=Inv.incoming(p.id); const deficit=Math.max(0,p.reorder-(p.stock+inc)); const packs=Math.ceil(deficit/10); return {p,inc,deficit,packs}; });
     const totalPacks=sum(rows,r=>r.packs), cost=sum(rows,r=>r.packs*10*(+r.p.cost||0));
-    return this.kpi([['Launch products',P.length],['Need ordering',rows.filter(r=>r.packs).length],['10-packs to order',totalPacks],['Vials to order',totalPacks*10],['Est. cost USD',cost?'US'+money(cost):'—']])
+    return this.kpi([['Products',P.length],['Need ordering',rows.filter(r=>r.packs).length],['10-packs to order',totalPacks],['Vials to order',totalPacks*10],['Est. cost USD',cost?'US'+money(cost):'—']])
       +`<h2>Supplier order — 10-packs</h2><p style="color:#666;font-size:12px;margin:0 0 8px">Deficit = reorder minimum − (stock + incoming). Supplier sells in 10-packs, so packs = deficit ÷ 10 rounded up. Kit price = HXTNT list, USD, 1–9 kit tier.</p>`
       +this.table(['Product','Supplier code','#Stock','#Incoming','#Min','#Deficit','#10-packs','#Kit USD','#Cost USD'],rows.sort((a,b)=>b.packs-a.packs||a.p.name.localeCompare(b.p.name)).map(r=>[esc(r.p.name),esc(r.p.supplier_sku||r.p.sku||''),r.p.stock,r.inc||'—',r.p.reorder,r.deficit||'—',r.packs?`<b>${r.packs}</b>`:'—',r.p.cost?'$'+(r.p.cost*10):'—',r.packs&&r.p.cost?'$'+(r.packs*10*r.p.cost):'—']).concat([[`<b>Total</b>`,'','','','','',`<b>${totalPacks}</b>`,'',`<b>${cost?'US$'+cost:'—'}</b>`]]),r=>r[0].startsWith('<b>Total')?'tot':(r[6]!=='—'?'hl':''));
   },
-  launch(){ this.show('Launch & reorder','supplier order sheet',this.launchBody()); },
+  launch(){ this.show('Reorder report','supplier order sheet',this.launchBody()); },
   inventoryBody(){
     const P=Store.cache.products.filter(p=>!p.hidden).sort((a,b)=>a.category.localeCompare(b.category)||a.name.localeCompare(b.name));
     return this.kpi([['Products',P.length],['Units',sum(P,p=>p.stock)],['Stock cost USD','US'+money(sum(P,p=>p.stock*(+p.cost||0)))],['Retail value AUD',money(sum(P,p=>p.stock*(+p.sell1||0)))],['Low',P.filter(p=>!p.soon&&p.stock<=p.reorder&&p.stock>0).length],['Out',P.filter(p=>!p.soon&&p.stock<=0).length]])
-      +`<h2>Stock on hand</h2>`+this.table(['','Product','SKU','Supplier','Category','#Stock','#Incoming','#Min','Status','#Sell AUD','#Cost USD'],P.map(p=>[p.launch?'●':'',esc(p.name),esc(p.sku||''),esc(p.supplier_sku||''),esc(p.category),p.stock,Inv.incoming(p.id)||'—',p.reorder,p.soon?'soon':stockStatus(p),p.sell1?'$'+p.sell1:'—',p.cost?'$'+p.cost:'—']),r=>r[8]==='out'?'bad':r[8]==='low'?'hl':'');
+      +`<h2>Stock on hand</h2>`+this.table(['','Product','SKU','Supplier','Category','#Stock','#Incoming','#Min','Status','#Sell AUD','#Cost USD'],P.map(p=>['',esc(p.name),esc(p.sku||''),esc(p.supplier_sku||''),esc(p.category),p.stock,Inv.incoming(p.id)||'—',p.reorder,p.soon?'soon':stockStatus(p),p.sell1?'$'+p.sell1:'—',p.cost?'$'+p.cost:'—']),r=>r[8]==='out'?'bad':r[8]==='low'?'hl':'');
   },
   inventory(){ this.show('Inventory','stock on hand',this.inventoryBody()); },
   ordersBody(){ const O=Store.cache.purchase_orders; const name=o=>esc((Store.cache.products.find(p=>p.id===o.product_id)||{}).name||'?'); const t=today();
