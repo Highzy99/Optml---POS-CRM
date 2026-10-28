@@ -152,3 +152,7 @@ After the sale you land on the sale's detail page.
 **Telegram test fails** — the bot must be in the group and someone must have sent a message after adding it. Tap Find chat ID again.
 
 **Want to run it without Supabase?** — tap *Skip — this device only* on the connection screen. Everything works, data lives in that browser only (back it up before redeploying).
+
+## Paste a web order
+
+Customers order from the price list / wholesale catalogue sites, which send a formatted message to the business WhatsApp. In **Sell → Paste order**, paste that message (or tap the button with it on the clipboard): items, pack sizes, quantities, the prices they were quoted, discount, shipping, name, phone, email and address all fill in. Nothing is saved yet — change quantities, remove or add items, fix the address, then Next → Complete as usual. The order ref (OPT-xxxxx) goes into the sale notes; anything not in the catalogue becomes a manual amount and is listed in the notes.

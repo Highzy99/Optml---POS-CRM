@@ -141,7 +141,11 @@
 
     <!-- step 1 -->
     <div id="sell-1">
-      <div class="search dark" style="margin-bottom:12px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="sell-q" placeholder="Search product or SKU" oninput="Sell.search()" autocomplete="off"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <div class="search dark" style="flex:1;margin:0"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="sell-q" placeholder="Search product or SKU" oninput="Sell.search()" autocomplete="off"></div>
+        <button class="btn sm" onclick="Sell.pasteOrder()" title="Paste a web order message">Paste order</button>
+      </div>
+      <div id="order-paste-wrap" style="display:none;margin-bottom:12px"><textarea class="in" id="order-paste-box" rows="5" placeholder="Paste the whole WhatsApp order message (from the price list or wholesale catalogue) — items, customer and address fill in automatically and stay editable" oninput="Sell.parseOrder(this.value)"></textarea><div class="hint" id="order-paste-status"></div></div>
       <div id="sell-results"></div>
       <div class="sec">In cart <small id="cart-n"></small></div>
       <div class="card"><div class="pad" id="cart-lines"><div class="empty">Search above to add products</div></div></div>
