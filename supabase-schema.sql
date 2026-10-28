@@ -195,8 +195,8 @@ insert into products (id,name,sku,category,sell1,sell3,sell10,bac_size,soon) val
  ('p21','KPV 10mg','KP10','Restore',90,216,450,'3ml',false),
  ('p22','TB-500 10mg','TB10','Restore',130,312,650,'3ml',false),
  ('p23','Wolverine Stack 20mg','WO20','Restore',160,432,900,'3ml',false),
- ('p24','Glow Stack 70mg','GL70','Restore',180,470,900,'3ml',false),
- ('p25','Klow Stack 80mg','KL80','Restore',200,500,1000,'3ml',false),
+ ('p24','Glow Stack 70mg','GL70','Glow',180,470,900,'3ml',false),
+ ('p25','Klow Stack 80mg','KL80','Glow',200,500,1000,'3ml',false),
  ('p26','BPC-157 Arginate 500mcg caps','BA50','Restore',0,0,0,'none',false),
  ('p27','CJC / Ipamorelin 5mg/5mg','CJ10','Growth',150,360,750,'3ml',false),
  ('p28','GHRP-6 10mg','GH10','Growth',0,0,0,'3ml',false),
@@ -355,3 +355,6 @@ alter table sales add column if not exists customer_notified_via text;
 -- Courier message: simpler pack-list format (Oct 2026). Only replaces the untouched default.
 update settings set value = to_jsonb('📦 *OPTML ORDER #{sale_no}*\n{date}\n\n*PACK*\n{items}\n{bac}\n{count}\n\n*SHIP TO*\n{ship_to}\n📱 {phone}\n\n*NOTE*\n{notes}'::text)
  where key='courier_template' and value #>> '{}' like '📦 NEW ORDER #{sale_no}%';
+
+-- Oct 2026: Glow and Klow stacks belong in the Glow goal
+update products set category='Glow' where id in ('p24','p25');
