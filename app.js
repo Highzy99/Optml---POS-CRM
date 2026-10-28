@@ -520,7 +520,7 @@ const Sell = {
   applyShipping(){ const sh=Store.get('shipping')||{flat:15,free_over:200}; $('ship-flat').textContent=sh.flat; $('free-over').textContent=sh.free_over; },
   render(){ this.renderCart(); this.search(); this.recent(); this.foot(); },
   step(d){
-    if(d>0&&this.s===1&&!this.cart.length&&!(+$('manual-amt').value)){ if(!confirm('No items — continue with an empty sale?')) return; }
+    if(d>0&&this.s===1&&!this.cart.length){ if(!confirm('No items — continue with an empty sale?')) return; }
     if(d>0&&this.s===3){ this.complete(); return; }
     this.s=Math.min(3,Math.max(1,this.s+d)); 
     $$('#sell-steps .st').forEach((e,i)=>{ e.className='st'+(i+1<this.s?' done':i+1===this.s?' on':''); });
@@ -550,12 +550,18 @@ const Sell = {
     const ex=this.cart.find(c=>c.product_id===p.id&&c.pack_qty===q); if(ex) ex.count++; else this.cart.push({product_id:p.id,name:p.name,sku:p.sku,pack_qty:q,count:1,price:pr,bac_size:p.bac_size||'3ml'});
     this.autoBac(); Sheet.close('dr-pack'); $('sell-q').value=''; this.search(); this.renderCart(); toast(`Added ${p.name}`);
   },
+  addCustom(){
+    const name=$('m-name').value.trim(), price=+$('m-price').value, qty=Math.max(1,Math.floor(+$('m-qty').value||1));
+    if(!name){ toast('Give the item a name','err'); $('m-name').focus(); return; } if(!(price>=0)){ toast('Enter a price','err'); $('m-price').focus(); return; }
+    this.cart.push({product_id:null,name,sku:'',pack_qty:1,count:qty,price,custom:true});
+    $('m-name').value=''; $('m-price').value=''; $('m-qty').value='1'; this.renderCart(); toast('Added '+name);
+  },
   autoBac(){ let a=0,b=0; this.cart.forEach(c=>{ const n=c.pack_qty*c.count; if(c.bac_size==='10ml') b+=n; else if(c.bac_size==='3ml') a+=n; }); this.bac={bac3:a,bac10:b}; $('bac3').textContent=a; $('bac10').textContent=b; },
   bacAdj(k,d){ this.bac[k]=Math.max(0,this.bac[k]+d); $(k).textContent=this.bac[k]; },
   qty(i,d){ this.cart[i].count=Math.max(1,this.cart[i].count+d); this.autoBac(); this.renderCart(); },
   rm(i){ this.cart.splice(i,1); this.autoBac(); this.renderCart(); },
   renderCart(){
-    $('cart-lines').innerHTML=this.cart.length?this.cart.map((c,i)=>`<div class="cl"><div class="n"><b>${esc(c.name)}</b><small>${esc(c.sku||'')} · ${c.pack_qty===1?'single':c.pack_qty+'-pack'} · ${money(c.price)}</small></div><div class="qty"><button onclick="Sell.qty(${i},-1)">−</button><b>${c.count}</b><button onclick="Sell.qty(${i},1)">+</button></div><span class="amt">${money(c.price*c.count)}</span><button class="x" onclick="Sell.rm(${i})">×</button></div>`).join(''):'<div class="empty">Search above to add products</div>';
+    $('cart-lines').innerHTML=this.cart.length?this.cart.map((c,i)=>`<div class="cl"><div class="n"><b>${esc(c.name)}</b><small>${c.custom?'custom':esc(c.sku||'')} · ${c.pack_qty===1?(c.custom?'each':'single'):c.pack_qty+'-pack'} · ${money(c.price)}</small></div><div class="qty"><button onclick="Sell.qty(${i},-1)">−</button><b>${c.count}</b><button onclick="Sell.qty(${i},1)">+</button></div><span class="amt">${money(c.price*c.count)}</span><button class="x" onclick="Sell.rm(${i})">×</button></div>`).join(''):'<div class="empty">Search above to add products</div>';
     const n=sum(this.cart,c=>c.count); $('cart-n').textContent=n?n+' item'+(n!==1?'s':''):'';
     const b3=Store.cache.products.find(p=>p.sku==='BW03'),b10=Store.cache.products.find(p=>p.sku==='BW10'); $('bac-stock').textContent=`${b3?b3.stock:'—'} × 3ml · ${b10?b10.stock:'—'} × 10ml in stock`;
     this.calc();
@@ -616,19 +622,19 @@ const Sell = {
     if(!items.length&&!unmatched.length&&!name){ $('order-paste-status').textContent='That doesn’t look like an order message — paste the whole WhatsApp message.'; return; }
     if(this._orderText===text) return; this._orderText=text;
     // apply — replaces anything a previous paste added; everything stays editable
-    this.cart=this.cart.filter(c=>!c.from_order); if(this._orderManual){ $('manual-amt').value=Math.max(0,(+$('manual-amt').value||0)-this._orderManual)||''; this._orderManual=0; }
+    this.cart=this.cart.filter(c=>!c.from_order);
     items.forEach(it=>{ it.from_order=true; const ex=this.cart.find(c=>c.product_id===it.product_id&&c.pack_qty===it.pack_qty); if(ex) ex.count+=it.count; else this.cart.push(it); });
-    if(unmatched.length){ const amt=sum(unmatched,u=>u.amount); this._orderManual=amt; $('manual-amt').value=(+$('manual-amt').value||0)+amt; }
+    unmatched.forEach(u=>this.cart.push({product_id:null,name:u.name+(u.packQty>1?' '+u.packQty+'-pack':''),sku:'',pack_qty:1,count:u.qty,price:Math.round(u.amount/u.qty*100)/100,custom:true,from_order:true}));
     this.autoBac(); this.renderCart();
     if(ship!=null){ this.shipOverride=ship; this.shipMode=ship>0?'paid':'free'; $('ship-free').classList.toggle('on',ship===0); $('ship-paid').classList.toggle('on',ship>0); if(ship>0) $('ship-flat').textContent=ship; }
     if(disc>0){ this.disc('flat'); $('disc-val').value=disc; }
     const set=(k,v)=>{ if(v) $('c-'+k).value=v; }; this.clearCustomer();
     set('name',name); set('phone',phone.replace(/^\+?61/,'0')); set('email',email); set('address',street); set('city',city); set('state',state); set('postcode',pc);
-    const noteBits=[this.orderRef?'Web order '+this.orderRef:'', notesM?notesM[1].trim():'', unmatched.length?'Not in catalogue: '+unmatched.map(u=>u.qty+'× '+u.name+(u.packQty>1?' '+u.packQty+'-pack':'')+' $'+u.amount).join(', '):''].filter(Boolean);
+    const noteBits=[this.orderRef?'Web order '+this.orderRef:'', notesM?notesM[1].trim():'', ''].filter(Boolean);
     if(noteBits.length) $('c-notes').value=noteBits.join(' · ');
     const dig=s=>String(s||'').replace(/\D/g,'').replace(/^61/,'0'); if(phone){ const ex=Store.cache.customers.find(c=>dig(c.phone)===dig(phone)); if(ex) this.customerId=ex.id; }
     this.calc(); this.foot(); $('order-paste-wrap').style.display='none';
-    const msg=`${this.orderRef?'Order '+this.orderRef+' loaded':'Order loaded'} — ${items.length} item${items.length!==1?'s':''}${unmatched.length?' + '+unmatched.length+' not matched (added as manual amount)':''}${name?' · '+name:''}${this.customerId?' (existing customer)':''}. Check the cart, then Next.`;
+    const msg=`${this.orderRef?'Order '+this.orderRef+' loaded':'Order loaded'} — ${items.length} item${items.length!==1?'s':''}${unmatched.length?' ('+unmatched.length+' not in catalogue — added as custom)':''}${name?' · '+name:''}${this.customerId?' (existing customer)':''}. Check the cart, then Next.`;
     $('order-paste-status').textContent=msg; toast(msg,unmatched.length?'err':'ok',5000);
   },
   parsePaste(text){
@@ -673,7 +679,7 @@ const Sell = {
     const tpl=Store.get('quote_template')||DEFAULT_SETTINGS.quote_template;
     return tpl.replace(/{first_name}/g,firstName(name)||'there').replace(/{name}/g,name||'there').replace(/{items}/g,items||'(no items yet)').replace(/{bac}/g,bac).replace(/{subtotal}/g,money(t.sub)).replace(/{discount}/g,t.disc?`Discount −${money(t.disc)}\n`:'').replace(/{shipping}/g,t.ship?money(t.ship):'Free').replace(/{total}/g,money(t.total)).replace(/\n{3,}/g,'\n\n');
   },
-  openQuote(){ if(!this.cart.length&&!(+$('manual-amt').value)){ toast('Add items to quote first','err'); return; } $('q-phone').value=($('c-phone').value||'').trim(); $('q-text').value=this.quoteText(); Sheet.open('dr-quote'); },
+  openQuote(){ if(!this.cart.length){ toast('Add items to quote first','err'); return; } $('q-phone').value=($('c-phone').value||'').trim(); $('q-text').value=this.quoteText(); Sheet.open('dr-quote'); },
   copyQuote(){ copyText($('q-text').value); toast('Quote copied'); },
   sendQuote(){ const ph=$('q-phone').value.trim(); if(ph&&!$('c-phone').value) $('c-phone').value=ph; if(WA.open(ph,$('q-text').value)){ Sheet.close('dr-quote'); toast('Opened in WhatsApp'); } },
 
@@ -694,7 +700,7 @@ const Sell = {
   addSplit(){ this.splits.push({method:'KJ',amount:''}); this.renderSplits(); },
   renderSplits(){ $('split-rows').innerHTML=this.splits.map((r,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px"><select class="in" style="flex:1;min-height:40px" onchange="Sell.splits[${i}].method=this.value">${['Cash','BKP','KJ'].map(m=>`<option ${r.method===m?'selected':''}>${m}</option>`).join('')}</select><input class="in" type="number" inputmode="decimal" placeholder="$" value="${r.amount}" style="width:100px;min-height:40px;text-align:right" oninput="Sell.splits[${i}].amount=this.value;Sell.calc()"><button class="iconb" onclick="Sell.splits.splice(${i},1);Sell.renderSplits()">×</button></div>`).join(''); this.calc(); },
   totals(){
-    const sh=Store.get('shipping')||{flat:15,free_over:200}; const manual=+($('manual-amt')?.value||0); const sub=sum(this.cart,c=>c.price*c.count)+manual;
+    const sh=Store.get('shipping')||{flat:15,free_over:200}; const manual=0; const sub=sum(this.cart,c=>c.price*c.count);
     const freeAuto=sub>=sh.free_over&&sub>0&&this.shipOverride==null; const ship=this.shipOverride!=null?this.shipOverride:((!freeAuto&&this.shipMode==='paid')?sh.flat:0);
     let disc=0; if(this.discMode!=='none'){ const v=+($('disc-val')?.value||0); disc=this.discMode==='pct'?Math.round(sub*Math.min(v,100)/100):Math.min(v,sub); }
     return {sub,ship,disc,total:Math.max(0,sub-disc+ship),manual,freeAuto};
@@ -734,8 +740,8 @@ const Sell = {
     $('sell-next').disabled=false;
   },
   reset(keepOpen){
-    this.cart=[]; this.bac={bac3:0,bac10:0}; this.splits=[]; this.customerId=null; this.s=1; this.shipOverride=null; this.orderRef=''; this._orderText=''; this._orderManual=0; $('order-paste-wrap').style.display='none'; $('order-paste-box').value=''; $('order-paste-status').textContent='';
-    ['bac3','bac10'].forEach(k=>$(k).textContent='0'); $('manual-amt').value=''; $('sell-q').value=''; $('sell-results').innerHTML='';
+    this.cart=[]; this.bac={bac3:0,bac10:0}; this.splits=[]; this.customerId=null; this.s=1; this.shipOverride=null; this.orderRef=''; this._orderText=''; $('order-paste-wrap').style.display='none'; $('order-paste-box').value=''; $('order-paste-status').textContent='';
+    ['bac3','bac10'].forEach(k=>$(k).textContent='0'); $('sell-q').value=''; ['m-name','m-price'].forEach(k=>$(k).value=''); $('m-qty').value='1'; $('sell-results').innerHTML='';
     this.ship('free'); this.disc('none'); this.pay('Cash'); this.fulfil('Shipped'); this.paidNow(true); this.clearCustomer(); if($('paste-wrap').style.display!=='none') this.togglePaste();
     $$('#sell-steps .st').forEach((e,i)=>e.className='st'+(i===0?' on':'')); [1,2,3].forEach(n=>$('sell-'+n).style.display=n===1?'block':'none'); $('sell-back').style.display='none'; $('sell-next').textContent='Next'; $('sell-next').className='btn ink';
     this.renderCart(); this.foot(); if(keepOpen) toast('Cleared');

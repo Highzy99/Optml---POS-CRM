@@ -142,8 +142,8 @@
     <!-- step 1 -->
     <div id="sell-1">
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <div class="search dark" style="flex:1;margin:0"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="sell-q" placeholder="Search product or SKU" oninput="Sell.search()" autocomplete="off"></div>
-        <button class="btn sm" onclick="Sell.pasteOrder()" title="Paste a web order message">Paste order</button>
+        <div class="search dark" style="flex:1 1 0;min-width:0;margin:0"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="sell-q" placeholder="Search product or SKU" oninput="Sell.search()" autocomplete="off"></div>
+        <button class="btn sm" style="flex:0 0 auto;white-space:nowrap" onclick="Sell.pasteOrder()" title="Paste a web order message">Paste order</button>
       </div>
       <div id="order-paste-wrap" style="display:none;margin-bottom:12px"><textarea class="in" id="order-paste-box" rows="5" placeholder="Paste the whole WhatsApp order message (from the price list or wholesale catalogue) — items, customer and address fill in automatically and stay editable" oninput="Sell.parseOrder(this.value)"></textarea><div class="hint" id="order-paste-status"></div></div>
       <div id="sell-results"></div>
@@ -154,8 +154,16 @@
         <div class="ctr"><span class="k">3ml</span><button onclick="Sell.bacAdj('bac3',-1)">−</button><b id="bac3">0</b><button onclick="Sell.bacAdj('bac3',1)">+</button></div>
         <div class="ctr"><span class="k">10ml</span><button onclick="Sell.bacAdj('bac10',-1)">−</button><b id="bac10">0</b><button onclick="Sell.bacAdj('bac10',1)">+</button></div>
         <span class="hint" id="bac-stock" style="margin:0"></span></div></div>
-      <div class="sec">Manual amount <small>off-catalogue or custom</small></div>
-      <div class="card"><div class="pad" style="display:flex;align-items:center;gap:10px"><span class="mono" style="font-size:20px;color:var(--ink-3)">$</span><input id="manual-amt" type="number" inputmode="decimal" placeholder="0" oninput="Sell.calc()" style="flex:1;border:none;background:none;outline:none;font-family:var(--mono);font-size:22px;font-weight:600"></div></div>
+      <div class="sec">Custom items <small>off-catalogue — add as many as you need</small></div>
+      <div class="card"><div class="pad">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="in" id="m-name" placeholder="Item name" autocomplete="off" style="flex:1 1 100%;min-height:42px">
+          <div style="display:flex;align-items:center;gap:6px;flex:1 1 120px;min-width:120px"><span class="mono" style="color:var(--ink-3)">$</span><input class="in" id="m-price" type="number" inputmode="decimal" placeholder="Price each" style="min-height:42px"></div>
+          <div style="display:flex;align-items:center;gap:6px;flex:0 0 110px"><span class="hint" style="margin:0">Qty</span><input class="in" id="m-qty" type="number" inputmode="numeric" value="1" min="1" style="min-height:42px;text-align:center"></div>
+          <button class="btn ink" id="m-add" style="flex:0 0 auto;min-height:42px" onclick="Sell.addCustom()">Add</button>
+        </div>
+        <div class="hint" style="margin:8px 0 0">Custom items appear in the cart above with the others — adjust quantity or remove them there. No stock is deducted.</div>
+      </div></div>
     </div>
 
     <!-- step 2 -->

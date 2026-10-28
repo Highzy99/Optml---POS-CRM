@@ -153,6 +153,10 @@ After the sale you land on the sale's detail page.
 
 **Want to run it without Supabase?** — tap *Skip — this device only* on the connection screen. Everything works, data lives in that browser only (back it up before redeploying).
 
+## Custom items
+
+Off-catalogue things (pens, syringes, a one-off bundle) are added in **Sell → Custom items** with a name, price each and quantity — as many lines as needed. They sit in the cart alongside catalogue products, can be adjusted or removed there, and never touch stock.
+
 ## Paste a web order
 
-Customers order from the price list / wholesale catalogue sites, which send a formatted message to the business WhatsApp. In **Sell → Paste order**, paste that message (or tap the button with it on the clipboard): items, pack sizes, quantities, the prices they were quoted, discount, shipping, name, phone, email and address all fill in. Nothing is saved yet — change quantities, remove or add items, fix the address, then Next → Complete as usual. The order ref (OPT-xxxxx) goes into the sale notes; anything not in the catalogue becomes a manual amount and is listed in the notes.
+Customers order from the price list / wholesale catalogue sites, which send a formatted message to the business WhatsApp. In **Sell → Paste order**, paste that message (or tap the button with it on the clipboard): items, pack sizes, quantities, the prices they were quoted, discount, shipping, name, phone, email and address all fill in. Nothing is saved yet — change quantities, remove or add items, fix the address, then Next → Complete as usual. The order ref (OPT-xxxxx) goes into the sale notes; anything not in the catalogue is added as a custom item (name, price, qty) so the total still matches.
