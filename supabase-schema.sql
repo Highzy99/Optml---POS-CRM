@@ -358,3 +358,6 @@ update settings set value = to_jsonb('📦 *OPTML ORDER #{sale_no}*\n{date}\n\n*
 
 -- Oct 2026: Glow and Klow stacks belong in the Glow goal
 update products set category='Glow' where id in ('p24','p25');
+
+-- Oct 2026: courier formula now subtracts postage + packaging; stored in settings.profit (postage, packaging)
+insert into settings(key,value) values ('profit','{"fx":1.55,"courier_pct":25,"postage":15,"packaging":5}') on conflict (key) do update set value = settings.value || '{"postage":15,"packaging":5}'::jsonb where not (settings.value ? 'postage');
