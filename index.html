@@ -277,6 +277,8 @@
     <div class="card"><div class="pad"><textarea class="in" id="st-quote-tpl" rows="7" style="font-size:13px"></textarea><div class="hint">{first_name} {name} {items} {bac} {subtotal} {discount} {shipping} {total}</div></div></div>
     <div class="sec">Shipping</div>
     <div class="card"><div class="pad g2"><div class="f"><label>Express rate $</label><input class="in" id="st-ship-flat" type="number" inputmode="decimal"></div><div class="f"><label>Free over $</label><input class="in" id="st-ship-free" type="number" inputmode="decimal"></div></div></div>
+    <div class="sec">Stock lock</div>
+    <div class="card"><div class="pad"><div class="hint" id="st-pin-state" style="margin-top:0"></div><div class="g2"><div class="f"><label>New passcode</label><input class="in" id="st-pin-new" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="4–8 digits"></div><div class="f"><label>Confirm</label><input class="in" id="st-pin-confirm" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password"></div></div><div class="actions" style="margin-top:4px"><button class="btn ink" id="st-pin-set" onclick="Lock.setPin()">Turn on</button><button class="btn" id="st-pin-clear" style="display:none" onclick="Lock.clearPin()">Turn off</button></div><div class="hint">Covers the +/− buttons, ± Adjust, the stock field in the product editor, and marking incoming orders as arrived. Turning off asks for the current passcode.</div></div></div>
     <div class="sec">Profit</div>
     <div class="card"><div class="pad"><div class="g2"><div class="f"><label>USD → AUD rate</label><input class="in" id="st-fx" type="number" inputmode="decimal" step="0.01" placeholder="1.55"></div><div class="f"><label>Courier share %</label><input class="in" id="st-courier-pct" type="number" inputmode="decimal" placeholder="25"></div><div class="f"><label>Postage cost per order $</label><input class="in" id="st-postage" type="number" inputmode="decimal" placeholder="15"></div><div class="f"><label>Box &amp; mailer per order $</label><input class="in" id="st-packaging" type="number" inputmode="decimal" placeholder="5"></div></div><div class="hint" style="margin-top:0">Courier share = % × (sale total − postage − box &amp; mailer − product cost), on courier-shipped orders, paid weekly. Product cost is the supplier USD price per vial × the rate. Net profit = sale total − product cost − postage − packaging − courier share.</div></div></div>
   </div>
@@ -309,6 +311,12 @@
   <div class="actions"><button class="btn" onclick="Sheet.close('dr-po')">Cancel</button><button class="btn ink" onclick="PO.save()">Save order</button></div>
 </div></div>
 
+<div class="drawer-bg" id="dr-pin"><div class="drawer"><div class="grab"></div><h3>Stock passcode</h3>
+  <div class="hint" style="margin-top:-6px">Changing stock by hand needs the passcode. Sales still deduct stock as normal.</div>
+  <div class="f"><input class="in" id="pin-in" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Passcode" style="font-size:22px;text-align:center;letter-spacing:6px" onkeydown="if(event.key==='Enter'){event.preventDefault();Lock.submit()}"></div>
+  <div class="hint" id="pin-err" style="color:var(--red);min-height:18px"></div>
+  <div class="actions"><button class="btn" onclick="Lock.cancel()">Cancel</button><button class="btn ink" onclick="Lock.submit()">Unlock</button></div>
+</div></div>
 <div class="drawer-bg" id="dr-mov"><div class="drawer"><div class="grab"></div><h3>Stock movement</h3>
   <div class="seg" style="margin-bottom:12px" id="mov-type"><button class="on" data-t="in" onclick="Mov.type('in')">In</button><button data-t="out" onclick="Mov.type('out')">Out</button><button data-t="adj" onclick="Mov.type('adj')">Set to</button></div>
   <div class="f"><label>Product</label><select class="in" id="mov-prod"></select></div>

@@ -447,8 +447,24 @@ const Courier = {
 // ============================================================
 // SETTINGS
 // ============================================================
+
+// ---- Stock lock: PIN required before manual stock changes (sales still deduct normally) ----
+const Lock = {
+  TTL: 10*60*1000, _cb:null,
+  enabled(){ return !!(Store.get('stock_pin')||{}).hash; },
+  async hash(pin){ const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode('optml:'+pin)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); },
+  unlocked(){ const t=+sessionStorage.getItem('optml_unlock')||0; return Date.now()-t<this.TTL; },
+  relock(){ sessionStorage.removeItem('optml_unlock'); },
+  require(cb){ if(!this.enabled()||this.unlocked()){ cb(); return; } this._cb=cb; $('pin-in').value=''; $('pin-err').textContent=''; Sheet.open('dr-pin'); setTimeout(()=>$('pin-in').focus(),150); },
+  async submit(){ const v=$('pin-in').value.trim(); if(!v) return; const ok=(await this.hash(v))===(Store.get('stock_pin')||{}).hash; if(!ok){ $('pin-err').textContent='Wrong passcode'; $('pin-in').value=''; $('pin-in').focus(); return; } sessionStorage.setItem('optml_unlock',String(Date.now())); Sheet.close('dr-pin'); const cb=this._cb; this._cb=null; if(cb) cb(); },
+  cancel(){ this._cb=null; Sheet.close('dr-pin'); },
+  async setPin(){ const a=$('st-pin-new').value.trim(), b=$('st-pin-confirm').value.trim(); if(!/^\d{4,8}$/.test(a)){ toast('Passcode must be 4–8 digits','err'); return; } if(a!==b){ toast('Passcodes don’t match','err'); return; } await Store.setSetting('stock_pin',{hash:await this.hash(a),set_at:new Date().toISOString()}); $('st-pin-new').value=''; $('st-pin-confirm').value=''; this.relock(); this.renderSettings(); toast('Stock lock on'); },
+  clearPin(){ this.require(async()=>{ await Store.setSetting('stock_pin',{}); this.relock(); this.renderSettings(); toast('Stock lock off'); }); },
+  renderSettings(){ const on=this.enabled(); $('st-pin-state').innerHTML=on?'<span class="tag go">on</span> Passcode required to change stock by hand. Unlocks for 10 minutes after a correct entry.':'<span class="tag gray">off</span> Anyone with the app open can change stock.'; $('st-pin-clear').style.display=on?'inline-flex':'none'; $('st-pin-set').textContent=on?'Change passcode':'Turn on'; },
+};
 const Settings = {
   open(){
+    Lock.renderSettings();
     const tg=Store.get('telegram')||{}; $('st-tg-token').value=tg.token||''; $('st-tg-chat').value=tg.chat||'';
     $('st-courier-tpl').value=Store.get('courier_template')||''; $('st-dispatch-tpl').value=Store.get('dispatch_template')||''; $('st-quote-tpl').value=Store.get('quote_template')||DEFAULT_SETTINGS.quote_template;
     const sh=Store.get('shipping')||{}; $('st-ship-flat').value=sh.flat??15; $('st-ship-free').value=sh.free_over??200; const pf=Store.get('profit')||{}; $('st-fx').value=pf.fx??1.55; $('st-courier-pct').value=pf.courier_pct??25; $('st-postage').value=pf.postage??(sh.flat??15); $('st-packaging').value=pf.packaging??5;
@@ -862,7 +878,7 @@ const Inv = {
   row(p){ const st=p.soon?'':stockStatus(p); const inc=this.incoming(p.id); const pct=p.reorder?Math.min(100,Math.round(p.stock/(p.reorder*2)*100)):(p.stock>0?100:0);
     return `<div class="inv"><div class="rk" onclick="Inv.openEdit('${p.id}')">${goalBadge(p.category)||'<span class="goal-badge" style="background:var(--paper-3)"></span>'}</div><div class="m" onclick="Inv.openEdit('${p.id}')"><div class="n">${esc(p.name)}${p.soon?' <span class="tag gray">soon</span>':''}${p.hidden?' <span class="tag gray">hidden</span>':''}</div><div class="s"><span class="sku">${esc(p.sku||'')}</span>${p.supplier_sku?`<span>${esc(p.supplier_sku)}</span>`:''}<span>min ${p.reorder}</span>${inc?`<span style="color:var(--blue)">+${inc} incoming</span>`:''}${p.sell1?`<span>$${p.sell1}</span>`:''}</div></div><div class="stk" onclick="Inv.openEdit('${p.id}')"><div class="st ${st}">${p.stock}</div><div class="bar"><i class="${st}" style="width:${pct}%"></i></div></div><div class="ctr"><button onclick="Inv.quick('${p.id}',-1)">−</button><button onclick="Inv.quick('${p.id}',1)">+</button></div></div>`; },
   goal(c){ $('inv-cat').value=c; this.render(); },
-  async quick(id,d){ const p=Store.cache.products.find(x=>x.id===id); if(p.stock+d<0) return; await Store.adjustStock(p,d,d>0?'in':'out','quick count'); this.render(); },
+  quick(id,d){ Lock.require(async()=>{ const p=Store.cache.products.find(x=>x.id===id); if(p.stock+d<0) return; await Store.adjustStock(p,d,d>0?'in':'out','quick count'); this.render(); }); },
   openEdit(id){
     const p=id?Store.cache.products.find(x=>x.id===id):null; this.cur=p;
     $('prod-title').textContent=p?'Edit product':'New product'; $('p-del').style.display=p?'inline-flex':'none';
@@ -875,8 +891,9 @@ const Inv = {
     const name=$('p-name').value.trim(); if(!name){ toast('Name required','err'); return; }
     const p=this.cur||{id:uid('p'),stock:0,created_at:new Date().toISOString()}; const oldStock=this.cur?+this.cur.stock:null;
     Object.assign(p,{name,sku:$('p-sku').value.trim().toUpperCase(),category:$('p-cat').value.trim()||'Other',stock:+$('p-stock').value||0,reorder:+$('p-reorder').value||0,sell1:+$('p-sell1').value||null,sell3:+$('p-sell3').value||null,sell5:+$('p-sell5').value||null,sell10:+$('p-sell10').value||null,cost:+$('p-cost').value||null,supplier_sku:$('p-supsku').value.trim(),bac_size:$('p-bac').value,launch:true,soon:$('p-soon').classList.contains('on'),hidden:$('p-hidden').classList.contains('on')});
-    await Store.upsert('products',p); if(oldStock!==null&&oldStock!==p.stock) await Store.logMove(p,'adj',p.stock-oldStock,'manual edit');
-    Sheet.close('dr-prod'); toast('Saved'); this.render(); Nav.badges();
+    const stockChanged=oldStock!==null&&oldStock!==p.stock;
+    const go=async()=>{ await Store.upsert('products',p); if(stockChanged) await Store.logMove(p,'adj',p.stock-oldStock,'manual edit'); Sheet.close('dr-prod'); toast('Saved'); this.render(); Nav.badges(); };
+    if(stockChanged) Lock.require(go); else go();
   },
   async del(){ if(!this.cur||!confirm('Delete '+this.cur.name+'?')) return; await Store.remove('products',this.cur.id); Sheet.close('dr-prod'); toast('Deleted'); this.render(); },
 };
@@ -900,7 +917,7 @@ const PO = {
     for(const l of L) await Store.upsert('purchase_orders',{id:uid('po'),product_id:l.product_id,qty:+l.qty,...base,created_at:new Date().toISOString()});
     Sheet.close('dr-po'); toast(L.length+' line'+(L.length>1?'s':'')+' added to incoming'); this.render(); Nav.badges();
   },
-  async arrive(id){ const o=Store.cache.purchase_orders.find(x=>x.id===id); const p=Store.cache.products.find(x=>x.id===o.product_id); if(!confirm(`Mark ${o.qty} × ${p?p.name:'?'} as arrived? Stock will be added.`)) return; o.status='arrived'; o.arrived_date=today(); await Store.upsert('purchase_orders',o); if(p) await Store.adjustStock(p,o.qty,'in','PO '+(o.ref||'')+' arrived'); toast('Stock added ✓'); this.render(); Nav.badges(); },
+  arrive(id){ Lock.require(async()=>{ const o=Store.cache.purchase_orders.find(x=>x.id===id); const p=Store.cache.products.find(x=>x.id===o.product_id); if(!confirm(`Mark ${o.qty} × ${p?p.name:'?'} as arrived? Stock will be added.`)) return; o.status='arrived'; o.arrived_date=today(); await Store.upsert('purchase_orders',o); if(p) await Store.adjustStock(p,o.qty,'in','PO '+(o.ref||'')+' arrived'); toast('Stock added ✓'); this.render(); Nav.badges(); }); },
   async del(id){ if(!confirm('Remove this record?')) return; await Store.remove('purchase_orders',id); this.render(); },
 };
 
@@ -910,7 +927,7 @@ const Mov = {
     $('mov-list').innerHTML=M.map(m=>{ const [i,c]=ic[m.type]||['·','gray']; return `<div class="row"><div class="av" style="background:var(--paper-3);color:var(--${c});font-family:var(--mono)">${i}</div><div class="m"><div class="t">${esc(m.product_name||'')}</div><div class="u">${esc(m.note||m.type)}</div></div><div class="e"><span class="amt" style="color:var(--${c})">${m.qty>0?'+':''}${m.qty}</span><span class="hint mono" style="margin:0;font-size:11px">${new Date(m.date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span></div></div>`; }).join('')||'<div class="empty">No movements yet</div>'; },
   open(){ $('mov-prod').innerHTML=Store.cache.products.filter(p=>!p.hidden).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.stock})</option>`).join(''); $('mov-qty').value=''; $('mov-note').value=''; this.type('in'); Sheet.open('dr-mov'); },
   type(t){ this.t=t; $$('#mov-type button').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); $('mov-qty').placeholder=t==='adj'?'New stock count':'Quantity'; },
-  async save(){ const p=Store.cache.products.find(x=>x.id===$('mov-prod').value); const q=+$('mov-qty').value; if(!p||isNaN(q)||$('mov-qty').value===''){ toast('Enter a quantity','err'); return; } const d=this.t==='in'?q:this.t==='out'?-q:q-p.stock; if(p.stock+d<0){ toast('Not enough stock','err'); return; } await Store.adjustStock(p,d,this.t,$('mov-note').value.trim()||(this.t==='adj'?'stock count':'manual')); Sheet.close('dr-mov'); toast(`${p.name}: ${p.stock}`); this.render(); if(Nav.cur==='stock') Nav.badges(); },
+  save(){ Lock.require(async()=>{ const p=Store.cache.products.find(x=>x.id===$('mov-prod').value); const q=+$('mov-qty').value; if(!p||isNaN(q)||$('mov-qty').value===''){ toast('Enter a quantity','err'); return; } const d=this.t==='in'?q:this.t==='out'?-q:q-p.stock; if(p.stock+d<0){ toast('Not enough stock','err'); return; } await Store.adjustStock(p,d,this.t,$('mov-note').value.trim()||(this.t==='adj'?'stock count':'manual')); Sheet.close('dr-mov'); toast(`${p.name}: ${p.stock}`); this.render(); if(Nav.cur==='stock') Nav.badges(); }); },
 };
 
 // ============================================================

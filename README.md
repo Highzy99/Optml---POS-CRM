@@ -153,6 +153,10 @@ After the sale you land on the sale's detail page.
 
 **Want to run it without Supabase?** — tap *Skip — this device only* on the connection screen. Everything works, data lives in that browser only (back it up before redeploying).
 
+## Stock lock
+
+Settings → Stock lock sets a 4–8 digit passcode. With it on, the +/− buttons, ± Adjust, the stock field in the product editor and marking incoming orders as arrived all ask for the passcode first (one correct entry unlocks that phone for 10 minutes). Sales deduct stock as normal without it. The passcode is stored hashed in settings, shared across devices.
+
 ## Custom items
 
 Off-catalogue things (pens, syringes, a one-off bundle) are added in **Sell → Custom items** with a name, price each and quantity — as many lines as needed. They sit in the cart alongside catalogue products, can be adjusted or removed there, and never touch stock.
