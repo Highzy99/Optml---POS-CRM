@@ -250,7 +250,7 @@
     <div class="sec" style="margin-top:0">Courier — Telegram <small id="tg-status">not set</small></div>
     <div class="card"><div class="pad">
       <div class="f"><label>Bot token</label><input class="in" id="st-tg-token" placeholder="123456:ABC-DEF…"><div class="hint">Telegram → @BotFather → /newbot → copy token</div></div>
-      <div class="f"><label>Chat ID</label><input class="in" id="st-tg-chat" placeholder="-100… or 123…"><div class="hint">Add the bot to your courier chat, send a message, then tap Find</div></div>
+      <div class="f"><label>Chat ID</label><input class="in" id="st-tg-chat" placeholder="-100… or 123…"><div class="chips" id="st-tg-found" style="margin-top:6px"></div><div class="hint">Add @optml_orders_bot to your Telegram orders group, send any message in the group, then tap Find chat ID and pick the group. Orders and dispatch messages go there.</div></div>
       <div class="actions"><button class="btn sm" onclick="Settings.findChat()">Find chat ID</button><button class="btn sm" onclick="Settings.testTg()">Send test</button></div>
     </div></div>
     <div class="sec">Customers — WhatsApp <small id="wa-status">opens app</small></div>
@@ -339,9 +339,11 @@
   <button class="btn block" style="margin-bottom:12px" onclick="Sales.scanTracking()">Read barcode from photo</button>
   <div class="hint" id="dp-scan-status" style="display:none;margin-bottom:10px"></div>
   <div class="copybox" id="dp-preview" style="margin-bottom:14px"></div>
-  <div class="actions" style="margin-bottom:8px"><button class="btn go block" onclick="Sales.waDispatch()" id="dp-wa">Send on WhatsApp &amp; mark dispatched</button></div>
+  <div class="actions" style="margin-bottom:8px"><button class="btn go block" onclick="Sales.tgDispatch()" id="dp-tg">Send to Telegram group &amp; mark dispatched</button></div>
+  <div class="hint" id="dp-tg-hint" style="margin:-2px 0 10px"></div>
+  <div class="actions" style="margin-bottom:8px"><button class="btn block" onclick="Sales.waDispatch()" id="dp-wa">Send on WhatsApp &amp; mark dispatched</button></div>
+  <div class="hint" id="dp-wa-hint" style="margin:-2px 0 10px"></div>
   <div class="actions"><button class="btn" onclick="Sheet.close('dr-dispatch')">Close</button><button class="btn ink" onclick="Sales.copyDispatch()">Copy &amp; mark dispatched</button></div>
-  <div class="hint" id="dp-wa-hint" style="margin-top:10px"></div>
 </div></div>
 
 <div id="toast"></div>
