@@ -523,10 +523,10 @@ const Home = {
 // SELL (stepped)
 // ============================================================
 const Sell = {
-  s:1, cart:[], bac:{bac3:0,bac10:0}, shipMode:'free', discMode:'none', payment:'Cash', splits:[], fulfilment:'Shipped', paidNow:true, customerId:null, packP:null, packI:null,
+  s:1, cart:[], bac:{bac3:0,bac10:0}, shipMode:'auto', discMode:'none', payment:'Cash', splits:[], fulfilment:'Shipped', paidNow:true, customerId:null, packP:null, packI:null,
   open(){ Sheet.open('sh-sell'); this.applyShipping(); this.render(); setTimeout(()=>$('sell-q').focus(),200); },
   close(){ if(this.cart.length&&!confirm('Discard this sale?')) return; this.reset(); Sheet.close('sh-sell'); },
-  applyShipping(){ const sh=Store.get('shipping')||{flat:15,free_over:200}; $('ship-flat').textContent=sh.flat; $('free-over').textContent=sh.free_over; },
+  applyShipping(){ const sh=Store.get('shipping')||{flat:15,free_over:200}; $('ship-flat').textContent=sh.flat; },
   render(){ this.renderCart(); this.search(); this.recent(); this.foot(); },
   step(d){
     if(d>0&&this.s===1&&!this.cart.length){ if(!confirm('No items — continue with an empty sale?')) return; }
@@ -577,7 +577,7 @@ const Sell = {
   },
 
   // step 2
-  fulfil(f){ this.fulfilment=f; $('ful-ship').classList.toggle('on',f==='Shipped'); $('ful-self').classList.toggle('on',f==='Self'); $('ful-walk').classList.toggle('on',f==='Walk-in'); $('ful-hint').textContent=f==='Shipped'?'Courier gets the Telegram order when paid and earns their share of profit.':f==='Self'?'You post it yourself — nothing goes to the courier, no courier share, you still get the tracking & dispatch message.':'Handed over in person — no shipping, no courier.'; $('ps-paid').textContent=f==='Shipped'?'Paid — notify courier':'Paid'; },
+  fulfil(f){ this.fulfilment=f; this.calc&&this.calc(); $('ful-ship').classList.toggle('on',f==='Shipped'); $('ful-self').classList.toggle('on',f==='Self'); $('ful-walk').classList.toggle('on',f==='Walk-in'); $('ful-hint').textContent=f==='Shipped'?'Courier gets the Telegram order when paid and earns their share of profit.':f==='Self'?'You post it yourself — nothing goes to the courier, no courier share, you still get the tracking & dispatch message.':'Handed over in person — no shipping, no courier.'; $('ps-paid').textContent=f==='Shipped'?'Paid — notify courier':'Paid'; },
   recent(){ const R=[...Store.cache.customers].sort((a,b)=>(b.last_seen||'')>(a.last_seen||'')?1:-1).slice(0,5); $('recent-cust').innerHTML=R.map(c=>`<button class="chip" onclick="Sell.fillCustomer('${c.id}')">${esc(firstName(c.name))} ${esc((c.name||'').split(' ').slice(1).join(' ').slice(0,1))}.</button>`).join(''); },
   suggest(){
     const q=$('c-search').value.trim().toLowerCase(); const el=$('c-sugg'); if(!q){ el.classList.remove('on'); return; }
@@ -635,7 +635,7 @@ const Sell = {
     items.forEach(it=>{ it.from_order=true; const ex=this.cart.find(c=>c.product_id===it.product_id&&c.pack_qty===it.pack_qty); if(ex) ex.count+=it.count; else this.cart.push(it); });
     unmatched.forEach(u=>this.cart.push({product_id:null,name:u.name+(u.packQty>1?' '+u.packQty+'-pack':''),sku:'',pack_qty:1,count:u.qty,price:Math.round(u.amount/u.qty*100)/100,custom:true,from_order:true}));
     this.autoBac(); this.renderCart();
-    if(ship!=null){ this.shipOverride=ship; this.shipMode=ship>0?'paid':'free'; $('ship-free').classList.toggle('on',ship===0); $('ship-paid').classList.toggle('on',ship>0); if(ship>0) $('ship-flat').textContent=ship; }
+    if(ship!=null){ this.shipOverride=ship; if(ship>0) $('ship-flat').textContent=ship; }
     if(disc>0){ this.disc('flat'); $('disc-val').value=disc; }
     const set=(k,v)=>{ if(v) $('c-'+k).value=v; }; this.clearCustomer();
     set('name',name); set('phone',phone.replace(/^\+?61/,'0')); set('email',email); set('address',street); set('city',city); set('state',state); set('postcode',pc);
@@ -702,7 +702,7 @@ const Sell = {
     $('review-lines').innerHTML=`<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--rule)"><div class="av">${esc((cu||'?')[0].toUpperCase())}</div><div style="flex:1;min-width:0"><div style="font-weight:500">${esc(cu||'Walk-in')}</div><div class="hint" style="margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(addr||$('c-phone').value||'no address')}</div></div><span class="tag ${this.fulfilment==='Shipped'?'blue':this.fulfilment==='Self'?'violet':'gray'}">${this.fulfilment==='Shipped'?'Courier':this.fulfilment==='Self'?'Posting myself':'Walk-in'}</span></div>${lines||''}${man}${bac}${!lines&&!man?'<div class="empty" style="padding:10px">No items</div>':''}`;
     this.calc();
   },
-  ship(m){ this.shipMode=m; this.shipOverride=null; this.applyShipping(); $('ship-free').classList.toggle('on',m==='free'); $('ship-paid').classList.toggle('on',m==='paid'); this.calc(); },
+  ship(m){ this.shipMode=m; this.shipOverride=null; this.applyShipping(); this.calc(); },
   disc(m){ this.discMode=m; ['none','pct','flat'].forEach(k=>$('disc-'+k).classList.toggle('on',k===m)); $('disc-val').style.display=m==='none'?'none':'block'; if(m==='none') $('disc-val').value=''; else $('disc-val').focus(); this.calc(); },
   pay(p){ this.payment=p; $$('#pay-chips .chip').forEach(b=>b.classList.toggle('on',b.dataset.p===p)); $('split-wrap').style.display=p==='Split'?'block':'none'; if(p==='Split'&&!this.splits.length){ this.splits=[{method:'Cash',amount:''},{method:'BKP',amount:''}]; } if(p==='Split') this.renderSplits(); this.calc(); },
   paidNow(v){ this.paidNow=v; $('ps-paid').classList.toggle('on',v); $('ps-wait').classList.toggle('on',!v); },
@@ -710,13 +710,15 @@ const Sell = {
   renderSplits(){ $('split-rows').innerHTML=this.splits.map((r,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px"><select class="in" style="flex:1;min-height:40px" onchange="Sell.splits[${i}].method=this.value">${['Cash','BKP','KJ'].map(m=>`<option ${r.method===m?'selected':''}>${m}</option>`).join('')}</select><input class="in" type="number" inputmode="decimal" placeholder="$" value="${r.amount}" style="width:100px;min-height:40px;text-align:right" oninput="Sell.splits[${i}].amount=this.value;Sell.calc()"><button class="iconb" onclick="Sell.splits.splice(${i},1);Sell.renderSplits()">×</button></div>`).join(''); this.calc(); },
   totals(){
     const sh=Store.get('shipping')||{flat:15,free_over:200}; const manual=0; const sub=sum(this.cart,c=>c.price*c.count);
-    const freeAuto=sub>=sh.free_over&&sub>0&&this.shipOverride==null; const ship=this.shipOverride!=null?this.shipOverride:((!freeAuto&&this.shipMode==='paid')?sh.flat:0);
+    const freeAuto=sub>=sh.free_over&&sub>0; const ship=this.shipOverride!=null?this.shipOverride:(this.fulfilment==='Walk-in'?0:this.shipMode==='free'?0:this.shipMode==='paid'?(+sh.flat||0):(freeAuto?0:(+sh.flat||0)));
     let disc=0; if(this.discMode!=='none'){ const v=+($('disc-val')?.value||0); disc=this.discMode==='pct'?Math.round(sub*Math.min(v,100)/100):Math.min(v,sub); }
     return {sub,ship,disc,total:Math.max(0,sub-disc+ship),manual,freeAuto};
   },
   calc(){
     const t=this.totals(); $('t-sub').textContent=money(t.sub); $('t-ship').textContent=t.ship?money(t.ship):'Free'; $('t-total').textContent=money(t.total);
-    $('free-note').style.display=t.freeAuto?'inline':'none'; $('ship-paid').style.opacity=t.freeAuto?.4:1; $('ship-paid').disabled=t.freeAuto;
+    const sh=Store.get('shipping')||{flat:15,free_over:200}; const auto=this.shipMode==='auto'&&this.shipOverride==null;
+    $('ship-auto').classList.toggle('on',auto); $('ship-free').classList.toggle('on',t.ship===0&&this.fulfilment!=='Walk-in'); $('ship-paid').classList.toggle('on',t.ship>0);
+    $('free-note').style.display='inline'; $('free-note').textContent=this.shipOverride!=null?'from the web order':this.fulfilment==='Walk-in'?'walk-in — no shipping':auto?(t.freeAuto?'✓ free — order is $'+sh.free_over+'+':'$'+sh.flat+' express — free from $'+sh.free_over):'set by hand';
     $('t-disc-line').style.display=t.disc?'flex':'none'; $('t-disc').textContent='−'+money(t.disc);
     if(this.payment==='Split'){ const rem=Math.round((t.total-sum(this.splits,s=>s.amount))*100)/100; const b=$('split-bal'); b.style.color=rem===0?'var(--go)':rem>0?'var(--amber)':'var(--red)'; b.textContent=rem===0?'✓ allocated':rem>0?money(rem)+' remaining':money(-rem)+' over'; }
     this.foot();
@@ -751,7 +753,7 @@ const Sell = {
   reset(keepOpen){
     this.cart=[]; this.bac={bac3:0,bac10:0}; this.splits=[]; this.customerId=null; this.s=1; this.shipOverride=null; this.orderRef=''; this._orderText=''; $('order-paste-wrap').style.display='none'; $('order-paste-box').value=''; $('order-paste-status').textContent='';
     ['bac3','bac10'].forEach(k=>$(k).textContent='0'); $('sell-q').value=''; ['m-name','m-price'].forEach(k=>$(k).value=''); $('m-qty').value='1'; $('sell-results').innerHTML='';
-    this.ship('free'); this.disc('none'); this.pay('Cash'); this.fulfil('Shipped'); this.paidNow(true); this.clearCustomer(); if($('paste-wrap').style.display!=='none') this.togglePaste();
+    this.ship('auto'); this.disc('none'); this.pay('Cash'); this.fulfil('Shipped'); this.paidNow(true); this.clearCustomer(); if($('paste-wrap').style.display!=='none') this.togglePaste();
     $$('#sell-steps .st').forEach((e,i)=>e.className='st'+(i===0?' on':'')); [1,2,3].forEach(n=>$('sell-'+n).style.display=n===1?'block':'none'); $('sell-back').style.display='none'; $('sell-next').textContent='Next'; $('sell-next').className='btn ink';
     this.renderCart(); this.foot(); if(keepOpen) toast('Cleared');
   },

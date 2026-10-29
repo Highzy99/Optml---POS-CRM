@@ -191,7 +191,7 @@
     <div id="sell-3" style="display:none">
       <div class="card"><div class="pad" id="review-lines"></div></div>
       <div class="sec" style="margin-top:14px">Shipping</div>
-      <div class="chips"><button class="chip on go" id="ship-free" onclick="Sell.ship('free')">Free</button><button class="chip" id="ship-paid" onclick="Sell.ship('paid')">$<span id="ship-flat">15</span> Express</button><span class="hint" id="free-note" style="display:none;margin:0;align-self:center">✓ auto free over $<span id="free-over">200</span></span></div>
+      <div class="chips"><button class="chip on" id="ship-auto" onclick="Sell.ship('auto')">Auto</button><button class="chip" id="ship-free" onclick="Sell.ship('free')">Free</button><button class="chip" id="ship-paid" onclick="Sell.ship('paid')">$<span id="ship-flat">15</span> Express</button><span class="hint" id="free-note" style="margin:0;align-self:center;flex-basis:100%"></span></div>
       <div class="sec">Discount</div>
       <div class="chips"><button class="chip" id="disc-none" onclick="Sell.disc('none')">None</button><button class="chip" id="disc-pct" onclick="Sell.disc('pct')">% off</button><button class="chip" id="disc-flat" onclick="Sell.disc('flat')">$ off</button><input class="in" id="disc-val" type="number" inputmode="decimal" placeholder="0" oninput="Sell.calc()" style="width:90px;min-height:38px;display:none;text-align:center"></div>
       <div class="sec">Payment</div>
