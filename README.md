@@ -153,6 +153,10 @@ After the sale you land on the sale's detail page.
 
 **Want to run it without Supabase?** — tap *Skip — this device only* on the connection screen. Everything works, data lives in that browser only (back it up before redeploying).
 
+## Cancelled sales
+
+Setting a sale to **Cancelled** puts its items (and bac water) back into stock, logged in Movements as "#N cancelled — returned to stock". Changing it back from Cancelled deducts them again. Deleting a sale that wasn't already cancelled also returns its stock. Each sale remembers whether its stock has been returned, so this can't double up.
+
 ## Stock lock
 
 Settings → Stock lock sets a 4–8 digit passcode. With it on, the +/− buttons, ± Adjust, the stock field in the product editor and marking incoming orders as arrived all ask for the passcode first (one correct entry unlocks that phone for 10 minutes). Sales deduct stock as normal without it. The passcode is stored hashed in settings, shared across devices.

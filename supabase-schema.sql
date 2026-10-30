@@ -361,3 +361,6 @@ update products set category='Glow' where id in ('p24','p25');
 
 -- Oct 2026: courier formula now subtracts postage + packaging; stored in settings.profit (postage, packaging)
 insert into settings(key,value) values ('profit','{"fx":1.55,"courier_pct":25,"postage":15,"packaging":5}') on conflict (key) do update set value = settings.value || '{"postage":15,"packaging":5}'::jsonb where not (settings.value ? 'postage');
+
+-- Oct 2026: cancelled sales put their items back into stock
+alter table sales add column if not exists stock_restored boolean default false;
