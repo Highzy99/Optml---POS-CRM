@@ -49,6 +49,7 @@
     <div class="note amber" id="local-banner" style="display:none;margin-bottom:12px"><b>This phone isn't synced.</b> Sales and stock here stay on this device only. <a href="#" onclick="Auth.connectCloud();return false" style="color:inherit;font-weight:600;text-decoration:underline">Connect to the cloud →</a></div>
     <div class="strip" id="home-strip"></div>
     <div class="card tap" onclick="Insights.open()" style="cursor:pointer"><div class="pad" style="padding-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="lab" style="margin:0">Last 14 days</span><span class="mono" style="font-size:12px;color:var(--ink-2)"><span id="spark-total"></span> · <span style="color:var(--go);font-family:var(--sans);font-weight:500">Insights ›</span></span></div><div id="spark"></div></div></div>
+    <div class="card tap" id="home-courier" onclick="Courier.open()" style="cursor:pointer;margin-top:12px"></div>
     <div class="sec">Needs attention <small id="att-count"></small></div>
     <div class="card" id="att-list"></div>
     <div class="sec">Recent sales <a class="act" onclick="Nav.go('sales')">See all</a></div>

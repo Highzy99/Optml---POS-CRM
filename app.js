@@ -437,9 +437,9 @@ const Courier = {
     const U=this.unpaid(); const ids=[]; const credit=Math.max(0,Math.round((sum(Store.cache.courier_payments,p=>+p.amount||0)-sum(this.owedSales().filter(s=>s.courier_paid_at),s=>Profit.of(s).courier))*100)/100); let left=amt+credit; const now=new Date().toISOString(); const id=uid('cp');
     for(const s of U){ const c=Profit.of(s).courier; if(c<=left+0.005){ left-=c; s.courier_paid_at=now; s.courier_payment_id=id; ids.push(s.id); await Store.upsert('sales',{id:s.id,courier_paid_at:now,courier_payment_id:id}); } else break; }
     await Store.upsert('courier_payments',{id,date:$('cp-date').value||today(),amount:amt,method:$('cp-method').value,note:$('cp-note').value.trim(),sale_ids:ids,created_at:now});
-    Sheet.close('dr-cpay'); toast(`${money(amt)} paid to courier · ${ids.length} order${ids.length!==1?'s':''} settled`); this.render(); Nav.badges();
+    Sheet.close('dr-cpay'); toast(`${money(amt)} paid to courier · ${ids.length} order${ids.length!==1?'s':''} settled`); this.render(); Nav.badges(); Home.courierCard();
   },
-  async del(id){ const p=Store.cache.courier_payments.find(x=>x.id===id); if(!p||!confirm(`Undo the ${money(p.amount)} payment? Its orders go back to unpaid.`)) return; for(const sid of (p.sale_ids||[])){ const s=Store.cache.sales.find(x=>x.id===sid); if(s){ s.courier_paid_at=null; s.courier_payment_id=null; await Store.upsert('sales',{id:sid,courier_paid_at:null,courier_payment_id:null}); } } await Store.remove('courier_payments',id); toast('Payment removed'); this.render(); Nav.badges(); },
+  async del(id){ const p=Store.cache.courier_payments.find(x=>x.id===id); if(!p||!confirm(`Undo the ${money(p.amount)} payment? Its orders go back to unpaid.`)) return; for(const sid of (p.sale_ids||[])){ const s=Store.cache.sales.find(x=>x.id===sid); if(s){ s.courier_paid_at=null; s.courier_payment_id=null; await Store.upsert('sales',{id:sid,courier_paid_at:null,courier_payment_id:null}); } } await Store.remove('courier_payments',id); toast('Payment removed'); this.render(); Nav.badges(); Home.courierCard(); },
   statementText(){ const U=this.unpaid(); const T=this.totals(); const pc=Profit.cfg(); const W=this.byWeek(U); return `Courier statement — ${fmtDateFull(today())}\n\n${W.map(w=>`Week ${this.weekLabel(w.ws)}\n${w.sales.map(s=>`#${s.sale_no} ${fmtDate(s.date)} ${(s.customer||{}).name||'Walk-in'} — ${money(Profit.of(s).courier)}`).join('\n')}\nWeek total: ${money(w.total)}`).join('\n\n')||'No unpaid orders'}\n\nTotal owed: ${money(T.balance)} (${pc.pct}% of sale less postage, packaging & product cost · ${U.length} orders)`; },
   waStatement(){ WA.open(WA.cfg().courier,this.statementText()); },
 };
@@ -500,6 +500,20 @@ const Settings = {
 // ============================================================
 const Home = {
   r:'7',
+  courierCard(){
+    const el=$('home-courier'); if(!el) return; const T=Courier.totals(); const U=Courier.unpaid(); const P=[...Store.cache.courier_payments].sort((a,b)=>(b.date+(b.created_at||''))>(a.date+(a.created_at||''))?1:-1); const last=P[0];
+    const weeks=Courier.byWeek(U); const owed=T.balance>0; const credit=T.balance<0;
+    el.innerHTML=`<div class="pad" style="display:flex;align-items:center;gap:12px">
+      <div style="flex:1;min-width:0">
+        <div class="lab" style="margin:0 0 2px">Courier to pay</div>
+        <div class="mono" style="font-size:26px;font-weight:600;line-height:1.1;color:${owed?'var(--amber)':'var(--go)'}">${credit?'−':''}${money(Math.abs(T.balance))}</div>
+        <div class="hint" style="margin:4px 0 0">${owed?`${U.length} order${U.length!==1?'s':''} · ${weeks.length} week${weeks.length!==1?'s':''}${T.oldest?' · oldest '+fmtDate(T.oldest):''}`:credit?'Credit carried from an overpayment':'All settled'}${last?` · last paid ${money(last.amount)} on ${fmtDate(last.date)}`:''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <button class="btn sm ${owed?'go':''}" onclick="event.stopPropagation();Courier.openPay()" ${owed?'':'disabled'}>Pay${owed?' '+money(T.balance):''}</button>
+        <span class="hint" style="margin:0;font-size:11px">${P.length?P.length+' payment'+(P.length!==1?'s':'')+' · tap for history':'tap for history'}</span>
+      </div></div>`;
+  },
   filtered(){ const S=Store.cache.sales.filter(s=>s.status!=='Cancelled'); if(this.r==='all') return S; const from=this.r==='today'?today():addDays(-(+this.r)+1); return S.filter(s=>s.date>=from); },
   render(){
     const h=new Date().getHours(); $('greet').textContent=h<12?'morning':h<17?'afternoon':'evening';
@@ -510,7 +524,7 @@ const Home = {
     const open=S.filter(s=>['New','Paid','Sent to Courier'].includes(s.status)).length;
     $('home-strip').innerHTML=`<div class="s"><div class="k">Today</div><div class="v go">${money(sum(todayS,s=>s.total))}</div><div class="d">${money(Profit.sumOf(todayS).net)} net</div></div><div class="s"><div class="k">This week</div><div class="v">${money(rev)}</div><div class="d ${d===null?'':d>=0?'up':'down'}">${money(Profit.sumOf(weekS).net)} net${d!==null?` · ${d>=0?'▲':'▼'}${Math.abs(d)}%`:''}</div></div><div class="s"><div class="k">To dispatch</div><div class="v ${open?'amber':''}">${open}</div><div class="d">open</div></div>`;
     const lb=$('local-banner'); if(lb) lb.style.display=Store.mode==='local'?'block':'none';
-    this.spark(S);
+    this.spark(S); this.courierCard();
     // attention
     const att=[];
     const sku=s=>((s.items||[])[0]||{}).sku;
@@ -520,7 +534,6 @@ const Home = {
     const low=Store.cache.products.filter(p=>!p.soon&&!p.hidden&&p.stock<=p.reorder);
     if(low.length) att.push({k:'Reorder',sku:low[0].sku,ic:ICON.rocket,c:low.some(p=>p.stock<=0)?'red':'amber',t:`${low.length} product${low.length>1?'s':''} below minimum`,u:low.slice(0,4).map(p=>p.name+' ('+p.stock+')').join(', ')+(low.length>4?'…':''),a:`<button class="btn xs" onclick="Reports.launch()">Reorder report</button>`});
     const od=Store.cache.purchase_orders.filter(o=>o.status==='pending'&&o.eta&&o.eta<t);
-    const CT=Courier.totals(); if(CT.balance>0&&CT.oldest&&CT.oldest<=addDays(-7)) att.push({k:'Courier owed',ic:ICON.truck,c:'amber',t:`${money(CT.balance)} owed to courier`,u:`${CT.unpaidN} dispatched order${CT.unpaidN!==1?'s':''} unpaid · oldest ${fmtDate(CT.oldest)}`,a:`<button class="btn xs go" onclick="Courier.open()">Open tracker</button>`});
     if(od.length) att.push({k:'Incoming',ic:ICON.truck,c:'amber',t:`${od.length} incoming order${od.length>1?'s':''} overdue`,u:od.map(o=>(Store.cache.products.find(p=>p.id===o.product_id)||{}).name).filter(Boolean).slice(0,3).join(', '),a:`<button class="btn xs" onclick="Nav.go('stock');Inv.view('po')">View</button>`});
     $('att-count').textContent=att.length?att.length+' items':''; 
     $('att-list').innerHTML=att.length?att.map(a=>`<div class="att"><div class="ic ${a.c}">${a.ic}</div><div class="m"><div class="t">${esc(a.k)} — ${esc(a.t)}</div><div class="u">${esc(a.u)}</div><div class="a">${a.a}</div></div></div>`).join(''):'<div class="empty"><div class="big">✓</div>Nothing needs attention</div>';
