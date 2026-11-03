@@ -153,7 +153,7 @@ declare t text;
 begin
   foreach t in array array['products','customers','sales','purchase_orders','movements','settings','activity','courier_payments'] loop
     execute format('drop policy if exists "auth_all" on %I', t);
-    execute format('create policy "auth_all" on %I for all to authenticated using (true) with check (true)', t);
+    execute format('create policy "auth_all" on %I for all to authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null)', t);
   end loop;
 end $$;
 
@@ -364,3 +364,7 @@ insert into settings(key,value) values ('profit','{"fx":1.55,"courier_pct":25,"p
 
 -- Oct 2026: cancelled sales put their items back into stock
 alter table sales add column if not exists stock_restored boolean default false;
+
+-- Nov 2026: security advisor fixes — explicit signed-in check in policies, RLS on the backup table, pinned search_path
+alter table if exists public.sales_trash enable row level security;
+alter function public.touch_updated_at() set search_path = '';
