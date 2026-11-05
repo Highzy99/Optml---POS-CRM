@@ -117,6 +117,18 @@ const Store = {
     await this.upsert('products', {id:product.id, stock:product.stock});
     await this.logMove(product, type, delta, note);
   },
+  // Stock coming in at a known price: product cost becomes the weighted average of what was on the shelf and what arrived.
+  // unitCost is per vial; currency 'USD' or 'AUD' (AUD is converted at the Settings → Profit rate). Product cost is always kept in USD.
+  async receiveStock(product, qty, unitCost, currency, note){
+    const fx=Profit.cfg().fx; const usd=currency==='AUD'?unitCost/fx:unitCost;
+    const onHand=Math.max(0,+product.stock||0), oldCost=+product.cost||0;
+    const avg=(oldCost>0&&onHand>0)?(onHand*oldCost+qty*usd)/(onHand+qty):usd;
+    const newCost=Math.round(avg*100)/100;
+    product.stock=onHand+qty; product.cost=newCost;
+    await this.upsert('products',{id:product.id,stock:product.stock,cost:newCost});
+    await this.upsert('movements',{id:uid('m'),product_id:product.id,product_name:product.name,sku:product.sku,type:'in',qty,note:note||'',date:today(),created_at:new Date().toISOString(),unit_cost_usd:Math.round(usd*100)/100,cost_note:`${qty} @ ${currency==='AUD'?'A$':'US$'}${unitCost} → avg US$${newCost}${oldCost?` (was US$${oldCost})`:''}`});
+    return newCost;
+  },
 };
 
 const DEFAULT_SETTINGS = {
@@ -931,25 +943,31 @@ const PO = {
     $('po-arrived').innerHTML=arr.sort((a,b)=>(b.arrived_date||'')>(a.arrived_date||'')?1:-1).slice(0,30).map(row).join('')||'<div class="empty">—</div>';
   },
   open(){ this.lines=[]; $('po-supplier').value=''; $('po-ref').value=''; $('po-date').value=today(); $('po-eta').value=addDays(14); ['po-dname','po-dphone','po-demail','po-daddr'].forEach(k=>$(k).value=''); this.addLine(); Sheet.open('dr-po'); },
-  addLine(){ this.lines.push({product_id:'',qty:10}); this.renderLines(); },
-  renderLines(){ const opts=Store.cache.products.filter(p=>!p.hidden).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.stock})</option>`).join(''); $('po-lines').innerHTML=this.lines.map((l,i)=>`<div style="display:flex;gap:6px"><select class="in" style="flex:1;min-height:40px" onchange="PO.lines[${i}].product_id=this.value"><option value="">Product…</option>${opts}</select><input class="in" type="number" inputmode="numeric" value="${l.qty}" style="width:70px;min-height:40px;text-align:right" oninput="PO.lines[${i}].qty=+this.value"><button class="iconb" onclick="PO.lines.splice(${i},1);PO.renderLines()">×</button></div>`).join(''); this.lines.forEach((l,i)=>{ if(l.product_id) $$('#po-lines select')[i].value=l.product_id; }); },
+  addLine(){ this.lines.push({product_id:'',qty:10,unit_cost:'',currency:'USD'}); this.renderLines(); },
+  renderLines(){ const opts=Store.cache.products.filter(p=>!p.hidden).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.stock})</option>`).join(''); $('po-lines').innerHTML=this.lines.map((l,i)=>`<div style="display:flex;gap:6px"><select class="in" style="flex:1;min-height:40px" onchange="PO.lines[${i}].product_id=this.value"><option value="">Product…</option>${opts}</select><input class="in" type="number" inputmode="numeric" value="${l.qty}" placeholder="Qty" style="width:64px;min-height:40px;text-align:right" oninput="PO.lines[${i}].qty=+this.value"><input class="in" type="number" inputmode="decimal" step="0.01" value="${l.unit_cost??''}" placeholder="$/vial" style="width:72px;min-height:40px;text-align:right" oninput="PO.lines[${i}].unit_cost=this.value"><select class="in" style="width:64px;min-height:40px;padding:0 4px" onchange="PO.lines[${i}].currency=this.value"><option ${(l.currency||'USD')==='USD'?'selected':''}>USD</option><option ${l.currency==='AUD'?'selected':''}>AUD</option></select><button class="iconb" onclick="PO.lines.splice(${i},1);PO.renderLines()">×</button></div>`).join(''); this.lines.forEach((l,i)=>{ if(l.product_id) $$('#po-lines select')[i].value=l.product_id; }); },
   async save(){
     const L=this.lines.filter(l=>l.product_id&&l.qty>0); if(!L.length){ toast('Add at least one product','err'); return; }
     const base={supplier:$('po-supplier').value.trim(),ref:$('po-ref').value.trim(),order_date:$('po-date').value||today(),eta:$('po-eta').value||addDays(14),delivery:{name:$('po-dname').value.trim(),phone:$('po-dphone').value.trim(),email:$('po-demail').value.trim(),address:$('po-daddr').value.trim()},status:'pending'};
-    for(const l of L) await Store.upsert('purchase_orders',{id:uid('po'),product_id:l.product_id,qty:+l.qty,...base,created_at:new Date().toISOString()});
+    for(const l of L) await Store.upsert('purchase_orders',{id:uid('po'),product_id:l.product_id,qty:+l.qty,unit_cost:l.unit_cost!==''&&l.unit_cost!=null?+l.unit_cost:null,currency:l.currency||'USD',...base,created_at:new Date().toISOString()});
     Sheet.close('dr-po'); toast(L.length+' line'+(L.length>1?'s':'')+' added to incoming'); this.render(); Nav.badges();
   },
-  arrive(id){ Lock.require(async()=>{ const o=Store.cache.purchase_orders.find(x=>x.id===id); const p=Store.cache.products.find(x=>x.id===o.product_id); if(!confirm(`Mark ${o.qty} × ${p?p.name:'?'} as arrived? Stock will be added.`)) return; o.status='arrived'; o.arrived_date=today(); await Store.upsert('purchase_orders',o); if(p) await Store.adjustStock(p,o.qty,'in','PO '+(o.ref||'')+' arrived'); toast('Stock added ✓'); this.render(); Nav.badges(); }); },
+  arrive(id){ Lock.require(async()=>{ const o=Store.cache.purchase_orders.find(x=>x.id===id); const p=Store.cache.products.find(x=>x.id===o.product_id); if(!confirm(`Mark ${o.qty} × ${p?p.name:'?'} as arrived? Stock will be added.`)) return; o.status='arrived'; o.arrived_date=today(); await Store.upsert('purchase_orders',o); let msg='Stock added ✓'; if(p){ if(+o.unit_cost>0){ const nc=await Store.receiveStock(p,o.qty,+o.unit_cost,o.currency||'USD','PO '+(o.ref||'')+' arrived'); msg+=` · cost now US$${nc}/vial`; } else await Store.adjustStock(p,o.qty,'in','PO '+(o.ref||'')+' arrived'); } toast(msg,'ok',3500); this.render(); Nav.badges(); }); },
   async del(id){ if(!confirm('Remove this record?')) return; await Store.remove('purchase_orders',id); this.render(); },
 };
 
 const Mov = {
   t:'in',
   render(){ const M=[...Store.cache.movements].sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).slice(0,150); const ic={in:['↑','go'],out:['↓','red'],sale:['$','blue'],adj:['±','amber']};
-    $('mov-list').innerHTML=M.map(m=>{ const [i,c]=ic[m.type]||['·','gray']; return `<div class="row"><div class="av" style="background:var(--paper-3);color:var(--${c});font-family:var(--mono)">${i}</div><div class="m"><div class="t">${esc(m.product_name||'')}</div><div class="u">${esc(m.note||m.type)}</div></div><div class="e"><span class="amt" style="color:var(--${c})">${m.qty>0?'+':''}${m.qty}</span><span class="hint mono" style="margin:0;font-size:11px">${new Date(m.date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span></div></div>`; }).join('')||'<div class="empty">No movements yet</div>'; },
-  open(){ $('mov-prod').innerHTML=Store.cache.products.filter(p=>!p.hidden).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.stock})</option>`).join(''); $('mov-qty').value=''; $('mov-note').value=''; this.type('in'); Sheet.open('dr-mov'); },
-  type(t){ this.t=t; $$('#mov-type button').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); $('mov-qty').placeholder=t==='adj'?'New stock count':'Quantity'; },
-  save(){ Lock.require(async()=>{ const p=Store.cache.products.find(x=>x.id===$('mov-prod').value); const q=+$('mov-qty').value; if(!p||isNaN(q)||$('mov-qty').value===''){ toast('Enter a quantity','err'); return; } const d=this.t==='in'?q:this.t==='out'?-q:q-p.stock; if(p.stock+d<0){ toast('Not enough stock','err'); return; } await Store.adjustStock(p,d,this.t,$('mov-note').value.trim()||(this.t==='adj'?'stock count':'manual')); Sheet.close('dr-mov'); toast(`${p.name}: ${p.stock}`); this.render(); if(Nav.cur==='stock') Nav.badges(); }); },
+    $('mov-list').innerHTML=M.map(m=>{ const [i,c]=ic[m.type]||['·','gray']; return `<div class="row"><div class="av" style="background:var(--paper-3);color:var(--${c});font-family:var(--mono)">${i}</div><div class="m"><div class="t">${esc(m.product_name||'')}</div><div class="u">${esc(m.note||m.type)}${m.cost_note?' · '+esc(m.cost_note):''}</div></div><div class="e"><span class="amt" style="color:var(--${c})">${m.qty>0?'+':''}${m.qty}</span><span class="hint mono" style="margin:0;font-size:11px">${new Date(m.date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span></div></div>`; }).join('')||'<div class="empty">No movements yet</div>'; },
+  open(){ $('mov-prod').innerHTML=Store.cache.products.filter(p=>!p.hidden).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.stock})</option>`).join(''); $('mov-qty').value=''; $('mov-note').value=''; $('mov-cost').value=''; this.curSet('USD'); this.type('in'); Sheet.open('dr-mov'); },
+  cur:'USD',
+  type(t){ this.t=t; $$('#mov-type button').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); $('mov-qty').placeholder=t==='adj'?'New stock count':'Quantity'; $('mov-cost-wrap').style.display=t==='in'?'block':'none'; this.costPreview(); },
+  curSet(c){ this.cur=c; $$('#mov-cur button').forEach(b=>b.classList.toggle('on',b.dataset.c===c)); this.costPreview(); },
+  costPreview(){ const el=$('mov-cost-hint'); if(!el) return; const p=Store.cache.products.find(x=>x.id===$('mov-prod').value); const q=+$('mov-qty').value, c=+$('mov-cost').value; if(this.t!=='in'||!p){ el.textContent=''; return; }
+    if(!c){ el.textContent=p.cost?`Current cost US$${p.cost}/vial — leave blank to keep it.`:'No cost on this product yet.'; return; }
+    const fx=Profit.cfg().fx; const usd=this.cur==='AUD'?c/fx:c; const onHand=Math.max(0,+p.stock||0), oldCost=+p.cost||0; const avg=(oldCost>0&&onHand>0&&q>0)?(onHand*oldCost+q*usd)/(onHand+q):usd;
+    el.textContent=`${this.cur==='AUD'?'A$'+c+' = US$'+(Math.round(usd*100)/100)+' at '+fx+' · ':''}${onHand>0&&oldCost?`${onHand} on hand @ US$${oldCost} + ${q||0} @ US$${Math.round(usd*100)/100} → `:''}new average US$${Math.round(avg*100)/100}/vial`; },
+  save(){ Lock.require(async()=>{ const p=Store.cache.products.find(x=>x.id===$('mov-prod').value); const q=+$('mov-qty').value; if(!p||isNaN(q)||$('mov-qty').value===''){ toast('Enter a quantity','err'); return; } const d=this.t==='in'?q:this.t==='out'?-q:q-p.stock; if(p.stock+d<0){ toast('Not enough stock','err'); return; } const uc=+$('mov-cost').value; if(this.t==='in'&&q>0&&uc>0){ const nc=await Store.receiveStock(p,q,uc,this.cur,$('mov-note').value.trim()||'stock in'); Sheet.close('dr-mov'); toast(`${p.name}: ${p.stock} · cost now US$${nc}/vial`,'ok',3500); this.render(); if(Nav.cur==='stock') Nav.badges(); return; } await Store.adjustStock(p,d,this.t,$('mov-note').value.trim()||(this.t==='adj'?'stock count':'manual')); Sheet.close('dr-mov'); toast(`${p.name}: ${p.stock}`); this.render(); if(Nav.cur==='stock') Nav.badges(); }); },
 };
 
 // ============================================================

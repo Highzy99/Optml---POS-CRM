@@ -153,6 +153,10 @@ After the sale you land on the sale's detail page.
 
 **Want to run it without Supabase?** — tap *Skip — this device only* on the connection screen. Everything works, data lives in that browser only (back it up before redeploying).
 
+## Cost price (weighted average)
+
+Product cost is kept in USD per vial. When stock comes in at a known price — **± Adjust → In** with a cost per vial (USD or AUD, converted at the Settings → Profit rate), or an incoming order with a cost on the line — the product's cost becomes the weighted average of what was on the shelf and what arrived: (on-hand × old cost + qty × new cost) ÷ (on-hand + qty). Stock in without a cost leaves the cost unchanged. The movement records the price paid and the before/after average.
+
 ## Cancelled sales
 
 Setting a sale to **Cancelled** puts its items (and bac water) back into stock, logged in Movements as "#N cancelled — returned to stock". Changing it back from Cancelled deducts them again. Deleting a sale that wasn't already cancelled also returns its stock. Each sale remembers whether its stock has been returned, so this can't double up.

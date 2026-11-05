@@ -368,3 +368,7 @@ alter table sales add column if not exists stock_restored boolean default false;
 -- Nov 2026: security advisor fixes — explicit signed-in check in policies, RLS on the backup table, pinned search_path
 alter table if exists public.sales_trash enable row level security;
 alter function public.touch_updated_at() set search_path = '';
+
+-- Nov 2026: weighted-average cost on stock in
+alter table movements add column if not exists unit_cost_usd numeric, add column if not exists cost_note text;
+alter table purchase_orders add column if not exists unit_cost numeric, add column if not exists currency text;

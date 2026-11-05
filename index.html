@@ -307,7 +307,7 @@
   <div class="lab">Deliver to</div>
   <div class="g2"><div class="f"><input class="in" id="po-dname" placeholder="Name"></div><div class="f"><input class="in" id="po-dphone" placeholder="Phone"></div></div>
   <div class="g2"><div class="f"><input class="in" id="po-demail" placeholder="Email"></div><div class="f"><input class="in" id="po-daddr" placeholder="Address"></div></div>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 8px"><span class="lab" style="margin:0">Items</span><button class="btn xs" onclick="PO.addLine()" id="po-add">+ Line</button></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 8px"><span class="lab" style="margin:0">Items <small style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)">· qty · cost per vial (optional)</small></span><button class="btn xs" onclick="PO.addLine()" id="po-add">+ Line</button></div>
   <div id="po-lines" style="display:flex;flex-direction:column;gap:6px;max-height:230px;overflow-y:auto;margin-bottom:14px"></div>
   <div class="actions"><button class="btn" onclick="Sheet.close('dr-po')">Cancel</button><button class="btn ink" onclick="PO.save()">Save order</button></div>
 </div></div>
@@ -320,8 +320,9 @@
 </div></div>
 <div class="drawer-bg" id="dr-mov"><div class="drawer"><div class="grab"></div><h3>Stock movement</h3>
   <div class="seg" style="margin-bottom:12px" id="mov-type"><button class="on" data-t="in" onclick="Mov.type('in')">In</button><button data-t="out" onclick="Mov.type('out')">Out</button><button data-t="adj" onclick="Mov.type('adj')">Set to</button></div>
-  <div class="f"><label>Product</label><select class="in" id="mov-prod"></select></div>
-  <div class="f"><label>Quantity</label><input class="in" id="mov-qty" type="number" inputmode="numeric"></div>
+  <div class="f"><label>Product</label><select class="in" id="mov-prod" onchange="Mov.costPreview()"></select></div>
+  <div class="f"><label>Quantity</label><input class="in" id="mov-qty" type="number" inputmode="numeric" oninput="Mov.costPreview()"></div>
+  <div id="mov-cost-wrap"><div class="f"><label>Cost per vial <small style="color:var(--ink-3)">optional — what you paid</small></label><div style="display:flex;gap:8px"><input class="in" id="mov-cost" type="number" inputmode="decimal" step="0.01" placeholder="0.00" style="flex:1" oninput="Mov.costPreview()"><div class="seg" id="mov-cur" style="margin:0;flex:0 0 130px"><button class="on" data-c="USD" onclick="Mov.curSet('USD')">USD</button><button data-c="AUD" onclick="Mov.curSet('AUD')">AUD</button></div></div><div class="hint" id="mov-cost-hint"></div></div></div>
   <div class="f"><label>Note</label><input class="in" id="mov-note" placeholder="Optional"></div>
   <div class="actions"><button class="btn" onclick="Sheet.close('dr-mov')">Cancel</button><button class="btn ink" onclick="Mov.save()">Log</button></div>
 </div></div>
