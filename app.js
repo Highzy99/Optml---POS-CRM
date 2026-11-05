@@ -138,7 +138,7 @@ const DEFAULT_SETTINGS = {
   whatsapp: {mode:'app', phone_id:'', token:'', dispatch_template:'', lang:'en', courier:''},
   courier_template: "📦 *OPTML ORDER #{sale_no}*\n{date}\n\n*PACK*\n{items}\n{bac}\n{count}\n\n*SHIP TO*\n{ship_to}\n📱 {phone}\n\n*NOTE*\n{notes}",
   courier_template_legacy: "📦 NEW ORDER #{sale_no}\n\n👤 {name}\n📱 {phone}\n📍 {address}\n\n{items}\n{bac}\n\n💬 {notes}",
-  dispatch_template: "Hi {first_name}! The courier has picked up your order 😊\n\nYou'll receive a notification once it's been scanned into the network. If you have any questions don't hesitate to reach out 😊 📦\n\nTrack here 👉 https://auspost.com.au/mypost/track/#/details/{tracking}",
+  dispatch_template: "Hi {first_name}! The courier has picked up your order and dropped it to the post office 😊\n\nYou'll receive a notification once it's been scanned into the network. If you have any questions don't hesitate to reach out 😊 📦\n\nTrack here 👉 https://auspost.com.au/mypost/track/#/details/{tracking}",
   telegram: {token:'', chat:''},
 };
 
