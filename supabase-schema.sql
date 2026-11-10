@@ -372,3 +372,6 @@ alter function public.touch_updated_at() set search_path = '';
 -- Nov 2026: weighted-average cost on stock in
 alter table movements add column if not exists unit_cost_usd numeric, add column if not exists cost_note text;
 alter table purchase_orders add column if not exists unit_cost numeric, add column if not exists currency text;
+
+-- Nov 2026: supplier prices doubled
+-- update products set cost = round((cost*2)::numeric,2) where cost>0;  (applied to the live DB on 10 Nov 2026)
