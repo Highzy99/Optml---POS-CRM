@@ -72,7 +72,7 @@
     <div id="stock-inv" style="margin-top:12px">
       <div class="strip" id="inv-strip"></div>
       <div id="inv-alert"></div>
-      <div class="actions" style="margin-bottom:12px"><button class="btn sm" onclick="Reports.launch()">Reorder report</button><button class="btn sm" onclick="Reports.inventory()">Inventory report</button><button class="btn sm" onclick="Mov.open()">± Adjust</button></div>
+      <div class="actions" style="margin-bottom:12px"><button class="btn sm" onclick="Reports.launch()">Reorder report</button><button class="btn sm" onclick="Reports.inventory()">Inventory report</button><button class="btn sm" onclick="Mov.open()">± Adjust</button><button class="btn sm" onclick="Take.open()">Stock take</button></div>
       <div class="search" style="margin-bottom:10px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="inv-q" placeholder="Search product or SKU" oninput="Inv.render()"><select id="inv-cat" onchange="Inv.render()" style="border:none;background:none;font-size:13px;color:var(--ink-2);max-width:110px"></select></div>
       <div class="card" id="inv-list"></div>
     </div>
@@ -228,6 +228,11 @@
 </div>
 
 <!-- ================= SETTINGS SHEET ================= -->
+<div class="sheet" id="sh-take">
+  <div class="sheet-h"><button class="iconb" onclick="Sheet.close('sh-take');Take.cur=null">×</button><h2>Stock <em>take</em></h2></div>
+  <div class="sheet-b" id="take-body" style="padding-bottom:40px"></div>
+</div>
+
 <div class="sheet" id="sh-courier">
   <div class="sheet-h"><button class="iconb" onclick="Sheet.close('sh-courier')">×</button><h2>Courier <em>payments</em></h2></div>
   <div class="sheet-b" id="co-body" style="padding-bottom:40px"></div>

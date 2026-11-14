@@ -50,7 +50,7 @@ const Store = {
   // ---- load everything into cache ----
   async loadAll(){
     if(this.mode==='cloud'){
-      const [p,c,s,po,m,st,cp] = await Promise.all([
+      const [p,c,s,po,m,st,cp,tk] = await Promise.all([
         this.sb.from('products').select('*').order('category').order('name'),
         this.sb.from('customers').select('*').order('name'),
         this.sb.from('sales').select('*').order('created_at',{ascending:false}),
@@ -58,9 +58,10 @@ const Store = {
         this.sb.from('movements').select('*').order('created_at',{ascending:false}).limit(500),
         this.sb.from('settings').select('*'),
         this.sb.from('courier_payments').select('*').order('date',{ascending:false}),
+        this.sb.from('stocktakes').select('*').order('created_at',{ascending:false}).limit(30),
       ]);
       for(const r of [p,c,s,po,m,st]) if(r.error) throw r.error;
-      this.cache.courier_payments = cp.error?[]:(cp.data||[]);
+      this.cache.courier_payments = cp.error?[]:(cp.data||[]); this.cache.stocktakes = tk.error?[]:(tk.data||[]);
       this.cache.products = p.data||[]; this.cache.customers=c.data||[]; this.cache.sales=s.data||[];
       this.cache.purchase_orders=po.data||[]; this.cache.movements=m.data||[];
       this.cache.settings = Object.fromEntries((st.data||[]).map(r=>[r.key, r.value]));
@@ -961,6 +962,50 @@ const PO = {
   async del(id){ if(!confirm('Remove this record?')) return; await Store.remove('purchase_orders',id); this.render(); },
 };
 
+
+// ---- Blind stock take: courier counts on /count?t=… without seeing stock numbers ----
+const Take = {
+  list(){ return Store.cache.stocktakes||[]; },
+  link(t){ return location.origin+location.pathname.replace(/[^/]*$/,'')+'count?t='+t.token; },
+  open(){ if(Store.mode!=='cloud'){ toast('Stock takes need the cloud connection','err'); return; } Sheet.open('sh-take'); this.render(); },
+  async create(){
+    const open=this.list().find(t=>t.status==='open'); if(open&&!confirm('There’s already an open count. Cancel it and start a new one?')) return;
+    if(open) await Store.upsert('stocktakes',{id:open.id,status:'cancelled'});
+    const tok=Array.from(crypto.getRandomValues(new Uint8Array(18)),b=>b.toString(36).padStart(2,'0')).join('').slice(0,24);
+    const t={id:uid('tk'),token:tok,status:'open',counts:{},expected:{},created_at:new Date().toISOString()};
+    await Store.upsert('stocktakes',t); this.render(); toast('Count link ready — send it to the courier');
+  },
+  msg(t){ return `📋 Stock count please\n\nOpen this link, count every vial that's physically there and type the numbers in. Don't go off old numbers — the page doesn't show them.\n\n${this.link(t)}\n\nTap Submit when you're done 🙏`; },
+  async sendTg(id){ const t=this.list().find(x=>x.id===id); const ok=await Telegram.send(this.msg(t)); toast(ok?'Sent to the Telegram group':'Telegram not set up — use Copy',ok?'ok':'err'); },
+  sendWa(id){ const t=this.list().find(x=>x.id===id); const n=(Store.get('whatsapp')||{}).courier; WA.open(n||'',this.msg(t)); },
+  async copy(id){ const t=this.list().find(x=>x.id===id); try{ await navigator.clipboard.writeText(this.msg(t)); toast('Copied'); }catch(e){ prompt('Copy this:',this.msg(t)); } },
+  async cancel(id){ if(!confirm('Cancel this count? The link stops working.')) return; await Store.upsert('stocktakes',{id,status:'cancelled'}); this.render(); },
+  // difference per product = counted − what the app had when they hit Submit; applied to today's stock so sales since then aren't lost
+  rows(t){ return Object.keys(t.counts||{}).map(pid=>{ const p=Store.cache.products.find(x=>x.id===pid); const c=+t.counts[pid], e=+(t.expected||{})[pid]||0; return {pid,p,name:p?p.name:pid,counted:c,expected:e,diff:c-e,cost:p?+p.cost||0:0}; }).sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff)||a.name.localeCompare(b.name)); },
+  review(id){ this.cur=id; this.render(); },
+  apply(id){ Lock.require(async()=>{ const t=this.list().find(x=>x.id===id); if(!t||t.status!=='submitted') return; const R=this.rows(t).filter(r=>r.diff&&r.p);
+    if(!confirm(`Apply the count? ${R.length} product${R.length!==1?'s':''} will be corrected; the rest already match.`)) return;
+    for(const r of R) await Store.adjustStock(r.p,r.diff,'adj',`stock take ${new Date(t.submitted_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}${t.counted_by?' · '+t.counted_by:''} (counted ${r.counted}, app had ${r.expected})`);
+    await Store.upsert('stocktakes',{id,status:'applied',applied_at:new Date().toISOString()}); toast(`Stock updated · ${R.length} corrected`); Nav.badges(); if(typeof Inv!=='undefined'&&Inv.render) Inv.render(); this.render(); }); },
+  render(){
+    const el=$('take-body'); if(!el) return; const L=this.list(); const fx=Profit.cfg().fx;
+    if(this.cur){ const t=L.find(x=>x.id===this.cur); if(!t){ this.cur=null; return this.render(); } const R=this.rows(t); const off=R.filter(r=>r.diff); const short=sum(off.filter(r=>r.diff<0),r=>-r.diff), over=sum(off.filter(r=>r.diff>0),r=>r.diff); const val=sum(off,r=>r.diff*r.cost);
+      const uncounted=Store.cache.products.filter(p=>!p.hidden&&!(p.id in (t.counts||{})));
+      el.innerHTML=`<button class="btn sm" style="margin-bottom:12px" onclick="Take.cur=null;Take.render()">‹ All counts</button>
+        <div class="strip" style="margin-bottom:12px"><div class="s"><div class="k">Counted</div><div class="v">${R.length}</div><div class="d">by ${esc(t.counted_by||'—')}</div></div><div class="s"><div class="k">Match</div><div class="v">${R.length-off.length}</div><div class="d">${off.length} off</div></div><div class="s"><div class="k">Missing</div><div class="v" style="color:${short?'var(--red)':'inherit'}">${short}</div><div class="d">vials short · +${over} extra</div></div></div>
+        ${off.length?`<div class="note" style="margin-bottom:12px">Net difference at cost: <b>${val<0?'−':''}US$${Math.abs(Math.round(val*100)/100)}</b> (≈ A$${Math.abs(Math.round(val*fx))}). Applying sets each product to the count, adjusted for anything sold since it was submitted.</div>`:'<div class="note" style="margin-bottom:12px">Everything counted matches the app ✓</div>'}
+        <div class="card">${R.map(r=>`<div class="row"><div class="m"><div class="t">${esc(r.name)}</div><div class="u">app had ${r.expected} · counted ${r.counted}</div></div><div class="e"><span class="amt" style="color:${r.diff<0?'var(--red)':r.diff>0?'var(--amber)':'var(--go)'}">${r.diff>0?'+':''}${r.diff||'✓'}</span></div></div>`).join('')}</div>
+        ${uncounted.length?`<div class="hint">Not counted (left unchanged): ${uncounted.map(p=>esc(p.name)).join(', ')}</div>`:''}
+        <div class="actions" style="margin-top:14px">${t.status==='submitted'?`<button class="btn" onclick="Take.cancel('${t.id}')">Discard</button><button class="btn go" onclick="Take.apply('${t.id}')">Apply count to stock</button>`:`<span class="hint">${t.status==='applied'?'Applied '+new Date(t.applied_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'}):'Cancelled'}</span>`}</div>`;
+      return; }
+    const open=L.find(t=>t.status==='open'), sub=L.filter(t=>t.status==='submitted'), past=L.filter(t=>t.status==='applied'||t.status==='cancelled').slice(0,10);
+    el.innerHTML=`<div class="note" style="margin-bottom:14px">Sends the courier a link that lists every product <b>without</b> the stock numbers. They count what's physically there and submit; you review the differences here and apply them.</div>
+      ${open?`<div class="sec">Waiting for count</div><div class="card"><div class="pad"><div class="hint" style="margin:0 0 10px">Started ${new Date(open.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})} — link stays live until it's submitted or cancelled.</div><input class="in" readonly value="${esc(this.link(open))}" onclick="this.select()" style="font-size:13px;margin-bottom:10px"><div class="actions" style="flex-wrap:wrap"><button class="btn go sm" onclick="Take.sendTg('${open.id}')">Send to Telegram group</button><button class="btn sm" onclick="Take.sendWa('${open.id}')">WhatsApp</button><button class="btn sm" onclick="Take.copy('${open.id}')">Copy</button><button class="btn sm" onclick="Take.cancel('${open.id}')">Cancel</button></div></div></div>`
+            :`<button class="btn go block" style="margin-bottom:14px" onclick="Take.create()">Start a new stock count</button>`}
+      ${sub.length?`<div class="sec">Ready to review</div><div class="card">${sub.map(t=>`<div class="row tap" onclick="Take.review('${t.id}')"><div class="m"><div class="t">Count by ${esc(t.counted_by||'courier')}</div><div class="u">submitted ${new Date(t.submitted_at).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})} · ${Object.keys(t.counts||{}).length} products</div></div><div class="e"><span class="tag amber">${this.rows(t).filter(r=>r.diff).length} off</span></div></div>`).join('')}</div>`:''}
+      ${past.length?`<div class="sec">History</div><div class="card">${past.map(t=>`<div class="row tap" onclick="Take.review('${t.id}')"><div class="m"><div class="t">${t.status==='applied'?'Applied':'Cancelled'} · ${esc(t.counted_by||'—')}</div><div class="u">${new Date(t.submitted_at||t.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}${t.status==='applied'?' · '+this.rows(t).filter(r=>r.diff).length+' corrected':''}</div></div></div>`).join('')}</div>`:''}`;
+  },
+};
 const Mov = {
   t:'in',
   render(){ const M=[...Store.cache.movements].sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).slice(0,150); const ic={in:['↑','go'],out:['↓','red'],sale:['$','blue'],adj:['±','amber']};

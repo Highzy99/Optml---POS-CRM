@@ -375,3 +375,8 @@ alter table purchase_orders add column if not exists unit_cost numeric, add colu
 
 -- Nov 2026: supplier prices doubled
 -- update products set cost = round((cost*2)::numeric,2) where cost>0;  (applied to the live DB on 10 Nov 2026)
+
+-- Nov 2026: blind stock take (courier counts on /count without seeing stock numbers)
+create table if not exists public.stocktakes (id text primary key, token text unique not null, status text not null default 'open', counted_by text, counts jsonb default '{}'::jsonb, expected jsonb default '{}'::jsonb, note text, created_at timestamptz default now(), submitted_at timestamptz, applied_at timestamptz);
+alter table public.stocktakes enable row level security;
+-- policy auth_all (signed-in only) + security-definer functions stocktake_get(token) and stocktake_submit(token, counts, name) granted to anon — see migration "blind_stocktake"

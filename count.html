@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>OPTML stock count</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F6F4EE;--card:#fff;--ink:#141412;--ink-2:#4a4a45;--ink-3:#8a887f;--line:#e4e0d5;--go:#0E6F62;--go-bg:#e3f0ed;--red:#b3261e;--amber:#9a5b00}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--paper);color:var(--ink);font:16px/1.4 "Instrument Sans",system-ui,sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:16px 16px 140px}
+header{display:flex;align-items:center;justify-content:space-between;padding:8px 0 14px}
+header img{height:22px}
+h1{font:400 34px/1.05 "Instrument Serif",serif;margin:6px 0 6px}
+h1 em{color:var(--go)}
+.sub{color:var(--ink-2);font-size:15px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:12px}
+.pad{padding:14px 16px}
+label.lab{display:block;font:600 11px/1 "JetBrains Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+input.in{width:100%;min-height:46px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font:inherit;background:#fff;color:var(--ink)}
+input.in:focus{outline:2px solid var(--go);border-color:transparent}
+.cat{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#faf8f3;border-bottom:1px solid var(--line);font:italic 400 20px "Instrument Serif",serif}
+.cat small{margin-left:auto;font:400 12px "JetBrains Mono",monospace;color:var(--ink-3)}
+.row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .n{flex:1;min-width:0}
+.row .n b{display:block;font-weight:500}
+.row .n span{font:400 12px "JetBrains Mono",monospace;color:var(--ink-3)}
+.row input{width:86px;flex:0 0 86px;min-height:48px;border:1px solid var(--line);border-radius:12px;text-align:center;font:600 20px "JetBrains Mono",monospace;background:#fff}
+.row input:focus{outline:2px solid var(--go);border-color:transparent}
+.row.done input{background:var(--go-bg);border-color:var(--go-bg)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(246,244,238,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.bar .in2{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.prog{flex:1;font:600 13px "JetBrains Mono",monospace;color:var(--ink-2)}
+.prog i{display:block;height:4px;border-radius:2px;background:var(--line);margin-top:6px;overflow:hidden}
+.prog i b{display:block;height:100%;background:var(--go);width:0}
+.btn{min-height:50px;padding:0 22px;border-radius:14px;border:0;background:var(--go);color:#fff;font:600 16px "Instrument Sans",sans-serif}
+.btn:disabled{opacity:.5}
+.note{background:#fff7e6;border:1px solid #f0dcb4;color:var(--amber);border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:14px}
+.center{text-align:center;padding:60px 10px}
+.center .big{font:400 54px "Instrument Serif",serif;color:var(--go)}
+.err{color:var(--red)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="center"><div class="sub">Loading…</div></div></div>
+<div class="bar" id="bar" style="display:none"><div class="in2"><div class="prog" id="prog">0 of 0 counted<i><b id="progb"></b></i></div><button class="btn" id="submit" onclick="submitCount()">Submit count</button></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const URL_='https://suhxeslmyugjedjqwgtz.supabase.co', KEY='sb_publishable_qnqBl5G9ybuh_9n9YpXSPw_kptUSiZi';
+const sb=supabase.createClient(URL_,KEY,{auth:{persistSession:false}});
+const token=new URLSearchParams(location.search).get('t')||'';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let P=[]; const DKEY='optml_count_'+token;
+const load=()=>{ try{ return JSON.parse(localStorage.getItem(DKEY)||'{}'); }catch(e){ return {}; } };
+const save=d=>{ try{ localStorage.setItem(DKEY,JSON.stringify(d)); }catch(e){} };
+let draft=load();
+
+function msg(html){ $('app').innerHTML=`<header><img src="assets/optml-wordmark-dark.svg" alt="optml"></header><div class="center">${html}</div>`; $('bar').style.display='none'; }
+
+async function init(){
+  if(!token){ msg('<div class="sub err">This link is missing its code. Ask for a new stock count link.</div>'); return; }
+  const {data,error}=await sb.rpc('stocktake_get',{p_token:token});
+  if(error){ msg(`<div class="sub err">Couldn't load the count: ${esc(error.message)}</div>`); return; }
+  if(data.error==='submitted'||data.error==='applied'){ msg('<div class="big">✓</div><div class="sub">This count has already been submitted. Thanks!</div>'); return; }
+  if(data.error){ msg('<div class="sub err">This count link is no longer active. Ask for a new one.</div>'); return; }
+  P=data.products||[];
+  const cats=[...new Set(P.map(p=>p.category||'Other'))];
+  $('app').innerHTML=`<header><img src="assets/optml-wordmark-dark.svg" alt="optml"><span style="font:400 12px 'JetBrains Mono',monospace;color:var(--ink-3)">${new Date(data.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</span></header>
+    <h1>Stock <em>count</em></h1>
+    <div class="sub">Count what's physically there and type the number of vials for each product. Put <b>0</b> if there are none. Your counts save on this phone as you go.</div>
+    <div class="card"><div class="pad"><label class="lab" for="who">Counted by</label><input class="in" id="who" placeholder="Your name" value="${esc(draft.__who||'')}" oninput="draft.__who=this.value;save(draft)"></div></div>
+    ${cats.map(c=>{ const L=P.filter(p=>(p.category||'Other')===c); return `<div class="card"><div class="cat">${esc(c)}<small>${L.length}</small></div>${L.map(p=>`<div class="row ${draft[p.id]!=null&&draft[p.id]!==''?'done':''}" id="r-${p.id}"><div class="n"><b>${esc(p.name)}</b><span>${esc(p.sku||'')}</span></div><input type="number" inputmode="numeric" pattern="[0-9]*" min="0" step="1" placeholder="–" value="${draft[p.id]??''}" oninput="setCount('${p.id}',this.value)" aria-label="Count for ${esc(p.name)}"></div>`).join('')}</div>`; }).join('')}`;
+  $('bar').style.display='block'; prog();
+}
+function setCount(id,v){ v=v.trim(); if(v==='') delete draft[id]; else draft[id]=v; save(draft); $('r-'+id).classList.toggle('done',v!==''); prog(); }
+function prog(){ const n=P.filter(p=>draft[p.id]!=null&&draft[p.id]!=='').length; $('prog').firstChild.textContent=`${n} of ${P.length} counted`; $('progb').style.width=(P.length?n/P.length*100:0)+'%'; }
+async function submitCount(){
+  const who=(draft.__who||'').trim(); if(!who){ alert('Add your name at the top first.'); $('who').focus(); return; }
+  const counts={}; for(const p of P){ const v=draft[p.id]; if(v!=null&&v!==''){ const n=Math.floor(+v); if(!(n>=0)){ alert('Check the number for '+p.name); return; } counts[p.id]=n; } }
+  const missing=P.length-Object.keys(counts).length;
+  if(!Object.keys(counts).length){ alert('Nothing counted yet.'); return; }
+  if(missing&&!confirm(`${missing} product${missing>1?'s are':' is'} still blank and won't be counted. Submit anyway?`)) return;
+  if(!missing&&!confirm('Submit the count? You can’t change it after this.')) return;
+  $('submit').disabled=true; $('submit').textContent='Sending…';
+  const {data,error}=await sb.rpc('stocktake_submit',{p_token:token,p_counts:counts,p_name:who});
+  if(error||data?.error){ $('submit').disabled=false; $('submit').textContent='Submit count'; alert('Couldn’t submit: '+(error?.message||data.error)); return; }
+  try{ localStorage.removeItem(DKEY); }catch(e){}
+  msg(`<div class="big">✓</div><h1 style="margin-top:4px">Thanks${who?', '+esc(who.split(' ')[0]):''}!</h1><div class="sub">${Object.keys(counts).length} products counted and sent.</div>`);
+}
+init();
+</script>
+</body>
+</html>
