@@ -537,7 +537,7 @@ const Home = {
     const todayS=S.filter(s=>s.date===t), weekS=S.filter(s=>s.date>=w), prevW=S.filter(s=>s.date>=addDays(-dow-7)&&s.date<=addDays(-7));
     const rev=sum(weekS,s=>s.total), prev=sum(prevW,s=>s.total); const d=prev?Math.round((rev-prev)/prev*100):null;
     const open=S.filter(s=>['New','Paid','Sent to Courier'].includes(s.status)).length;
-    $('home-strip').innerHTML=`<div class="s"><div class="k">Today</div><div class="v go">${money(sum(todayS,s=>s.total))}</div><div class="d">${money(Profit.sumOf(todayS).net)} net</div></div><div class="s"><div class="k">This week</div><div class="v">${money(rev)}</div><div class="d ${d===null?'':d>=0?'up':'down'}">${money(Profit.sumOf(weekS).net)} net${d!==null?` · ${d>=0?'▲':'▼'}${Math.abs(d)}%`:''}</div></div><div class="s"><div class="k">To dispatch</div><div class="v ${open?'amber':''}">${open}</div><div class="d">open</div></div>`;
+    $('home-strip').innerHTML=`<div class="s"><div class="k">Today</div><div class="v go">${money(sum(todayS,s=>s.total))}</div><div class="d">${App.courier?(todayS.length+' order'+(todayS.length!==1?'s':'')):money(Profit.sumOf(todayS).net)+' net'}</div></div><div class="s"><div class="k">This week</div><div class="v">${money(rev)}</div><div class="d ${d===null?'':d>=0?'up':'down'}">${App.courier?(weekS.length+' order'+(weekS.length!==1?'s':'')):money(Profit.sumOf(weekS).net)+' net'}${d!==null?` · ${d>=0?'▲':'▼'}${Math.abs(d)}%`:''}</div></div><div class="s"><div class="k">To dispatch</div><div class="v ${open?'amber':''}">${open}</div><div class="d">open</div></div>`;
     const lb=$('local-banner'); if(lb) lb.style.display=Store.mode==='local'?'block':'none';
     this.spark(S); this.courierCard();
     // attention
