@@ -337,3 +337,6 @@ img.logo{height:24px;width:auto;display:block}
 .inv .rk svg{display:none}
 .authbox h1 img{height:40px;width:auto;display:block}
 .tag.g-restore{background:#dbeafe;color:#1f4cbb}.tag.g-weight{background:#ffe1e1;color:#792122}.tag.g-glow{background:#ffe3ec;color:#a93e74}.tag.g-energy{background:#ffe4d3;color:#5f240f}.tag.g-growth{background:#dff5e5;color:#24462c}.tag.g-edge{background:#fde6fc;color:#553654}.tag.g-vitality{background:#f8f5c9;color:#383110}.tag.g-sleep{background:#e9ddff;color:#3b2a57}.tag.g-immunity{background:#e6f3c4;color:#385201}.tag.g-essentials{background:var(--paper-3);color:var(--ink-2)}
+
+/* courier login: hide stock, costs, reports, settings */
+body.courier .owner-only{display:none!important}

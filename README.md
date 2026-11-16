@@ -161,6 +161,10 @@ Product cost is kept in USD per vial. When stock comes in at a known price — *
 
 Setting a sale to **Cancelled** puts its items (and bac water) back into stock, logged in Movements as "#N cancelled — returned to stock". Changing it back from Cancelled deducts them again. Deleting a sale that wasn't already cancelled also returns its stock. Each sale remembers whether its stock has been returned, so this can't double up.
 
+## Courier login
+
+Any account that isn't an owner (`OWNER_EMAILS` in app.js, plus `settings.access.owners`) gets the courier view: no Stock tab, no stock numbers (Sell shows Available / Out of stock), no costs or profit, no Insights, reports, backup or settings. They can still make sales, see orders, dispatch and see what they're owed. This is a screen-level restriction for convenience — it is not a database permission.
+
 ## Stock take (blind count)
 
 Stock → **Stock take** → *Start a new stock count* makes a private link (`/count?t=…`) to send the courier (Telegram group, WhatsApp or copy). The page lists every visible product by name only — it never shows stock numbers or costs — so they have to physically count. They enter a number per product, add their name and submit; the link then stops working. Back in Stock take you see each product's counted vs app figure, the vials short/extra and the value at cost, and **Apply count to stock** (needs the stock passcode if set) corrects each product. Any sales made after they submitted are kept: the correction is counted − app figure at submission, applied to today's stock. Uncounted products are left alone. Every correction is logged in Movements.

@@ -235,7 +235,7 @@ const Telegram = {
 // DATA — backup / restore
 // ============================================================
 const Data = {
-  exportJSON(){
+  exportJSON(){ if(!App.ownerOnly()) return;
     const blob=new Blob([JSON.stringify({exported:new Date().toISOString(),...Store.cache},null,2)],{type:'application/json'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`optml-backup-${today()}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); toast('Backup downloaded');
   },
@@ -285,6 +285,7 @@ const Auth = {
 const Nav = {
   cur:'home',
   go(s){
+    if(App.courier&&(s==='stock')) s='home';
     this.cur=s; $$('.screen').forEach(e=>e.classList.toggle('on',e.id==='sc-'+s)); $$('.nb').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
     $('more-btn').style.display = s==='more'?'none':'flex';
     window.scrollTo({top:0});
@@ -355,7 +356,7 @@ const Profit = {
 // ============================================================
 const Insights = {
   r:'30',
-  open(){ Sheet.open('sh-insights'); this.render(); },
+  open(){ if(!App.ownerOnly()) return; Sheet.open('sh-insights'); this.render(); },
   set(r){ this.r=r; this.render(); },
   range(){ const t=today(); if(this.r==='7') return [addDays(-6),t,addDays(-13),addDays(-7)]; if(this.r==='30') return [addDays(-29),t,addDays(-59),addDays(-30)]; if(this.r==='90') return [addDays(-89),t,addDays(-179),addDays(-90)]; return ['0000-00-00',t,null,null]; },
   delta(a,b){ if(b===null||b===undefined||!b) return ''; const d=Math.round((a-b)/b*100); return `<span class="d ${d>=0?'up':'down'}" style="font-size:11px;margin-left:4px">${d>=0?'▲':'▼'}${Math.abs(d)}%</span>`; },
@@ -477,7 +478,7 @@ const Lock = {
   renderSettings(){ const on=this.enabled(); $('st-pin-state').innerHTML=on?'<span class="tag go">on</span> Passcode required to change stock by hand. Unlocks for 10 minutes after a correct entry.':'<span class="tag gray">off</span> Anyone with the app open can change stock.'; $('st-pin-clear').style.display=on?'inline-flex':'none'; $('st-pin-set').textContent=on?'Change passcode':'Turn on'; },
 };
 const Settings = {
-  open(){
+  open(){ if(!App.ownerOnly()) return;
     Lock.renderSettings();
     const tg=Store.get('telegram')||{}; $('st-tg-token').value=tg.token||''; $('st-tg-chat').value=tg.chat||'';
     $('st-courier-tpl').value=Store.get('courier_template')||''; $('st-dispatch-tpl').value=Store.get('dispatch_template')||''; $('st-quote-tpl').value=Store.get('quote_template')||DEFAULT_SETTINGS.quote_template;
@@ -546,7 +547,7 @@ const Home = {
     S.filter(s=>s.status==='Sent to Courier').forEach(s=>att.push({k:`With courier · #${s.sale_no}`,sku:sku(s),ic:ICON.box,c:'blue',t:`${(s.customer||{}).name||'Walk-in'}`,u:'Waiting on a tracking number',a:`<button class="btn xs ink" onclick="Sales.openDispatch('${s.id}')">Add tracking</button>`}));
     S.filter(s=>s.status==='New').forEach(s=>att.push({k:`Awaiting payment · #${s.sale_no}`,sku:sku(s),ic:ICON.clock,c:'amber',t:`${(s.customer||{}).name||'Walk-in'}`,u:money(s.total)+' by '+s.payment,a:`<button class="btn xs go" onclick="Sales.markPaid('${s.id}')">Mark paid</button><button class="btn xs" onclick="Sales.detail('${s.id}')">Open</button>`}));
     const low=Store.cache.products.filter(p=>!p.soon&&!p.hidden&&p.stock<=p.reorder);
-    if(low.length) att.push({k:'Reorder',sku:low[0].sku,ic:ICON.rocket,c:low.some(p=>p.stock<=0)?'red':'amber',t:`${low.length} product${low.length>1?'s':''} below minimum`,u:low.slice(0,4).map(p=>p.name+' ('+p.stock+')').join(', ')+(low.length>4?'…':''),a:`<button class="btn xs" onclick="Reports.launch()">Reorder report</button>`});
+    if(low.length&&!App.courier) att.push({k:'Reorder',sku:low[0].sku,ic:ICON.rocket,c:low.some(p=>p.stock<=0)?'red':'amber',t:`${low.length} product${low.length>1?'s':''} below minimum`,u:low.slice(0,4).map(p=>p.name+' ('+p.stock+')').join(', ')+(low.length>4?'…':''),a:`<button class="btn xs" onclick="Reports.launch()">Reorder report</button>`});
     const od=Store.cache.purchase_orders.filter(o=>o.status==='pending'&&o.eta&&o.eta<t);
     if(od.length) att.push({k:'Incoming',ic:ICON.truck,c:'amber',t:`${od.length} incoming order${od.length>1?'s':''} overdue`,u:od.map(o=>(Store.cache.products.find(p=>p.id===o.product_id)||{}).name).filter(Boolean).slice(0,3).join(', '),a:`<button class="btn xs" onclick="Nav.go('stock');Inv.view('po')">View</button>`});
     $('att-count').textContent=att.length?att.length+' items':''; 
@@ -588,7 +589,7 @@ const Sell = {
     const q=$('sell-q').value.trim().toLowerCase(); const box=$('sell-results');
     if(!q){ box.innerHTML=''; return; }
     const L=Store.cache.products.filter(p=>!p.soon&&!p.hidden&&p.category!=='Essentials'&&(p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q))).slice(0,9);
-    box.innerHTML=L.length?`<div class="tiles">${L.map(p=>{ const st=stockStatus(p); return `<button class="tile ${st==='out'?'out':''}" onclick="Sell.openPack('${p.id}')"><div class="n">${esc(p.name)}</div><div class="s">${esc(p.sku||'')}</div><div class="p">${p.sell1?'$'+p.sell1:'no price'}${p.sell3?' · 3pk $'+p.sell3:''}</div><div class="q ${st}">${p.stock} in stock</div></button>`; }).join('')}</div>`:'<div class="empty">No match</div>';
+    box.innerHTML=L.length?`<div class="tiles">${L.map(p=>{ const st=stockStatus(p); return `<button class="tile ${st==='out'?'out':''}" onclick="Sell.openPack('${p.id}')"><div class="n">${esc(p.name)}</div><div class="s">${esc(p.sku||'')}</div><div class="p">${p.sell1?'$'+p.sell1:'no price'}${p.sell3?' · 3pk $'+p.sell3:''}</div><div class="q ${st}">${App.courier?(st==='out'?'Out of stock':'Available'):p.stock+' in stock'}</div></button>`; }).join('')}</div>`:'<div class="empty">No match</div>';
   },
   openPack(id){
     const p=Store.cache.products.find(x=>x.id===id); this.packP=p; this.packI=null; $('pack-title').innerHTML=`${goalBadge(p.category)}${esc(p.name)}`;
@@ -615,7 +616,7 @@ const Sell = {
   renderCart(){
     $('cart-lines').innerHTML=this.cart.length?this.cart.map((c,i)=>`<div class="cl"><div class="n"><b>${esc(c.name)}</b><small>${c.custom?'custom':esc(c.sku||'')} · ${c.pack_qty===1?(c.custom?'each':'single'):c.pack_qty+'-pack'} · ${money(c.price)}</small></div><div class="qty"><button onclick="Sell.qty(${i},-1)">−</button><b>${c.count}</b><button onclick="Sell.qty(${i},1)">+</button></div><span class="amt">${money(c.price*c.count)}</span><button class="x" onclick="Sell.rm(${i})">×</button></div>`).join(''):'<div class="empty">Search above to add products</div>';
     const n=sum(this.cart,c=>c.count); $('cart-n').textContent=n?n+' item'+(n!==1?'s':''):'';
-    const b3=Store.cache.products.find(p=>p.sku==='BW03'),b10=Store.cache.products.find(p=>p.sku==='BW10'); $('bac-stock').textContent=`${b3?b3.stock:'—'} × 3ml · ${b10?b10.stock:'—'} × 10ml in stock`;
+    const b3=Store.cache.products.find(p=>p.sku==='BW03'),b10=Store.cache.products.find(p=>p.sku==='BW10'); $('bac-stock').textContent=App.courier?'':`${b3?b3.stock:'—'} × 3ml · ${b10?b10.stock:'—'} × 10ml in stock`;
     this.calc();
   },
 
@@ -850,7 +851,7 @@ const Sales = {
         <div class="actions" style="margin-top:4px">${actions.join('')}</div></div></div>
       <div class="card" style="margin-bottom:12px"><div class="pad">${items}${s.manual_amount?`<div class="tl"><span class="k">Manual amount</span><span class="v">${money(s.manual_amount)}</span></div>`:''}${bac}
         <div class="tl" style="border-top:1px solid var(--rule);margin-top:6px"><span class="k">Subtotal</span><span class="v">${money(s.subtotal)}</span></div>${s.discount?`<div class="tl"><span class="k">Discount</span><span class="v">−${money(s.discount)}</span></div>`:''}<div class="tl"><span class="k">Shipping</span><span class="v">${s.shipping?money(s.shipping):'Free'}</span></div><div class="tl big"><span class="k">Total</span><span class="v">${money(s.total)}</span></div></div></div>
-      ${(()=>{ const p=Profit.of(s); return `<div class="card" style="margin-bottom:12px"><div class="pad"><div class="lab">Profit</div><div class="tl"><span class="k">Product cost <span class="mono" style="font-size:11px;color:var(--ink-3)">@ ${p.fx} AUD/USD</span></span><span class="v">−${money(p.cogs)}</span></div><div class="tl"><span class="k">Gross profit</span><span class="v">${money(p.gross)}</span></div>${p.ship||p.pack?`<div class="tl"><span class="k">Postage + box &amp; mailer</span><span class="v">−${money(p.ship+p.pack)}</span></div>`:''}${p.courier?`<div class="tl"><span class="k">Courier ${p.pct}% of ${money(p.base)}${s.courier_paid_at?' <span class="tag go">paid</span>':['Dispatched','Delivered'].includes(s.status)?' <span class="tag amber">owed</span>':''}</span><span class="v">−${money(p.courier)}</span></div>`:s.fulfilment!=='Shipped'?`<div class="tl"><span class="k" style="color:var(--ink-3)">No courier share (${s.fulfilment==='Self'?'posted yourself':'walk-in'})</span><span class="v"></span></div>`:''}<div class="tl big"><span class="k">Net profit</span><span class="v" style="color:${p.net>=0?'var(--go)':'var(--red)'}">${money(p.net)}</span></div>${p.known?'':'<div class="hint">Some items have no supplier cost — set it on the product to make this accurate.</div>'}</div></div>`; })()}
+      ${App.courier?'':(()=>{ const p=Profit.of(s); return `<div class="card" style="margin-bottom:12px"><div class="pad"><div class="lab">Profit</div><div class="tl"><span class="k">Product cost <span class="mono" style="font-size:11px;color:var(--ink-3)">@ ${p.fx} AUD/USD</span></span><span class="v">−${money(p.cogs)}</span></div><div class="tl"><span class="k">Gross profit</span><span class="v">${money(p.gross)}</span></div>${p.ship||p.pack?`<div class="tl"><span class="k">Postage + box &amp; mailer</span><span class="v">−${money(p.ship+p.pack)}</span></div>`:''}${p.courier?`<div class="tl"><span class="k">Courier ${p.pct}% of ${money(p.base)}${s.courier_paid_at?' <span class="tag go">paid</span>':['Dispatched','Delivered'].includes(s.status)?' <span class="tag amber">owed</span>':''}</span><span class="v">−${money(p.courier)}</span></div>`:s.fulfilment!=='Shipped'?`<div class="tl"><span class="k" style="color:var(--ink-3)">No courier share (${s.fulfilment==='Self'?'posted yourself':'walk-in'})</span><span class="v"></span></div>`:''}<div class="tl big"><span class="k">Net profit</span><span class="v" style="color:${p.net>=0?'var(--go)':'var(--red)'}">${money(p.net)}</span></div>${p.known?'':'<div class="hint">Some items have no supplier cost — set it on the product to make this accurate.</div>'}</div></div>`; })()}
       <div class="card"><div class="pad"><div class="tl"><span class="k">Date</span><span class="v">${fmtDateFull(s.date)}</span></div><div class="tl"><span class="k">Payment</span><span class="v" style="font-family:var(--sans);font-weight:400">${esc(pay)}</span></div><div class="tl"><span class="k">Fulfilment</span><span class="v" style="font-family:var(--sans);font-weight:400">${s.fulfilment==='Shipped'?'Courier':s.fulfilment==='Self'?'Posting myself':'Walk-in'}</span></div><div class="tl"><span class="k">Tracking</span><span class="v">${esc(s.tracking||'—')}</span></div>${s.customer_notified_at?`<div class="tl"><span class="k">Customer messaged</span><span class="v" style="font-size:12px">${new Date(s.customer_notified_at).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})} · WhatsApp</span></div>`:''}${s.courier_sent_at?`<div class="tl"><span class="k">Courier notified</span><span class="v" style="font-size:12px">${new Date(s.courier_sent_at).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span></div>`:''}
         <div class="f" style="margin-top:8px"><label>Notes</label><textarea class="in" rows="2" onblur="Sales.saveNotes('${s.id}',this.value)">${esc(s.notes||'')}</textarea></div></div></div>`;
     Sheet.open('sh-sale');
@@ -915,7 +916,7 @@ const Inv = {
     return `<div class="inv"><div class="rk" onclick="Inv.openEdit('${p.id}')">${goalBadge(p.category)||'<span class="goal-badge" style="background:var(--paper-3)"></span>'}</div><div class="m" onclick="Inv.openEdit('${p.id}')"><div class="n">${esc(p.name)}${p.soon?' <span class="tag gray">soon</span>':''}${p.hidden?' <span class="tag gray">hidden</span>':''}</div><div class="s"><span class="sku">${esc(p.sku||'')}</span>${p.supplier_sku?`<span>${esc(p.supplier_sku)}</span>`:''}<span>min ${p.reorder}</span>${inc?`<span style="color:var(--blue)">+${inc} incoming</span>`:''}${p.sell1?`<span>$${p.sell1}</span>`:''}</div></div><div class="stk" onclick="Inv.openEdit('${p.id}')"><div class="st ${st}">${p.stock}</div><div class="bar"><i class="${st}" style="width:${pct}%"></i></div></div><div class="ctr"><button onclick="Inv.quick('${p.id}',-1)">−</button><button onclick="Inv.quick('${p.id}',1)">+</button></div></div>`; },
   goal(c){ $('inv-cat').value=c; this.render(); },
   quick(id,d){ Lock.require(async()=>{ const p=Store.cache.products.find(x=>x.id===id); if(p.stock+d<0) return; await Store.adjustStock(p,d,d>0?'in':'out','quick count'); this.render(); }); },
-  openEdit(id){
+  openEdit(id){ if(!App.ownerOnly()) return;
     const p=id?Store.cache.products.find(x=>x.id===id):null; this.cur=p;
     $('prod-title').textContent=p?'Edit product':'New product'; $('p-del').style.display=p?'inline-flex':'none';
     $('p-name').value=p?.name||''; $('p-sku').value=p?.sku||''; $('p-cat').value=p?.category||''; $('p-stock').value=p?p.stock:0; $('p-reorder').value=p?p.reorder:5; $('p-sell1').value=p?.sell1||''; $('p-sell3').value=p?.sell3||''; $('p-sell5').value=p?.sell5||''; $('p-sell10').value=p?.sell10||''; $('p-cost').value=p?.cost||''; $('p-supsku').value=p?.supplier_sku||''; $('p-bac').value=p?.bac_size||'3ml';
@@ -944,7 +945,7 @@ const PO = {
     $('po-pending').innerHTML=pend.sort((a,b)=>(a.eta||'')<(b.eta||'')?-1:1).map(row).join('')||'<div class="empty">Nothing incoming</div>';
     $('po-arrived').innerHTML=arr.sort((a,b)=>(b.arrived_date||'')>(a.arrived_date||'')?1:-1).slice(0,30).map(row).join('')||'<div class="empty">—</div>';
   },
-  open(){ this.lines=[]; $('po-supplier').value=''; $('po-ref').value=''; $('po-date').value=today(); $('po-eta').value=addDays(14); ['po-dname','po-dphone','po-demail','po-daddr'].forEach(k=>$(k).value=''); this.addLine(); Sheet.open('dr-po'); },
+  open(){ if(!App.ownerOnly()) return; this.lines=[]; $('po-supplier').value=''; $('po-ref').value=''; $('po-date').value=today(); $('po-eta').value=addDays(14); ['po-dname','po-dphone','po-demail','po-daddr'].forEach(k=>$(k).value=''); this.addLine(); Sheet.open('dr-po'); },
   addLine(){ this.lines.push({product_id:'',qty:10,unit_cost:'',currency:'USD',cost_auto:true}); const i=this.lines.length-1; $('po-lines').insertAdjacentHTML('beforeend',this.rowHtml(this.lines[i],i)); },
   // product or currency chosen: pre-fill the cost with what it costs now (editable); keep a hand-typed cost. Updates that row only — never rebuilds the list while a picker is open.
   pick(i,pid){ const l=this.lines[i]; l.product_id=pid; this.fillCost(i); },
@@ -967,7 +968,7 @@ const PO = {
 const Take = {
   list(){ return Store.cache.stocktakes||[]; },
   link(t){ return location.origin+location.pathname.replace(/[^/]*$/,'')+'count?t='+t.token; },
-  open(){ if(Store.mode!=='cloud'){ toast('Stock takes need the cloud connection','err'); return; } Sheet.open('sh-take'); this.render(); },
+  open(){ if(!App.ownerOnly()) return; if(Store.mode!=='cloud'){ toast('Stock takes need the cloud connection','err'); return; } Sheet.open('sh-take'); this.render(); },
   async create(){
     const open=this.list().find(t=>t.status==='open'); if(open&&!confirm('There’s already an open count. Cancel it and start a new one?')) return;
     if(open) await Store.upsert('stocktakes',{id:open.id,status:'cancelled'});
@@ -1010,7 +1011,7 @@ const Mov = {
   t:'in',
   render(){ const M=[...Store.cache.movements].sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).slice(0,150); const ic={in:['↑','go'],out:['↓','red'],sale:['$','blue'],adj:['±','amber']};
     $('mov-list').innerHTML=M.map(m=>{ const [i,c]=ic[m.type]||['·','gray']; return `<div class="row"><div class="av" style="background:var(--paper-3);color:var(--${c});font-family:var(--mono)">${i}</div><div class="m"><div class="t">${esc(m.product_name||'')}</div><div class="u">${esc(m.note||m.type)}${m.cost_note?' · '+esc(m.cost_note):''}</div></div><div class="e"><span class="amt" style="color:var(--${c})">${m.qty>0?'+':''}${m.qty}</span><span class="hint mono" style="margin:0;font-size:11px">${new Date(m.date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span></div></div>`; }).join('')||'<div class="empty">No movements yet</div>'; },
-  open(){ $('mov-prod').innerHTML=Store.cache.products.filter(p=>!p.hidden).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.stock})</option>`).join(''); $('mov-qty').value=''; $('mov-note').value=''; this._costManual=false; this.curSet('USD'); this.type('in'); Sheet.open('dr-mov'); },
+  open(){ if(!App.ownerOnly()) return; $('mov-prod').innerHTML=Store.cache.products.filter(p=>!p.hidden).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.stock})</option>`).join(''); $('mov-qty').value=''; $('mov-note').value=''; this._costManual=false; this.curSet('USD'); this.type('in'); Sheet.open('dr-mov'); },
   cur:'USD',
   type(t){ this.t=t; $$('#mov-type button').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); $('mov-qty').placeholder=t==='adj'?'New stock count':'Quantity'; $('mov-cost-wrap').style.display=t==='in'?'block':'none'; this.costPreview(); },
   curSet(c){ this.cur=c; $$('#mov-cur button').forEach(b=>b.classList.toggle('on',b.dataset.c===c)); this.prefill(); this.costPreview(); },
@@ -1084,7 +1085,7 @@ window.Reports = {
       +`<h2>By day</h2>`+this.table(['Date','#Orders','#Revenue'],Object.keys(byDay).sort().reverse().map(d=>[fmtDateFull(d),byDay[d].n,money(byDay[d].r)]))
       +`<h2>Orders</h2>`+this.table(['#','Date','Customer','Items','Pay','Status','#Total','#Net'],S.sort((a,b)=>b.date>a.date?1:-1).map(s=>[s.sale_no,fmtDate(s.date),esc((s.customer||{}).name||'Walk-in'),esc((s.items||[]).map(i=>i.name+' ×'+(i.pack_qty*i.count)).join(', ')||(s.manual_amount?'manual':'')),esc(s.payment),`<span class="tag">${s.status}</span>`,money(s.total),money(Profit.of(s).net)]));
   },
-  sales(r='week'){
+  sales(r='week'){ if(!App.ownerOnly()) return;
     const [from,to,label]=this.rangeOf(r);
     const tb=[['today','Today'],['week','7 days'],['month','Month'],['30','30 days'],['90','90 days'],['all','All']].map(([k,l])=>`<button class="${k===r?'on':''}" onclick="try{parent.Reports.sales('${k}')}catch(e){parent.postMessage({optml:'report-sales',range:'${k}'},'*')}">${l}</button>`).join('')+`<button onclick="var a=prompt('From (YYYY-MM-DD)','${from==='0000-00-00'?addDays(-30):from}');var b=a&&prompt('To (YYYY-MM-DD)','${to}');if(a&&b)parent.Reports.sales(a+'|'+b)">Custom…</button>`;
     this.show('Sales report',label,this.salesBody(from,to),tb);
@@ -1096,19 +1097,19 @@ window.Reports = {
       +`<h2>Supplier order — 10-packs</h2><p style="color:#666;font-size:12px;margin:0 0 8px">Deficit = reorder minimum − (stock + incoming). Supplier sells in 10-packs, so packs = deficit ÷ 10 rounded up. Kit price = HXTNT list, USD, 1–9 kit tier.</p>`
       +this.table(['Product','Supplier code','#Stock','#Incoming','#Min','#Deficit','#10-packs','#Kit USD','#Cost USD'],rows.sort((a,b)=>b.packs-a.packs||a.p.name.localeCompare(b.p.name)).map(r=>[esc(r.p.name),esc(r.p.supplier_sku||r.p.sku||''),r.p.stock,r.inc||'—',r.p.reorder,r.deficit||'—',r.packs?`<b>${r.packs}</b>`:'—',r.p.cost?'$'+(r.p.cost*10):'—',r.packs&&r.p.cost?'$'+(r.packs*10*r.p.cost):'—']).concat([[`<b>Total</b>`,'','','','','',`<b>${totalPacks}</b>`,'',`<b>${cost?'US$'+cost:'—'}</b>`]]),r=>r[0].startsWith('<b>Total')?'tot':(r[6]!=='—'?'hl':''));
   },
-  launch(){ this.show('Reorder report','supplier order sheet',this.launchBody()); },
+  launch(){ if(!App.ownerOnly()) return; this.show('Reorder report','supplier order sheet',this.launchBody()); },
   inventoryBody(){
     const P=Store.cache.products.filter(p=>!p.hidden).sort((a,b)=>a.category.localeCompare(b.category)||a.name.localeCompare(b.name));
     return this.kpi([['Products',P.length],['Units',sum(P,p=>p.stock)],['Stock cost USD','US'+money(sum(P,p=>p.stock*(+p.cost||0)))],['Retail value AUD',money(sum(P,p=>p.stock*(+p.sell1||0)))],['Low',P.filter(p=>!p.soon&&p.stock<=p.reorder&&p.stock>0).length],['Out',P.filter(p=>!p.soon&&p.stock<=0).length]])
       +`<h2>Stock on hand</h2>`+this.table(['','Product','SKU','Supplier','Category','#Stock','#Incoming','#Min','Status','#Sell AUD','#Cost USD'],P.map(p=>['',esc(p.name),esc(p.sku||''),esc(p.supplier_sku||''),esc(p.category),p.stock,Inv.incoming(p.id)||'—',p.reorder,p.soon?'soon':stockStatus(p),p.sell1?'$'+p.sell1:'—',p.cost?'$'+p.cost:'—']),r=>r[8]==='out'?'bad':r[8]==='low'?'hl':'');
   },
-  inventory(){ this.show('Inventory','stock on hand',this.inventoryBody()); },
+  inventory(){ if(!App.ownerOnly()) return; this.show('Inventory','stock on hand',this.inventoryBody()); },
   ordersBody(){ const O=Store.cache.purchase_orders; const name=o=>esc((Store.cache.products.find(p=>p.id===o.product_id)||{}).name||'?'); const t=today();
     return `<h2>Pending</h2>`+this.table(['Product','#Qty','Supplier','Ref','Ordered','ETA'],O.filter(o=>o.status==='pending').sort((a,b)=>(a.eta||'')<(b.eta||'')?-1:1).map(o=>[name(o),o.qty,esc(o.supplier||''),esc(o.ref||''),fmtDate(o.order_date),fmtDate(o.eta)+(o.eta<t?' ⚠ overdue':'')]),r=>r[5].includes('overdue')?'hl':'')
       +`<h2>Arrived</h2>`+this.table(['Product','#Qty','Supplier','Ref','Ordered','Arrived'],O.filter(o=>o.status==='arrived').sort((a,b)=>(b.arrived_date||'')>(a.arrived_date||'')?1:-1).map(o=>[name(o),o.qty,esc(o.supplier||''),esc(o.ref||''),fmtDate(o.order_date),fmtDate(o.arrived_date)])); },
   orders(){ this.show('Incoming orders','purchase orders',this.ordersBody()); },
   movementsBody(){ const M=[...Store.cache.movements].sort((a,b)=>(b.created_at||b.date)>(a.created_at||a.date)?1:-1).slice(0,500); return this.table(['When','Product','Type','#Qty','Note'],M.map(m=>[new Date(m.created_at||m.date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}),esc(m.product_name||''),m.type,(m.qty>0?'+':'')+m.qty,esc(m.note||'')])); },
-  movements(){ this.show('Stock movements','last 500',this.movementsBody()); },
+  movements(){ if(!App.ownerOnly()) return; this.show('Stock movements','last 500',this.movementsBody()); },
   customersBody(){ const C=[...Store.cache.customers].sort((a,b)=>(b.total_spent||0)-(a.total_spent||0)); const t30=addDays(-30);
     return this.kpi([['Customers',C.length],['Lifetime revenue',money(sum(C,c=>c.total_spent||0))],['Repeat (2+)',C.filter(c=>(c.order_count||0)>=2).length],['Reorder due',C.filter(c=>c.last_seen&&c.last_seen<t30&&c.order_count).length]])
       +this.table(['Customer','Phone','City','#Orders','#Spent','Last order'],C.map(c=>[esc(c.name),esc(c.phone||''),esc([c.city,c.state].filter(Boolean).join(' ')),c.order_count||0,money(c.total_spent||0),c.last_seen?fmtDate(c.last_seen):'—']),r=>''); },
@@ -1121,13 +1122,20 @@ window.Reports = {
       +`<h2>Payments</h2>`+this.table(['Date','#Amount','Method','Note','#Orders'],P.map(p=>[fmtDateFull(p.date),money(p.amount),esc(p.method||''),esc(p.note||''),(p.sale_ids||[]).length]))
       +`<h2>All dispatched orders</h2>`+this.table(['#','Date','Customer','#Sale','#Courier share','Paid'],all.map(s=>[s.sale_no,fmtDate(s.date),esc((s.customer||{}).name||'Walk-in'),money(s.total),money(Profit.of(s).courier),s.courier_paid_at?fmtDate(s.courier_paid_at.slice(0,10)):'—'])));
   },
-  full(){ const [f,t]=this.rangeOf('30'); this.show('Full business report','everything',`<h2 style="margin-top:10px">Sales — last 30 days</h2>`+this.salesBody(f,t)+`<h2>Launch & reorder</h2>`+this.launchBody()+`<h2>Inventory</h2>`+this.inventoryBody()+`<h2>Incoming orders</h2>`+this.ordersBody()+`<h2>Customers</h2>`+this.customersBody()); },
+  full(){ if(!App.ownerOnly()) return; const [f,t]=this.rangeOf('30'); this.show('Full business report','everything',`<h2 style="margin-top:10px">Sales — last 30 days</h2>`+this.salesBody(f,t)+`<h2>Launch & reorder</h2>`+this.launchBody()+`<h2>Inventory</h2>`+this.inventoryBody()+`<h2>Incoming orders</h2>`+this.ordersBody()+`<h2>Customers</h2>`+this.customersBody()); },
 };
 
 // ============================================================
 // APP BOOT
 // ============================================================
+const OWNER_EMAILS=['hyrumjoseph@hotmail.com'];
 const App = {
+  courier:false,
+  // Anyone signed in who isn't an owner gets the courier view: no stock levels, costs, profit, reports or settings.
+  async role(){ let email=''; try{ const {data:{session}}=await Store.sb.auth.getSession(); email=(session?.user?.email||'').toLowerCase(); }catch(e){}
+    const owners=[...OWNER_EMAILS,...(((Store.get('access')||{}).owners)||[])].map(x=>String(x).toLowerCase());
+    this.courier=Store.mode==='cloud'&&!!email&&!owners.includes(email); document.body.classList.toggle('courier',this.courier); },
+  ownerOnly(){ if(this.courier){ toast('Not available on this login','err'); return false; } return true; },
   async boot(){
     const conn=JSON.parse(localStorage.getItem('optml_conn')||'null'); const skip=localStorage.getItem('optml_skip_setup');
     await Store.init();
@@ -1143,6 +1151,7 @@ const App = {
   },
   async start(){
     try{ await Store.loadAll(); }catch(e){ console.error(e); $('auth').classList.add('on'); Auth.showLogin(); $('auth-err').textContent='Could not load data: '+e.message+' — check the connection settings or run the SQL schema.'; $('auth-err').style.display='block'; return; }
+    await this.role();
     $('auth').classList.remove('on'); $('app').classList.add('on'); $('nav').classList.add('on');
     Nav.sync(Store.mode==='cloud'?'ok':'local',Store.mode==='cloud'?'Synced':'Local');
     Sell.applyShipping(); Nav.go('home'); this.realtime();
