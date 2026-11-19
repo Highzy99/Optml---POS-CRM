@@ -163,7 +163,7 @@ Setting a sale to **Cancelled** puts its items (and bac water) back into stock, 
 
 ## Courier login
 
-Any account that isn't an owner (`OWNER_EMAILS` in app.js, plus `settings.access.owners`) gets the courier view: no Stock tab, no stock numbers (Sell shows Available / Out of stock), no costs or profit, no Insights, reports, backup or settings. They can still make sales, see orders, dispatch and see what they're owed. This is a screen-level restriction for convenience — it is not a database permission.
+Access is controlled in the database: only accounts listed in `app_users` can read anything (role `owner` or `courier`). Settings → Team → **Invite a courier** makes a one-time link (`/join?code=…`, 14 days) where they create their own login; the join page signs out whatever login was on that phone first. Remove someone in Team to lock them out instantly. A courier gets the courier view: no Stock tab, no stock numbers (Sell shows Available / Out of stock), no costs or profit, no Insights, reports, backup or settings. They can still make sales, see orders, dispatch and see what they're owed. This is a screen-level restriction for convenience — it is not a database permission.
 
 ## Stock take (blind count)
 

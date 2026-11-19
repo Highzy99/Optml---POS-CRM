@@ -383,3 +383,8 @@ alter table public.stocktakes enable row level security;
 
 -- Nov 2026: courier expenses (postage he buys) live in courier_payments with kind='expense'
 alter table public.courier_payments add column if not exists kind text not null default 'payment';
+
+-- Nov 2026: members + roles + invites (see migration "members_roles_invites")
+-- app_users(user_id, email, name, role owner|courier); invites(code, role, note, expires_at, used_by)
+-- every data table: policy members_all using (public.is_member()) — a signed-up account that isn't in app_users sees nothing
+-- claim_invite(code, name) turns an invite into an app_users row; my_role() tells the app which view to show

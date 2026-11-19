@@ -492,6 +492,23 @@ const Lock = {
   clearPin(){ this.require(async()=>{ await Store.setSetting('stock_pin',{}); this.relock(); this.renderSettings(); toast('Stock lock off'); }); },
   renderSettings(){ const on=this.enabled(); $('st-pin-state').innerHTML=on?'<span class="tag go">on</span> Passcode required to change stock by hand. Unlocks for 10 minutes after a correct entry.':'<span class="tag gray">off</span> Anyone with the app open can change stock.'; $('st-pin-clear').style.display=on?'inline-flex':'none'; $('st-pin-set').textContent=on?'Change passcode':'Turn on'; },
 };
+
+// ---- Team: invite links (owner only) ----
+const Team = {
+  base(){ return location.origin+location.pathname.replace(/[^/]*$/,''); },
+  async render(){ const el=$('st-team'); if(!el||Store.mode!=='cloud') return; const [u,i]=await Promise.all([Store.sb.from('app_users').select('*').order('created_at'),Store.sb.from('invites').select('*').is('used_by',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false})]);
+    const U=u.data||[], I=i.data||[];
+    el.innerHTML=`${U.map(m=>`<div class="row"><div class="m"><div class="t">${esc(m.name||m.email)}</div><div class="u">${esc(m.email||'')}</div></div><div class="e"><span class="tag ${m.role==='owner'?'go':'amber'}">${m.role}</span>${m.role!=='owner'?`<button class="btn xs ghost" style="color:var(--red)" onclick="Team.remove('${m.user_id}')">Remove</button>`:''}</div></div>`).join('')}
+      ${I.map(v=>`<div class="row"><div class="m"><div class="t">Invite link · ${v.role}</div><div class="u">${esc(v.note||'')} · expires ${new Date(v.expires_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</div></div><div class="e"><button class="btn xs" onclick="Team.copy('${v.code}')">Copy</button><button class="btn xs ghost" style="color:var(--red)" onclick="Team.revoke('${v.code}')">Cancel</button></div></div>`).join('')}`; },
+  link(code){ return this.base()+'join?code='+code; },
+  async invite(){ if(!App.ownerOnly()) return; const note=prompt('Who is this invite for? (e.g. Kohan)','Kohan'); if(note===null) return;
+    const code=Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(36).padStart(2,'0')).join('').slice(0,22);
+    const {error}=await Store.sb.from('invites').insert({code,role:'courier',note}); if(error){ toast('Invite failed: '+error.message,'err',4000); return; }
+    await this.copy(code); this.render(); },
+  async copy(code){ const msg=`Here's your link to set up your OPTML courier login 👇\n\n${this.link(code)}\n\nOpen it, make an account with your email + a password, and you're in. Link works once and expires in 14 days.`; try{ await navigator.clipboard.writeText(msg); toast('Invite copied — paste it to him'); }catch(e){ prompt('Copy this:',msg); } },
+  async revoke(code){ if(!confirm('Cancel this invite link?')) return; await Store.sb.from('invites').delete().eq('code',code); this.render(); },
+  async remove(uid){ if(!confirm('Remove this person’s access? They’ll be locked out straight away.')) return; const {error}=await Store.sb.from('app_users').delete().eq('user_id',uid); if(error) toast(error.message,'err'); this.render(); },
+};
 const Settings = {
   open(){ if(!App.ownerOnly()) return;
     Lock.renderSettings();
@@ -1157,13 +1174,16 @@ window.Reports = {
 // ============================================================
 // APP BOOT
 // ============================================================
-const OWNER_EMAILS=['hyrumjoseph@hotmail.com'];
 const App = {
   courier:false,
   // Anyone signed in who isn't an owner gets the courier view: no stock levels, costs, profit, reports or settings.
-  async role(){ let email=''; try{ const {data:{session}}=await Store.sb.auth.getSession(); email=(session?.user?.email||'').toLowerCase(); }catch(e){}
-    const owners=[...OWNER_EMAILS,...(((Store.get('access')||{}).owners)||[])].map(x=>String(x).toLowerCase());
-    this.courier=Store.mode==='cloud'&&!!email&&!owners.includes(email); document.body.classList.toggle('courier',this.courier); },
+  role_:'owner',
+  // role comes from the app_users list in the database (owner / courier). Signed in but not on the list → no access.
+  async role(){ this.role_='owner';
+    if(Store.mode==='cloud'){ let r=null; try{ const {data,error}=await Store.sb.rpc('my_role'); if(!error){ r=data||'none'; try{ localStorage.setItem('optml_role',r); }catch(e){} } }catch(e){}
+      if(r===null){ try{ r=localStorage.getItem('optml_role'); }catch(e){} } this.role_=r||'courier'; } // offline: last known role, otherwise the restricted view
+    this.courier=this.role_==='courier'; document.body.classList.toggle('courier',this.courier);
+    if(this.role_==='none'){ document.body.innerHTML=`<div style="max-width:420px;margin:80px auto;padding:24px;font-family:system-ui;text-align:center"><img src="assets/optml-wordmark-dark.svg" style="height:26px;margin-bottom:28px"><h2 style="font-weight:500;margin-bottom:10px">Not set up yet</h2><p style="color:#555;margin-bottom:24px">This login doesn't have access. Ask Hyrum for an invite link.</p><button style="min-height:46px;padding:0 22px;border-radius:12px;border:1px solid #ccc;background:#fff;font-size:16px" onclick="Store.sb.auth.signOut().then(()=>location.reload())">Sign out</button></div>`; throw new Error('no access'); } },
   ownerOnly(){ if(this.courier){ toast('Not available on this login','err'); return false; } return true; },
   async boot(){
     const conn=JSON.parse(localStorage.getItem('optml_conn')||'null'); const skip=localStorage.getItem('optml_skip_setup');

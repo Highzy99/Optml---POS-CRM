@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Join OPTML</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F6F4EE;--ink:#141412;--ink-2:#4a4a45;--ink-3:#8a887f;--line:#e4e0d5;--go:#0E6F62;--red:#b3261e}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font:16px/1.45 "Instrument Sans",system-ui,sans-serif}
+.wrap{max-width:420px;margin:0 auto;padding:28px 16px 60px}
+img{height:24px;margin-bottom:28px}
+h1{font:400 36px/1.05 "Instrument Serif",serif;margin-bottom:8px} h1 em{color:var(--go)}
+p{color:var(--ink-2);margin-bottom:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin:10px 0 6px}
+input{width:100%;min-height:48px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font:inherit;background:#fff}
+input:focus{outline:2px solid var(--go);border-color:transparent}
+.btn{width:100%;min-height:50px;border:0;border-radius:14px;background:var(--go);color:#fff;font:600 16px "Instrument Sans",sans-serif;margin-top:16px}
+.btn:disabled{opacity:.5}
+.link{background:none;border:0;color:var(--go);font:inherit;text-decoration:underline;margin-top:12px;cursor:pointer}
+.msg{margin-top:12px;font-size:14px;min-height:20px}
+.err{color:var(--red)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <img src="assets/optml-wordmark-dark.svg" alt="optml">
+  <h1>Set up your <em>login</em></h1>
+  <p id="lead">Create your own login for the OPTML app.</p>
+  <div class="card">
+    <div id="name-wrap"><label for="name">Your name</label><input id="name" autocomplete="name" placeholder="First name"></div>
+    <label for="email">Email</label><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@email.com">
+    <label for="pw">Password</label><input id="pw" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+    <button class="btn" id="go" onclick="go()">Create my login</button>
+    <div class="msg" id="msg"></div>
+    <button class="link" id="switch" onclick="toggle()">Already made one? Sign in instead</button>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const sb=supabase.createClient('https://suhxeslmyugjedjqwgtz.supabase.co','sb_publishable_qnqBl5G9ybuh_9n9YpXSPw_kptUSiZi');
+const code=new URLSearchParams(location.search).get('code')||''; const $=id=>document.getElementById(id);
+let mode='signup';
+function say(t,err){ $('msg').textContent=t; $('msg').className='msg'+(err?' err':''); }
+function toggle(){ mode=mode==='signup'?'signin':'signup'; $('go').textContent=mode==='signup'?'Create my login':'Sign in'; $('switch').textContent=mode==='signup'?'Already made one? Sign in instead':'New here? Create a login'; $('name-wrap').style.display=mode==='signup'?'':'none'; $('pw').autocomplete=mode==='signup'?'new-password':'current-password'; say(''); }
+if(!code){ $('lead').innerHTML='<span class="err">This link is missing its invite code. Ask Hyrum for a new link.</span>'; $('go').disabled=true; }
+async function claim(){
+  const {data,error}=await sb.rpc('claim_invite',{p_code:code,p_name:$('name').value.trim()||null});
+  if(error) return say('Couldn’t finish setup: '+error.message,true);
+  if(data.error){ const m={bad_code:'This invite link isn’t valid.',used:'This invite link has already been used.',expired:'This invite link has expired.',not_signed_in:'Please sign in first.'}; return say((m[data.error]||data.error)+' Ask Hyrum for a new one.',true); }
+  $('app').innerHTML='<img src="assets/optml-wordmark-dark.svg" alt="optml"><h1>You’re <em>in</em></h1><p>Your login is ready. Opening the app…</p>';
+  try{ localStorage.setItem('optml_conn',JSON.stringify({url:'https://suhxeslmyugjedjqwgtz.supabase.co',key:'sb_publishable_qnqBl5G9ybuh_9n9YpXSPw_kptUSiZi'})); localStorage.setItem('optml_role',data.role); }catch(e){}
+  setTimeout(()=>location.href='./',1200);
+}
+async function go(){
+  const email=$('email').value.trim(), pw=$('pw').value;
+  if(!/\S+@\S+\.\S+/.test(email)) return say('Enter your email',true);
+  if(pw.length<8) return say('Password needs at least 8 characters',true);
+  $('go').disabled=true; say(mode==='signup'?'Creating your login…':'Signing in…');
+  await sb.auth.signOut({scope:'local'}).catch(()=>{});
+  if(mode==='signup'){
+    const {data,error}=await sb.auth.signUp({email,password:pw,options:{emailRedirectTo:location.href}});
+    $('go').disabled=false;
+    if(error) return say(error.message,true);
+    if(!data.session){ say('Check your email and tap the confirm link, then come back to this page and sign in.'); toggle(); $('email').value=email; return; }
+  } else {
+    const {error}=await sb.auth.signInWithPassword({email,password:pw}); $('go').disabled=false;
+    if(error) return say(error.message==='Invalid login credentials'?'Wrong email or password':error.message,true);
+  }
+  await claim();
+}
+// Coming back from the email-confirm link: finish setup. Otherwise sign out whoever is on this phone first,
+// so a phone that was using someone else's login can't carry it into this invite.
+(async()=>{ const fromEmail=/access_token|type=signup/.test(location.hash);
+  if(fromEmail){ const {data}=await sb.auth.getSession(); if(data.session&&code){ say('Finishing setup…'); claim(); return; } }
+  await sb.auth.signOut({scope:'local'}).catch(()=>{}); try{ localStorage.removeItem('optml_role'); }catch(e){} })();
+</script>
+</body>
+</html>
