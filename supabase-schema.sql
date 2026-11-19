@@ -380,3 +380,6 @@ alter table purchase_orders add column if not exists unit_cost numeric, add colu
 create table if not exists public.stocktakes (id text primary key, token text unique not null, status text not null default 'open', counted_by text, counts jsonb default '{}'::jsonb, expected jsonb default '{}'::jsonb, note text, created_at timestamptz default now(), submitted_at timestamptz, applied_at timestamptz);
 alter table public.stocktakes enable row level security;
 -- policy auth_all (signed-in only) + security-definer functions stocktake_get(token) and stocktake_submit(token, counts, name) granted to anon — see migration "blind_stocktake"
+
+-- Nov 2026: courier expenses (postage he buys) live in courier_payments with kind='expense'
+alter table public.courier_payments add column if not exists kind text not null default 'payment';

@@ -238,6 +238,12 @@
   <div class="sheet-b" id="co-body" style="padding-bottom:40px"></div>
 </div>
 
+<div class="drawer-bg" id="dr-cexp"><div class="drawer"><div class="grab"></div><h3>Postage / expense</h3>
+  <div class="hint" style="margin-top:-6px">Money the courier spent for you, e.g. postage satchels. It's added to what you owe him and settled with your next payment.</div>
+  <div class="g2"><div class="f"><label>Amount $</label><input class="in" id="ce-amount" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div><div class="f"><label>Date</label><input class="in" id="ce-date" type="date"></div></div>
+  <div class="f"><label>What for</label><input class="in" id="ce-note" placeholder="e.g. 20 × Express satchels"></div>
+  <div class="actions"><button class="btn" onclick="Sheet.close('dr-cexp')">Cancel</button><button class="btn ink" onclick="Courier.saveExp()">Add</button></div>
+</div></div>
 <div class="drawer-bg" id="dr-cpay"><div class="drawer"><div class="grab"></div><h3>Record courier payment</h3>
   <div class="g2"><div class="f"><label>Amount $</label><input class="in" id="cp-amount" type="number" inputmode="decimal" step="0.01" oninput="Courier.payPreview()"></div><div class="f"><label>Date</label><input class="in" id="cp-date" type="date"></div></div>
   <div class="g2"><div class="f"><label>Method</label><select class="in" id="cp-method"><option>BKP</option><option>Cash</option><option>KJ</option><option>Bank</option><option>Other</option></select></div><div class="f"><label>Note</label><input class="in" id="cp-note" placeholder="optional"></div></div>
