@@ -289,6 +289,8 @@
     <div class="card"><div class="pad"><textarea class="in" id="st-quote-tpl" rows="7" style="font-size:13px"></textarea><div class="hint">{first_name} {name} {items} {bac} {subtotal} {discount} {shipping} {total}</div></div></div>
     <div class="sec">Shipping</div>
     <div class="card"><div class="pad g2"><div class="f"><label>Express rate $</label><input class="in" id="st-ship-flat" type="number" inputmode="decimal"></div><div class="f"><label>Free over $</label><input class="in" id="st-ship-free" type="number" inputmode="decimal"></div></div></div>
+    <div class="sec owner-only">Your login</div>
+    <div class="card owner-only"><div class="pad"><div class="g2"><div class="f"><label>New password</label><input class="in" id="st-pw1" type="password" autocomplete="new-password" placeholder="At least 8 characters"></div><div class="f"><label>Confirm</label><input class="in" id="st-pw2" type="password" autocomplete="new-password"></div></div><button class="btn go block" id="st-pw-btn" onclick="Account.changePw()">Change password &amp; sign out other phones</button><div class="hint">This phone stays signed in. Every other phone using your login is signed out and needs the new password.</div></div></div>
     <div class="sec">Team <small>who can sign in</small></div>
     <div class="card"><div id="st-team"></div><div class="pad"><button class="btn go block" onclick="Team.invite()">Invite a courier</button><div class="hint">Makes a one-time link (valid 14 days) that lets someone create their own login with the courier view — no stock, costs, revenue or settings. Remove anyone here to lock them out instantly.</div></div></div>
     <div class="sec">Stock lock</div>

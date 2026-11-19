@@ -494,6 +494,16 @@ const Lock = {
 };
 
 // ---- Team: invite links (owner only) ----
+const Account = {
+  // change your own password, then sign out every other phone using this login
+  async changePw(){ if(Store.mode!=='cloud') return toast('Cloud only','err'); const p1=$('st-pw1').value, p2=$('st-pw2').value;
+    if(p1.length<8) return toast('At least 8 characters','err'); if(p1!==p2) return toast('Passwords don’t match','err');
+    const b=$('st-pw-btn'); b.disabled=true; b.textContent='Saving…';
+    const {error}=await Store.sb.auth.updateUser({password:p1});
+    if(error){ b.disabled=false; b.textContent='Change password & sign out other phones'; return toast(error.message,'err',5000); }
+    const r=await Store.sb.auth.signOut({scope:'others'}); $('st-pw1').value=''; $('st-pw2').value=''; b.disabled=false; b.textContent='Change password & sign out other phones';
+    toast(r&&r.error?'Password changed — but other phones weren’t signed out: '+r.error.message:'Password changed · every other phone is signed out','ok',5000); },
+};
 const Team = {
   base(){ return location.origin+location.pathname.replace(/[^/]*$/,''); },
   async render(){ const el=$('st-team'); if(!el||Store.mode!=='cloud') return; const [u,i]=await Promise.all([Store.sb.from('app_users').select('*').order('created_at'),Store.sb.from('invites').select('*').is('used_by',null).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false})]);
