@@ -421,7 +421,9 @@ const Insights = {
 // COURIER PAYMENTS — tracks the courier's share of profit (accrues when an order is dispatched)
 // ============================================================
 const Courier = {
-  owedSales(){ return Store.cache.sales.filter(s=>s.fulfilment==='Shipped'&&['Dispatched','Delivered'].includes(s.status)&&Profit.of(s).courier>0); },
+  // only paid orders earn the courier a share — an order dispatched while still awaiting payment waits until it's marked paid
+  owedSales(){ return Store.cache.sales.filter(s=>s.fulfilment==='Shipped'&&['Dispatched','Delivered'].includes(s.status)&&!!s.paid_at&&Profit.of(s).courier>0); },
+  awaitingPay(){ return Store.cache.sales.filter(s=>s.fulfilment==='Shipped'&&['Dispatched','Delivered'].includes(s.status)&&!s.paid_at); },
   unpaid(){ return this.owedSales().filter(s=>!s.courier_paid_at).sort((a,b)=>a.date<b.date?-1:1); },
   totals(){
     const owed=this.owedSales(); const accrued=sum(owed,s=>Profit.of(s).courier); const paid=sum(Store.cache.courier_payments,p=>+p.amount||0);
@@ -545,6 +547,7 @@ const Home = {
     const sku=s=>((s.items||[])[0]||{}).sku;
     S.filter(s=>s.status==='Paid'&&s.fulfilment==='Shipped'&&!s.courier_sent_at).forEach(s=>att.push({k:`Send to courier · #${s.sale_no}`,sku:sku(s),ic:ICON.send,c:'violet',t:`${(s.customer||{}).name||'Walk-in'}`,u:(s.items||[]).map(i=>i.name+' ×'+i.count).join(', '),a:`<button class="btn xs go" onclick="Sales.resend('${s.id}')">Send to courier</button><button class="btn xs" onclick="Sales.detail('${s.id}')">Open</button>`}));
     S.filter(s=>s.status==='Sent to Courier').forEach(s=>att.push({k:`With courier · #${s.sale_no}`,sku:sku(s),ic:ICON.box,c:'blue',t:`${(s.customer||{}).name||'Walk-in'}`,u:'Waiting on a tracking number',a:`<button class="btn xs ink" onclick="Sales.openDispatch('${s.id}')">Add tracking</button>`}));
+    Courier.awaitingPay().forEach(s=>att.push({k:`Sent but unpaid · #${s.sale_no}`,sku:sku(s),ic:ICON.clock,c:'red',t:`${(s.customer||{}).name||'Walk-in'}`,u:money(s.total)+' · courier share waits until it\'s paid',a:`<button class="btn xs go" onclick="Sales.markPaid('${s.id}').then(()=>Home.render())">Mark paid</button><button class="btn xs" onclick="Sales.detail('${s.id}')">Open</button>`}));
     S.filter(s=>s.status==='New').forEach(s=>att.push({k:`Awaiting payment · #${s.sale_no}`,sku:sku(s),ic:ICON.clock,c:'amber',t:`${(s.customer||{}).name||'Walk-in'}`,u:money(s.total)+' by '+s.payment,a:`<button class="btn xs go" onclick="Sales.markPaid('${s.id}')">Mark paid</button><button class="btn xs" onclick="Sales.detail('${s.id}')">Open</button>`}));
     const low=Store.cache.products.filter(p=>!p.soon&&!p.hidden&&p.stock<=p.reorder);
     if(low.length&&!App.courier) att.push({k:'Reorder',sku:low[0].sku,ic:ICON.rocket,c:low.some(p=>p.stock<=0)?'red':'amber',t:`${low.length} product${low.length>1?'s':''} below minimum`,u:low.slice(0,4).map(p=>p.name+' ('+p.stock+')').join(', ')+(low.length>4?'…':''),a:`<button class="btn xs" onclick="Reports.launch()">Reorder report</button>`});
@@ -567,7 +570,7 @@ const Home = {
 // SELL (stepped)
 // ============================================================
 const Sell = {
-  s:1, cart:[], bac:{bac3:0,bac10:0}, shipMode:'auto', discMode:'none', payment:'Cash', splits:[], fulfilment:'Shipped', paidNow:true, customerId:null, packP:null, packI:null,
+  s:1, cart:[], bac:{bac3:0,bac10:0}, shipMode:'auto', discMode:'none', payment:'Cash', splits:[], fulfilment:'Shipped', isPaid:true, customerId:null, packP:null, packI:null,
   open(){ Sheet.open('sh-sell'); this.applyShipping(); this.render(); setTimeout(()=>$('sell-q').focus(),200); },
   close(){ if(this.cart.length&&!confirm('Discard this sale?')) return; this.reset(); Sheet.close('sh-sell'); },
   applyShipping(){ const sh=Store.get('shipping')||{flat:15,free_over:200}; $('ship-flat').textContent=sh.flat; },
@@ -749,7 +752,7 @@ const Sell = {
   ship(m){ this.shipMode=m; this.shipOverride=null; this.applyShipping(); this.calc(); },
   disc(m){ this.discMode=m; ['none','pct','flat'].forEach(k=>$('disc-'+k).classList.toggle('on',k===m)); $('disc-val').style.display=m==='none'?'none':'block'; if(m==='none') $('disc-val').value=''; else $('disc-val').focus(); this.calc(); },
   pay(p){ this.payment=p; $$('#pay-chips .chip').forEach(b=>b.classList.toggle('on',b.dataset.p===p)); $('split-wrap').style.display=p==='Split'?'block':'none'; if(p==='Split'&&!this.splits.length){ this.splits=[{method:'Cash',amount:''},{method:'BKP',amount:''}]; } if(p==='Split') this.renderSplits(); this.calc(); },
-  paidNow(v){ this.paidNow=v; $('ps-paid').classList.toggle('on',v); $('ps-wait').classList.toggle('on',!v); },
+  paidNow(v){ this.isPaid=v; $('ps-paid').classList.toggle('on',v); $('ps-wait').classList.toggle('on',!v); },
   addSplit(){ this.splits.push({method:'KJ',amount:''}); this.renderSplits(); },
   renderSplits(){ $('split-rows').innerHTML=this.splits.map((r,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px"><select class="in" style="flex:1;min-height:40px" onchange="Sell.splits[${i}].method=this.value">${['Cash','BKP','KJ'].map(m=>`<option ${r.method===m?'selected':''}>${m}</option>`).join('')}</select><input class="in" type="number" inputmode="decimal" placeholder="$" value="${r.amount}" style="width:100px;min-height:40px;text-align:right" oninput="Sell.splits[${i}].amount=this.value;Sell.calc()"><button class="iconb" onclick="Sell.splits.splice(${i},1);Sell.renderSplits()">×</button></div>`).join(''); this.calc(); },
   totals(){
@@ -780,8 +783,8 @@ const Sell = {
         Object.keys(cust).forEach(k=>{ if(cust[k]) c[k]=cust[k]; }); if(g('tags')) c.tags=g('tags'); if(g('source')) c.source=g('source');
         c.order_count=(c.order_count||0)+1; c.total_spent=(+c.total_spent||0)+t.total; c.last_seen=today(); await Store.upsert('customers',c); customerId=c.id;
       }
-      const status=this.paidNow?'Paid':'New';
-      const sale={id:uid('s'),date:today(),customer_id:customerId,customer:cust,items:this.cart.map(c=>{ const p=Store.cache.products.find(x=>x.id===c.product_id); return {product_id:c.product_id,name:c.name,sku:c.sku,pack_qty:c.pack_qty,count:c.count,price:c.price,cost_usd:p?(+p.cost||0):0}; }),bac3:this.bac.bac3,bac10:this.bac.bac10,bac3_cost_usd:(Store.cache.products.find(p=>p.sku==='BW03')||{}).cost||0,bac10_cost_usd:(Store.cache.products.find(p=>p.sku==='BW10')||{}).cost||0,manual_amount:t.manual,subtotal:t.sub,discount:t.disc,shipping:t.ship,total:t.total,payment:this.payment,split_payments:this.payment==='Split'?this.splits.filter(s=>s.amount).map(s=>({method:s.method,amount:+s.amount})):[],fulfilment:this.fulfilment,status,tracking:'',notes,created_at:new Date().toISOString()};
+      const status=this.isPaid?'Paid':'New';
+      const sale={id:uid('s'),date:today(),...(status==='Paid'?{paid_at:new Date().toISOString()}:{}),customer_id:customerId,customer:cust,items:this.cart.map(c=>{ const p=Store.cache.products.find(x=>x.id===c.product_id); return {product_id:c.product_id,name:c.name,sku:c.sku,pack_qty:c.pack_qty,count:c.count,price:c.price,cost_usd:p?(+p.cost||0):0}; }),bac3:this.bac.bac3,bac10:this.bac.bac10,bac3_cost_usd:(Store.cache.products.find(p=>p.sku==='BW03')||{}).cost||0,bac10_cost_usd:(Store.cache.products.find(p=>p.sku==='BW10')||{}).cost||0,manual_amount:t.manual,subtotal:t.sub,discount:t.disc,shipping:t.ship,total:t.total,payment:this.payment,split_payments:this.payment==='Split'?this.splits.filter(s=>s.amount).map(s=>({method:s.method,amount:+s.amount})):[],fulfilment:this.fulfilment,status,tracking:'',notes,created_at:new Date().toISOString()};
       if(Store.mode==='local') sale.sale_no=Math.max(0,...Store.cache.sales.map(s=>+s.sale_no||0))+1;
       await Store.upsert('sales',sale);
       try{
@@ -868,7 +871,7 @@ const Sales = {
   },
   async setStatus(id,st){ const s=Store.cache.sales.find(x=>x.id===id); if(!s) return; const was=s.status; s.status=st;
     if(st==='Cancelled'&&!s.stock_restored) await this.restock(s,+1); else if(was==='Cancelled'&&st!=='Cancelled'&&s.stock_restored) await this.restock(s,-1); const k={Paid:'paid_at',Dispatched:'dispatched_at',Delivered:'delivered_at'}[st]; if(k&&!s[k]) s[k]=new Date().toISOString(); await Store.upsert('sales',s); toast('#'+s.sale_no+' → '+st+(st==='Cancelled'?' · stock returned':was==='Cancelled'?' · stock deducted again':'')); this.refresh(id); Nav.badges(); },
-  async markPaid(id){ const s=Store.cache.sales.find(x=>x.id===id); if(!s) return; s.status='Paid'; s.paid_at=new Date().toISOString(); await Store.upsert('sales',s); let m='Marked paid'; if(s.fulfilment==='Shipped'){ const ok=await Telegram.sendOrder(s); m+=ok?' · courier notified ✓':' · courier not sent'; } toast(m,'ok',3500); this.refresh(id); },
+  async markPaid(id){ const s=Store.cache.sales.find(x=>x.id===id); if(!s) return; const wasNew=s.status==='New'; if(wasNew) s.status='Paid'; s.paid_at=new Date().toISOString(); await Store.upsert('sales',s); let m='Marked paid'; if(wasNew&&s.fulfilment==='Shipped'){ const ok=await Telegram.sendOrder(s); m+=ok?' · courier notified ✓':' · courier not sent'; } toast(m,'ok',3500); this.refresh(id); },
   async resend(id){ const s=Store.cache.sales.find(x=>x.id===id); if(!s) return; const ok=await Telegram.sendOrder(s); toast(ok?'Sent to courier ✓':'Telegram failed — check Settings',ok?'ok':'err',3500); this.refresh(id); },
   copyCourier(id){ const s=Store.cache.sales.find(x=>x.id===id); copyText(Telegram.courierMessage(s)); toast('Courier text copied'); },
   refresh(id){ if($('sh-sale').classList.contains('on')&&this.cur&&this.cur.id===id) this.detail(id); if(Nav.cur==='sales') this.render(); if(Nav.cur==='home') Home.render(); Nav.badges(); },
