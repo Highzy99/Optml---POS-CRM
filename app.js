@@ -986,10 +986,16 @@ const Take = {
   review(id){ this.cur=id; this.render(); },
   sort:'missing',
   sorted(R){ const by={missing:(a,b)=>a.diff-b.diff||a.name.localeCompare(b.name), value:(a,b)=>a.diff*a.cost-b.diff*b.cost||a.diff-b.diff, extra:(a,b)=>b.diff-a.diff||a.name.localeCompare(b.name), az:(a,b)=>a.name.localeCompare(b.name)}; return [...R].sort(by[this.sort]||by.missing); },
-  apply(id){ Lock.require(async()=>{ const t=this.list().find(x=>x.id===id); if(!t||t.status!=='submitted') return; const R=this.rows(t).filter(r=>r.diff&&r.p);
+  apply(id){ if(this._applying) return; Lock.require(async()=>{ if(this._applying) return; const t=this.list().find(x=>x.id===id); if(!t||t.status!=='submitted') return; const R=this.rows(t).filter(r=>r.diff&&r.p);
     if(!confirm(`Apply the count? ${R.length} product${R.length!==1?'s':''} will be corrected; the rest already match.`)) return;
+    this._applying=true; $$('#take-body .btn').forEach(b=>b.disabled=true);
+    try{
+    // claim the count in the database first: only one tap / one device can ever apply it
+    if(Store.mode==='cloud'){ const {data,error}=await Store.sb.from('stocktakes').update({status:'applying'}).eq('id',id).eq('status','submitted').select('id'); if(error) throw error; if(!data||!data.length){ toast('This count has already been applied','err'); await App.refresh?.(); return; } }
+    t.status='applying';
     for(const r of R) await Store.adjustStock(r.p,r.diff,'adj',`stock take ${new Date(t.submitted_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}${t.counted_by?' · '+t.counted_by:''} (counted ${r.counted}, app had ${r.expected})`);
-    await Store.upsert('stocktakes',{id,status:'applied',applied_at:new Date().toISOString()}); toast(`Stock updated · ${R.length} corrected`); Nav.badges(); if(typeof Inv!=='undefined'&&Inv.render) Inv.render(); this.render(); }); },
+    await Store.upsert('stocktakes',{id,status:'applied',applied_at:new Date().toISOString()}); toast(`Stock updated · ${R.length} corrected`); Nav.badges(); if(typeof Inv!=='undefined'&&Inv.render) Inv.render();
+    } finally { this._applying=false; this.render(); } }); },
   render(){
     const el=$('take-body'); if(!el) return; const L=this.list(); const fx=Profit.cfg().fx;
     if(this.cur){ const t=L.find(x=>x.id===this.cur); if(!t){ this.cur=null; return this.render(); } const R=this.rows(t); const off=R.filter(r=>r.diff); const short=sum(off.filter(r=>r.diff<0),r=>-r.diff), over=sum(off.filter(r=>r.diff>0),r=>r.diff); const val=sum(off,r=>r.diff*r.cost);
@@ -1001,12 +1007,12 @@ const Take = {
         ${uncounted.length?`<div class="hint">Not counted (left unchanged): ${uncounted.map(p=>esc(p.name)).join(', ')}</div>`:''}
         <div class="actions" style="margin-top:14px">${t.status==='submitted'?`<button class="btn" onclick="Take.cancel('${t.id}')">Discard</button><button class="btn go" onclick="Take.apply('${t.id}')">Apply count to stock</button>`:`<span class="hint">${t.status==='applied'?'Applied '+new Date(t.applied_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'}):'Cancelled'}</span>`}</div>`;
       return; }
-    const open=L.find(t=>t.status==='open'), sub=L.filter(t=>t.status==='submitted'), past=L.filter(t=>t.status==='applied'||t.status==='cancelled').slice(0,10);
+    const open=L.find(t=>t.status==='open'), sub=L.filter(t=>t.status==='submitted'), past=L.filter(t=>['applied','cancelled','applying'].includes(t.status)).slice(0,10);
     el.innerHTML=`<div class="note" style="margin-bottom:14px">Sends the courier a link that lists every product <b>without</b> the stock numbers. They count what's physically there and submit; you review the differences here and apply them.</div>
       ${open?`<div class="sec">Waiting for count</div><div class="card"><div class="pad"><div class="hint" style="margin:0 0 10px">Started ${new Date(open.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})} — link stays live until it's submitted or cancelled.</div><input class="in" readonly value="${esc(this.link(open))}" onclick="this.select()" style="font-size:13px;margin-bottom:10px"><div class="actions" style="flex-wrap:wrap"><button class="btn go sm" onclick="Take.sendTg('${open.id}')">Send to Telegram group</button><button class="btn sm" onclick="Take.sendWa('${open.id}')">WhatsApp</button><button class="btn sm" onclick="Take.copy('${open.id}')">Copy</button><button class="btn sm" onclick="Take.cancel('${open.id}')">Cancel</button></div></div></div>`
             :`<button class="btn go block" style="margin-bottom:14px" onclick="Take.create()">Start a new stock count</button>`}
       ${sub.length?`<div class="sec">Ready to review</div><div class="card">${sub.map(t=>`<div class="row tap" onclick="Take.review('${t.id}')"><div class="m"><div class="t">Count by ${esc(t.counted_by||'courier')}</div><div class="u">submitted ${new Date(t.submitted_at).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})} · ${Object.keys(t.counts||{}).length} products</div></div><div class="e"><span class="tag amber">${this.rows(t).filter(r=>r.diff).length} off</span></div></div>`).join('')}</div>`:''}
-      ${past.length?`<div class="sec">History</div><div class="card">${past.map(t=>`<div class="row tap" onclick="Take.review('${t.id}')"><div class="m"><div class="t">${t.status==='applied'?'Applied':'Cancelled'} · ${esc(t.counted_by||'—')}</div><div class="u">${new Date(t.submitted_at||t.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}${t.status==='applied'?' · '+this.rows(t).filter(r=>r.diff).length+' corrected':''}</div></div></div>`).join('')}</div>`:''}`;
+      ${past.length?`<div class="sec">History</div><div class="card">${past.map(t=>`<div class="row tap" onclick="Take.review('${t.id}')"><div class="m"><div class="t">${t.status==='applied'?'Applied':t.status==='applying'?'Interrupted while applying — check stock':'Cancelled'} · ${esc(t.counted_by||'—')}</div><div class="u">${new Date(t.submitted_at||t.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}${t.status==='applied'?' · '+this.rows(t).filter(r=>r.diff).length+' corrected':''}</div></div></div>`).join('')}</div>`:''}`;
   },
 };
 const Mov = {
