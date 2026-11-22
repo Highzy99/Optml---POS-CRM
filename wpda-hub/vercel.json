@@ -38,7 +38,7 @@
   "rewrites": [
     {
       "source": "/wholesale",
-      "destination": "/index.html"
+      "destination": "/"
     }
   ]
 }
