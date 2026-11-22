@@ -65,7 +65,7 @@ async function go(){
     const {data,error}=await sb.auth.signUp({email,password:pw,options:{emailRedirectTo:location.href}});
     $('go').disabled=false;
     if(error) return say(error.message,true);
-    if(!data.session){ say('Check your email and tap the confirm link, then come back to this page and sign in.'); toggle(); $('email').value=email; return; }
+    if(!data.session){ toggle(); $('email').value=email; say('Check your email and tap the confirm link, then come back to this page and sign in.'); return; }
   } else {
     const {error}=await sb.auth.signInWithPassword({email,password:pw}); $('go').disabled=false;
     if(error) return say(error.message==='Invalid login credentials'?'Wrong email or password':error.message,true);

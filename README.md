@@ -180,3 +180,16 @@ Off-catalogue things (pens, syringes, a one-off bundle) are added in **Sell → 
 ## Paste a web order
 
 Customers order from the price list / wholesale catalogue sites, which send a formatted message to the business WhatsApp. In **Sell → Paste order**, paste that message (or tap the button with it on the clipboard): items, pack sizes, quantities, the prices they were quoted, discount, shipping, name, phone, email and address all fill in. Nothing is saved yet — change quantities, remove or add items, fix the address, then Next → Complete as usual. The order ref (OPT-xxxxx) goes into the sale notes; anything not in the catalogue is added as a custom item (name, price, qty) so the total still matches.
+
+## Insights layer (features.js)
+
+- **Home → month so far**: revenue, take-home profit, pace for the month, target bar, plus one-tap chips for who's due to reorder, what's running out, unpaid orders and stock that isn't selling.
+- **Reorder radar** (People banner / More): every customer's buying rhythm. After two orders it uses their own gap; before that, vials in their last order × "days 1 vial lasts". Segments: due now, slipping, lapsed, never ordered, best. "Message N people" walks through them one at a time in WhatsApp with an editable message; anyone messaged drops to the bottom for 10 days.
+- **Customer 360**: status, customer since, orders every ~N days, next order date, average order, profit from them, last messaged, **Repeat last order** (loads the cart at today's prices).
+- **Stock → Health**: pace per product, days left, run-out date, what to order (covers supplier days + shelf days, in 10-packs) → "Create incoming order" or "Copy supplier list"; stock not selling and the money tied up in it; stock-count shrinkage history; products below zero.
+- **Money**: monthly P&L down to take-home (after business expenses), month vs last month, pace + target, expenses by category, unpaid orders with a PayID reminder, how you got paid, where the money is, last 6 months.
+- **Activity log**: every change to sales, stock, customers, courier payments, incoming orders, counts and expenses, with who did it (recorded by a database trigger).
+- **Search** (🔍 top right): customers, #order numbers, tracking numbers, items, products (owner only).
+- Settings → **Insights & nudges**: monthly target, PayID, days 1 vial lasts, supplier days, shelf days, and the four message templates.
+
+Needs the `intel_audit_safety` migration at the bottom of `supabase-schema.sql` for expenses, the activity log, cross-device "last messaged", atomic stock changes (`adjust_stock`) and frozen courier shares. Without it the app still runs and those parts say they're waiting on the database update.

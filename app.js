@@ -17,6 +17,8 @@ const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>
 const sum = (arr, f) => arr.reduce((a,x)=>a+(+f(x)||0),0);
 const firstName = n => (n||'').trim().split(/\s+/)[0] || 'there';
 const fmtDate = d => d ? new Date(d+'T00:00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'}) : '—';
+const localDay = iso => { if(!iso) return ''; const d=new Date(iso); const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
+const jsq = v => esc(JSON.stringify(String(v??''))); // a JS string literal that is safe inside an onclick="…" attribute
 const fmtDateFull = d => d ? new Date(d+'T00:00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : '—';
 
 let toastTimer;
@@ -26,7 +28,7 @@ function toast(msg, kind='ok', ms=2600){
 }
 async function copyText(s){
   try{ await navigator.clipboard.writeText(s); return true; }
-  catch(e){ const ta=document.createElement('textarea'); ta.value=s; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); return true; }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=s; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); return ok; }
 }
 function stockStatus(p){ if(p.soon) return 'soon'; if(p.stock<=0) return 'out'; if(p.stock<=p.reorder) return 'low'; return 'ok'; }
 
@@ -52,8 +54,8 @@ const Store = {
     if(this.mode==='cloud'){
       const [p,c,s,po,m,st,cp,tk] = await Promise.all([
         this.sb.from('products').select('*').order('category').order('name'),
-        this.sb.from('customers').select('*').order('name'),
-        this.sb.from('sales').select('*').order('created_at',{ascending:false}),
+        this.pageAll(()=>this.sb.from('customers').select('*').order('name')),
+        this.pageAll(()=>this.sb.from('sales').select('*').order('created_at',{ascending:false})),
         this.sb.from('purchase_orders').select('*').order('created_at',{ascending:false}),
         this.sb.from('movements').select('*').order('created_at',{ascending:false}).limit(500),
         this.sb.from('settings').select('*'),
@@ -77,6 +79,8 @@ const Store = {
     if(!this.cache.settings.courier_template || this.cache.settings.courier_template===DEFAULT_SETTINGS.courier_template_legacy) this.cache.settings.courier_template = DEFAULT_SETTINGS.courier_template;
     if(!this.cache.settings.dispatch_template) this.cache.settings.dispatch_template = DEFAULT_SETTINGS.dispatch_template;
   },
+  // Supabase returns at most 1,000 rows per request — keep asking until everything is in
+  async pageAll(build){ const out=[]; for(let from=0;;from+=1000){ const q=build(); const {data,error}=await (q.range?q.range(from,from+999):q); if(error) return {data:null,error}; out.push(...(data||[])); if(!q.range||!data||data.length<1000) break; } return {data:out,error:null}; },
   persistLocal(){ if(this.mode==='local') localStorage.setItem(this.LS_KEY, JSON.stringify(this.cache)); },
 
   // ---- generic upsert / delete ----
@@ -113,11 +117,20 @@ const Store = {
   async logMove(product, type, qty, note){
     await this.upsert('movements', { id:uid('m'), product_id:product.id, product_name:product.name, sku:product.sku, type, qty, note:note||'', date:today(), created_at:new Date().toISOString() });
   },
-  async adjustStock(product, delta, type, note){
-    product.stock = Math.max(0, (product.stock||0) + delta);
-    await this.upsert('products', {id:product.id, stock:product.stock});
-    await this.logMove(product, type, delta, note);
+  // Stock changes are sent as +/− to the database (adjust_stock adds in one step), so two phones never overwrite each other.
+  // No clamp at 0: a cancel puts back exactly what the sale took, and a negative number shows an oversell that needs a recount.
+  async bumpStock(product, delta){
+    if(this.mode==='cloud'&&this.rpcStock!==false&&this.sb&&typeof this.sb.rpc==='function'){
+      const {data,error}=await this.sb.rpc('adjust_stock',{p_id:product.id,p_delta:delta});
+      if(!error&&data!==null&&data!==undefined){ this.rpcStock=true; product.stock=+data; const c=this.cache.products.find(x=>x.id===product.id); if(c&&c!==product) c.stock=+data; return; }
+      if(error&&(error.code==='PGRST202'||/could not find the function|schema cache/i.test(error.message||''))) this.rpcStock=false;
+      else if(error){ toast('Stock save failed: '+error.message,'err',4000); throw error; }
+    }
+    product.stock=(+product.stock||0)+delta; await this.upsert('products',{id:product.id,stock:product.stock});
   },
+  async adjustStock(product, delta, type, note){ await this.bumpStock(product,delta); await this.logMove(product, type, delta, note); },
+  // re-read one product's stock before a "set to" so the difference is worked out from the real number
+  async freshStock(product){ if(this.mode!=='cloud') return; try{ const {data}=await this.sb.from('products').select('stock').eq('id',product.id).single(); if(data&&data.stock!=null) product.stock=+data.stock; }catch(e){} },
   // Stock coming in at a known price: product cost becomes the weighted average of what was on the shelf and what arrived.
   // unitCost is per vial; currency 'USD' or 'AUD' (AUD is converted at the Settings → Profit rate). Product cost is always kept in USD.
   async receiveStock(product, qty, unitCost, currency, note){
@@ -125,8 +138,7 @@ const Store = {
     const onHand=Math.max(0,+product.stock||0), oldCost=+product.cost||0;
     const avg=(oldCost>0&&onHand>0)?(onHand*oldCost+qty*usd)/(onHand+qty):usd;
     const newCost=Math.round(avg*100)/100;
-    product.stock=onHand+qty; product.cost=newCost;
-    await this.upsert('products',{id:product.id,stock:product.stock,cost:newCost});
+    product.cost=newCost; await this.upsert('products',{id:product.id,cost:newCost}); await this.bumpStock(product,qty);
     await this.upsert('movements',{id:uid('m'),product_id:product.id,product_name:product.name,sku:product.sku,type:'in',qty,note:note||'',date:today(),created_at:new Date().toISOString(),unit_cost_usd:Math.round(usd*100)/100,cost_note:`${qty} @ ${currency==='AUD'?'A$':'US$'}${unitCost} → avg US$${newCost}${oldCost?` (was US$${oldCost})`:''}`});
     return newCost;
   },
@@ -245,11 +257,11 @@ const Data = {
       const d=JSON.parse(await f.text());
       if(!d.skus && !d.products){ toast('Not a valid backup','err'); return; }
       // accept old stocktake format too
-      const products=(d.products||d.skus||[]).map(p=>({id:p.id,name:p.name,sku:p.sku||p.skuCode||'',category:p.category||p.cat||'Uncategorised',stock:+p.stock||0,reorder:+p.reorder||5,cost:+p.cost||0,sell1:+p.sell1||0,sell3:+p.sell3||0,sell5:+p.sell5||null,sell10:+p.sell10||0,launch:!!p.launch,soon:!!p.soon,bac_size:p.bac_size||(/NAD/i.test(p.name)?'10ml':/water|caps/i.test(p.name)?'none':'3ml')}));
+      const products=(d.products||d.skus||[]).map(p=>({id:p.id,name:p.name,sku:p.sku||p.skuCode||'',category:p.category||p.cat||'Uncategorised',stock:+p.stock||0,reorder:+p.reorder||5,cost:+p.cost||0,sell1:+p.sell1||0,sell3:+p.sell3||0,sell5:+p.sell5||null,sell10:+p.sell10||0,launch:!!p.launch,soon:!!p.soon,hidden:!!p.hidden,supplier_sku:p.supplier_sku||'',bac_size:p.bac_size||(/NAD/i.test(p.name)?'10ml':/water|caps/i.test(p.name)?'none':'3ml')}));
       const customers=(d.customers||[]).map(c=>({id:c.id,name:c.name||'',phone:c.phone||'',email:c.email||'',address:c.address||'',city:c.city||'',state:c.state||'',postcode:c.postcode||'',notes:c.notes||'',tags:c.tags||'',source:c.source||'',order_count:+c.order_count||+c.orderCount||0,total_spent:+c.total_spent||0,last_seen:c.last_seen||c.lastSeen||null,created_at:c.created_at||c.created||new Date().toISOString()}));
-      const sales=(d.sales||[]).map(s=>({id:s.id,sale_no:s.sale_no||null,date:s.date,customer_id:s.customer_id||null,customer:s.customer||{},items:(s.items||[]).map(i=>({product_id:i.product_id||i.skuId,name:i.name,sku:i.sku||i.skuCode,pack_qty:i.pack_qty||i.packQty||1,count:i.count||1,price:+i.price||0})),bac3:+s.bac3||0,bac10:+s.bac10||0,manual_amount:+s.manual_amount||0,subtotal:+s.subtotal||0,discount:+s.discount||0,shipping:+s.shipping||0,total:+s.total||0,payment:s.payment||'Cash',split_payments:s.split_payments||s.splitPayments||[],fulfilment:s.fulfilment||'Shipped',status:s.status||'Delivered',tracking:s.tracking||'',notes:s.notes||'',created_at:s.created_at||new Date(s.date||today()).toISOString()}));
-      const orders=(d.purchase_orders||d.orders||[]).map(o=>({id:o.id,product_id:o.product_id||o.skuId,qty:+o.qty||0,ref:o.ref||'',supplier:o.supplier||o.supplierName||'',order_date:o.order_date||o.orderDate||null,eta:o.eta||null,delivery:o.delivery||(typeof o.supplier==='object'?o.supplier:{}),status:o.status||'pending',arrived_date:o.arrived_date||o.arrivedDate||null,created_at:o.created_at||new Date().toISOString()}));
-      const movements=(d.movements||[]).map(m=>({id:m.id,product_id:m.product_id||m.skuId,product_name:m.product_name||m.skuName,sku:m.sku||m.skuCode,type:m.type,qty:+m.qty||0,note:m.note||'',date:m.date,created_at:m.created_at||new Date(m.date||today()).toISOString()}));
+      const sales=(d.sales||[]).map(s=>({id:s.id,sale_no:s.sale_no||null,date:s.date,customer_id:s.customer_id||null,customer:s.customer||{},items:(s.items||[]).map(i=>({product_id:i.product_id||i.skuId,name:i.name,sku:i.sku||i.skuCode,pack_qty:i.pack_qty||i.packQty||1,count:i.count||1,price:+i.price||0,cost_usd:i.cost_usd,custom:i.custom})),bac3:+s.bac3||0,bac10:+s.bac10||0,manual_amount:+s.manual_amount||0,subtotal:+s.subtotal||0,discount:+s.discount||0,shipping:+s.shipping||0,total:+s.total||0,...Object.fromEntries(['paid_at','dispatched_at','delivered_at','courier_sent_at','courier_paid_at','courier_payment_id','courier_share','stock_restored','bac3_cost_usd','bac10_cost_usd','customer_notified_at','customer_notified_via'].filter(k=>s[k]!==undefined).map(k=>[k,s[k]])),payment:s.payment||'Cash',split_payments:s.split_payments||s.splitPayments||[],fulfilment:s.fulfilment||'Shipped',status:s.status||'Delivered',tracking:s.tracking||'',notes:s.notes||'',created_at:s.created_at||new Date(s.date||today()).toISOString()}));
+      const orders=(d.purchase_orders||d.orders||[]).map(o=>({id:o.id,product_id:o.product_id||o.skuId,qty:+o.qty||0,ref:o.ref||'',supplier:o.supplier||o.supplierName||'',order_date:o.order_date||o.orderDate||null,eta:o.eta||null,delivery:o.delivery||(typeof o.supplier==='object'?o.supplier:{}),status:o.status||'pending',arrived_date:o.arrived_date||o.arrivedDate||null,...(o.unit_cost!=null?{unit_cost:o.unit_cost,currency:o.currency||'USD'}:{}),created_at:o.created_at||new Date().toISOString()}));
+      const movements=(d.movements||[]).map(m=>({id:m.id,product_id:m.product_id||m.skuId,product_name:m.product_name||m.skuName,sku:m.sku||m.skuCode,type:m.type,qty:+m.qty||0,note:m.note||'',date:m.date,...(m.unit_cost_usd!=null?{unit_cost_usd:m.unit_cost_usd,cost_note:m.cost_note||''}:{}),created_at:m.created_at||new Date(m.date||today()).toISOString()}));
       if(!confirm(`Restore ${products.length} products, ${sales.length} sales, ${customers.length} customers, ${orders.length} orders?\n\nThis MERGES by id (existing rows with same id are overwritten).`)) return;
       UI.sync('','Restoring…');
       const chunk=async(t,rows)=>{ for(let i=0;i<rows.length;i+=200){ const c=rows.slice(i,i+200); if(Store.mode==='cloud'){ const {error}=await Store.sb.from(t).upsert(c,{defaultToNull:false}); if(error) throw error; } } };
@@ -284,11 +296,11 @@ const Auth = {
 // ============================================================
 const Nav = {
   cur:'home',
-  go(s){
+  go(s,keep){
     if(App.courier&&(s==='stock')) s='home';
     this.cur=s; $$('.screen').forEach(e=>e.classList.toggle('on',e.id==='sc-'+s)); $$('.nb').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
     $('more-btn').style.display = s==='more'?'none':'flex';
-    window.scrollTo({top:0});
+    if(!keep) window.scrollTo({top:0});
     ({home:()=>Home.render(),sales:()=>Sales.render(),stock:()=>Inv.renderAll(),customers:()=>Cust.render(),more:()=>Settings.moreInfo()}[s]||(()=>{}))();
   },
   badges(){
@@ -344,7 +356,7 @@ const Profit = {
     const r=v=>Math.round(v*100)/100;
     const cogs=r(usd*fx); const posted=sale.fulfilment!=='Walk-in'; const ship=posted?postage:0, pack=posted?packaging:0;
     const gross=r(+sale.total-cogs); const base=r(gross-ship-pack);
-    const courier=sale.fulfilment==='Shipped'&&base>0?r(base*pct/100):0;
+    const courier=sale.courier_paid_at&&sale.courier_share!=null?+sale.courier_share:(sale.fulfilment==='Shipped'&&base>0?r(base*pct/100):0);
     return {cogs,gross,ship,pack,base,courier,net:r(base-courier),pct,fx,known:items.every(i=>this.costUSD(i)>0)};
   },
   sumOf(sales){ const t={cogs:0,gross:0,ship:0,pack:0,courier:0,net:0}; sales.forEach(s=>{ const p=this.of(s); t.cogs+=p.cogs; t.gross+=p.gross; t.ship+=p.ship; t.pack+=p.pack; t.courier+=p.courier; t.net+=p.net; }); return t; },
@@ -366,7 +378,7 @@ const Insights = {
     const rev=sum(S,s=>s.total), prevRev=sum(Pv,s=>s.total); const P=Profit.sumOf(S), PP=Profit.sumOf(Pv); const pc=Profit.cfg();
     const units=sum(S,s=>sum(s.items||[],i=>i.pack_qty*i.count)); const aov=S.length?rev/S.length:0, paov=Pv.length?sum(Pv,s=>s.total)/Pv.length:0;
     const custIds=new Set(S.map(s=>s.customer_id).filter(Boolean)); const repeat=[...custIds].filter(id=>all.filter(s=>s.customer_id===id&&s.date<=to).length>1).length;
-    const newCust=Store.cache.customers.filter(c=>(c.created_at||'').slice(0,10)>=from&&(c.created_at||'').slice(0,10)<=to).length;
+    const newCust=Store.cache.customers.filter(c=>{ const d=localDay(c.created_at); return d>=from&&d<=to; }).length;
     // dispatch speed: paid → dispatched
     const sp=S.filter(s=>s.paid_at&&s.dispatched_at).map(s=>(new Date(s.dispatched_at)-new Date(s.paid_at))/36e5); const avgH=sp.length?sum(sp,x=>x)/sp.length:null;
     // trend: by day (≤31 days) or by week
@@ -450,26 +462,28 @@ const Courier = {
       <div class="actions" style="margin-bottom:14px"><button class="btn go owner-only" onclick="Courier.openPay()" ${T.balance<=0?'disabled':''}>Record payment${T.balance>0?' · '+money(T.balance):''}</button><button class="btn owner-only" onclick="Courier.openExp()">+ Postage / expense</button><button class="btn" onclick="Reports.courier()">Statement</button>${WA.num(wa.courier)?`<button class="btn" onclick="Courier.waStatement()">Send on WhatsApp</button>`:''}</div>
       <div class="note" style="margin-bottom:14px">Courier earns <b>${pc.pct}%</b> of (sale − ${money(pc.postage)} postage − ${money(pc.packaging)} box &amp; mailer − product cost) on every courier-shipped order, counted once it's dispatched. Paid weekly, Mon–Sun. Rates under Settings → Profit.${this.openExp_().length?` Owed now includes <b>${money(sum(this.openExp_(),p=>+p.amount))}</b> of postage/expenses he paid for.`:''}</div>
       <div class="sec" style="margin-top:0">Unpaid orders <small>${U.length}</small></div>
-      ${this.byWeek(U).map(w=>`<div class="card" style="margin-bottom:10px"><div class="row" style="background:var(--paper-2)"><div class="m"><div class="t">Week ${this.weekLabel(w.ws)}</div><div class="u">${w.sales.length} order${w.sales.length!==1?'s':''}</div></div><div class="e"><span class="amt" style="color:var(--amber)">${money(w.total)}</span><button class="btn xs" onclick="Courier.openPay(${w.total})">Pay week</button></div></div>${w.sales.map(s=>{ const p=Profit.of(s); return `<div class="row tap" onclick="Sales.detail('${s.id}')"><div class="m"><div class="t">${esc((s.customer||{}).name||'Walk-in')}<span class="id">#${s.sale_no}</span></div><div class="u">${(s.items||[]).map(i=>i.name+' ×'+i.count).join(', ')}</div><div class="w"><span>${fmtDate(s.date)}</span><span>sale ${money(s.total)}</span>${App.courier?'':`<span>base ${money(p.base)}</span>`}</div></div><div class="e"><span class="amt" style="color:var(--amber)">${money(p.courier)}</span><span class="hint" style="margin:0">${pc.pct}%</span></div></div>`; }).join('')}</div>`).join('')||'<div class="card"><div class="empty"><div class="big">✓</div>All settled</div></div>'}
+      ${this.byWeek(U).map(w=>`<div class="card" style="margin-bottom:10px"><div class="row" style="background:var(--paper-2)"><div class="m"><div class="t">Week ${this.weekLabel(w.ws)}</div><div class="u">${w.sales.length} order${w.sales.length!==1?'s':''}</div></div><div class="e"><span class="amt" style="color:var(--amber)">${money(w.total)}</span><button class="btn xs" onclick="Courier.openPay(${w.total})">Pay week</button></div></div>${w.sales.map(s=>{ const p=Profit.of(s); return `<div class="row tap" onclick="Sales.detail('${s.id}')"><div class="m"><div class="t">${esc((s.customer||{}).name||'Walk-in')}<span class="id">#${s.sale_no}</span></div><div class="u">${esc((s.items||[]).map(i=>i.name+' ×'+i.count).join(', '))}</div><div class="w"><span>${fmtDate(s.date)}</span><span>sale ${money(s.total)}</span>${App.courier?'':`<span>base ${money(p.base)}</span>`}</div></div><div class="e"><span class="amt" style="color:var(--amber)">${money(p.courier)}</span><span class="hint" style="margin:0">${pc.pct}%</span></div></div>`; }).join('')}</div>`).join('')||'<div class="card"><div class="empty"><div class="big">✓</div>All settled</div></div>'}
       <div class="sec">Payments &amp; expenses</div>
       <div class="card">${P.map(p=>`<div class="row"><div class="m"><div class="t">${p.kind==='expense'?'+'+money(p.amount)+' <span class="tag amber">postage / expense</span>':money(p.amount)+`<span class="tag gray">${esc(p.method||'')}</span>`}</div><div class="u">${esc(p.note||'')}${(p.sale_ids||[]).length?` · ${p.sale_ids.length} order${p.sale_ids.length>1?'s':''}`:''}</div><div class="w"><span>${fmtDateFull(p.date)}</span></div></div><div class="e"><button class="btn xs ghost owner-only" style="color:var(--red)" onclick="Courier.del('${p.id}')">Undo</button></div></div>`).join('')||'<div class="empty">No payments recorded yet</div>'}</div>`;
   },
   openPay(amt){ if(!App.ownerOnly()) return; const T=this.totals(); $('cp-amount').value=amt>0?amt:(T.balance>0?T.balance:''); $('cp-date').value=today(); $('cp-method').value='BKP'; $('cp-note').value=''; this.payPreview(); Sheet.open('dr-cpay'); },
   payPreview(){ const amt=+$('cp-amount').value||0; const U=this.unpaid(); const credit=this.credit(); let left=amt+credit, n=0; for(const s of U){ const c=Profit.of(s).courier; if(c<=left+0.005){ left-=c; n++; } else break; } $('cp-preview').textContent=amt?`Settles ${n} order${n!==1?'s':''}${credit?` (incl. ${money(credit)} existing credit)`:''}${left>0.005?` · ${money(left)} left over, carried as credit`:''}`:''; },
-  async save(){
+  async save(){ if(!App.ownerOnly()||this._busy) return;
     const amt=Math.round((+$('cp-amount').value||0)*100)/100; if(amt<=0){ toast('Enter an amount','err'); return; }
-    const U=this.unpaid(); const ids=[]; const credit=this.credit(); let left=amt+credit; const now=new Date().toISOString(); const id=uid('cp');
-    for(const s of U){ const c=Profit.of(s).courier; if(c<=left+0.005){ left-=c; s.courier_paid_at=now; s.courier_payment_id=id; ids.push(s.id); await Store.upsert('sales',{id:s.id,courier_paid_at:now,courier_payment_id:id}); } else break; }
+    this._busy=true; try{
+    const U=this.unpaid(); const ids=[]; const credit=this.credit(); let left=amt+credit; const now=new Date().toISOString(); const id=uid('cp'); const snap=Store.mode==='local'||Store.cache.sales.some(x=>'courier_share' in x);
+    for(const s of U){ const c=Profit.of(s).courier; if(c<=left+0.005){ left-=c; s.courier_paid_at=now; s.courier_payment_id=id; if(snap) s.courier_share=c; ids.push(s.id); await Store.upsert('sales',{id:s.id,courier_paid_at:now,courier_payment_id:id,...(snap?{courier_share:c}:{})}); } else break; }
     await Store.upsert('courier_payments',{id,date:$('cp-date').value||today(),amount:amt,method:$('cp-method').value,note:$('cp-note').value.trim(),sale_ids:ids,created_at:now});
     Sheet.close('dr-cpay'); toast(`${money(amt)} paid to courier · ${ids.length} order${ids.length!==1?'s':''} settled`); this.render(); Nav.badges(); Home.courierCard();
+    } finally { this._busy=false; }
   },
   // expenses logged since the last payment — the ones still waiting to be reimbursed
   openExp_(){ const last=this.payments().map(p=>p.created_at||p.date).sort().pop()||''; return this.expenses().filter(p=>(p.created_at||p.date)>last); },
   openExp(){ if(!App.ownerOnly()) return; $('ce-amount').value=''; $('ce-date').value=today(); $('ce-note').value=''; Sheet.open('dr-cexp'); setTimeout(()=>$('ce-amount').focus(),150); },
-  async saveExp(){ const amt=Math.round((+$('ce-amount').value||0)*100)/100; if(amt<=0){ toast('Enter what he spent','err'); return; }
-    await Store.upsert('courier_payments',{id:uid('ce'),kind:'expense',date:$('ce-date').value||today(),amount:amt,method:'expense',note:$('ce-note').value.trim()||'Postage',sale_ids:[],created_at:new Date().toISOString()});
+  async saveExp(){ if(!App.ownerOnly()||this._busy) return; const amt=Math.round((+$('ce-amount').value||0)*100)/100; if(amt<=0){ toast('Enter what he spent','err'); return; }
+    this._busy=true; try{ await Store.upsert('courier_payments',{id:uid('ce'),kind:'expense',date:$('ce-date').value||today(),amount:amt,method:'expense',note:$('ce-note').value.trim()||'Postage',sale_ids:[],created_at:new Date().toISOString()}); } finally { this._busy=false; }
     Sheet.close('dr-cexp'); toast(`${money(amt)} added to what you owe the courier`); this.render(); Home.courierCard(); },
-  async del(id){ if(!App.ownerOnly()) return; const p=Store.cache.courier_payments.find(x=>x.id===id); if(p&&p.kind==='expense'){ if(!confirm(`Remove the ${money(p.amount)} expense?`)) return; await Store.remove('courier_payments',id); toast('Expense removed'); this.render(); Home.courierCard(); return; } if(!p||!confirm(`Undo the ${money(p.amount)} payment? Its orders go back to unpaid.`)) return; for(const sid of (p.sale_ids||[])){ const s=Store.cache.sales.find(x=>x.id===sid); if(s){ s.courier_paid_at=null; s.courier_payment_id=null; await Store.upsert('sales',{id:sid,courier_paid_at:null,courier_payment_id:null}); } } await Store.remove('courier_payments',id); toast('Payment removed'); this.render(); Nav.badges(); Home.courierCard(); },
+  async del(id){ if(!App.ownerOnly()) return; const p=Store.cache.courier_payments.find(x=>x.id===id); if(p&&p.kind==='expense'){ if(!confirm(`Remove the ${money(p.amount)} expense?`)) return; await Store.remove('courier_payments',id); toast('Expense removed'); this.render(); Home.courierCard(); return; } if(!p||!confirm(`Undo the ${money(p.amount)} payment? Its orders go back to unpaid.`)) return; for(const sid of (p.sale_ids||[])){ const s=Store.cache.sales.find(x=>x.id===sid); if(s){ const snap='courier_share' in s; s.courier_paid_at=null; s.courier_payment_id=null; if(snap) s.courier_share=null; await Store.upsert('sales',{id:sid,courier_paid_at:null,courier_payment_id:null,...(snap?{courier_share:null}:{})}); } } await Store.remove('courier_payments',id); toast('Payment removed'); this.render(); Nav.badges(); Home.courierCard(); },
   statementText(){ const U=this.unpaid(); const T=this.totals(); const pc=Profit.cfg(); const W=this.byWeek(U); return `Courier statement — ${fmtDateFull(today())}\n\n${W.map(w=>`Week ${this.weekLabel(w.ws)}\n${w.sales.map(s=>`#${s.sale_no} ${fmtDate(s.date)} ${(s.customer||{}).name||'Walk-in'} — ${money(Profit.of(s).courier)}`).join('\n')}\nWeek total: ${money(w.total)}`).join('\n\n')||'No unpaid orders'}${this.openExp_().length?`\n\nPostage / expenses\n${this.openExp_().map(p=>`${fmtDate(p.date)} ${p.note||'Postage'} — ${money(p.amount)}`).join('\n')}`:''}\n\nTotal owed: ${money(T.balance)} (${pc.pct}% of sale less postage, packaging & product cost · ${U.length} orders)`; },
   waStatement(){ WA.open(WA.cfg().courier,this.statementText()); },
 };
@@ -532,8 +546,9 @@ const Settings = {
   async save(){
     await Store.setSetting('telegram',{token:$('st-tg-token').value.trim(),chat:$('st-tg-chat').value.trim()});
     await Store.setSetting('courier_template',$('st-courier-tpl').value); await Store.setSetting('dispatch_template',$('st-dispatch-tpl').value); await Store.setSetting('quote_template',$('st-quote-tpl').value);
-    await Store.setSetting('shipping',{flat:+$('st-ship-flat').value||0,free_over:+$('st-ship-free').value||0});
-    await Store.setSetting('profit',{fx:+$('st-fx').value||1.55,courier_pct:+$('st-courier-pct').value||0,postage:+$('st-postage').value||0,packaging:+$('st-packaging').value||0});
+    const keep=(id,old,def)=>{ const v=$(id).value.trim(); return v===''||isNaN(+v)?(old??def):+v; }; const sh0=Store.get('shipping')||{}, pf0=Store.get('profit')||{};
+    await Store.setSetting('shipping',{flat:keep('st-ship-flat',sh0.flat,15),free_over:keep('st-ship-free',sh0.free_over,200)});
+    await Store.setSetting('profit',{fx:keep('st-fx',pf0.fx,1.55)||1.55,courier_pct:keep('st-courier-pct',pf0.courier_pct,25),postage:keep('st-postage',pf0.postage,15),packaging:keep('st-packaging',pf0.packaging,5)});
     await Store.setSetting('whatsapp',{mode:this._waMode||'app',phone_id:$('st-wa-phone-id').value.trim(),token:$('st-wa-token').value.trim(),dispatch_template:$('st-wa-tpl').value.trim(),lang:$('st-wa-lang').value.trim()||'en',courier:$('st-wa-courier').value.trim(),test:$('st-wa-test').value.trim()});
     Sell.applyShipping(); Sheet.close('sh-settings'); this.moreInfo(); toast('Settings saved');
   },
@@ -545,7 +560,7 @@ const Settings = {
       const chats=[...new Map((j.result||[]).map(u=>{ const c=(u.message||u.channel_post||u.my_chat_member||u.edited_message||{}).chat; return c?[c.id,c]:null; }).filter(Boolean)).values()];
       if(!chats.length){ toast('Nothing yet — add the bot to the group (or message it), send one message there, then try again','err',5000); return; }
       const label=c=>(c.title||[c.first_name,c.last_name].filter(Boolean).join(' ')||c.username||c.id)+(c.type&&c.type!=='private'?' · group':'');
-      $('st-tg-found').innerHTML=chats.map(c=>`<button class="chip ${String(c.id)===$('st-tg-chat').value?'on':''}" onclick="document.getElementById('st-tg-chat').value='${c.id}';[...this.parentNode.children].forEach(b=>b.classList.toggle('on',b===this));toast('Using ${esc(label(c)).replace(/'/g,'')}')">${esc(label(c))}</button>`).join('');
+      $('st-tg-found').innerHTML=chats.map(c=>`<button class="chip ${String(c.id)===$('st-tg-chat').value?'on':''}" data-id="${esc(c.id)}" data-l="${esc(label(c))}" onclick="document.getElementById('st-tg-chat').value=this.dataset.id;[...this.parentNode.children].forEach(b=>b.classList.toggle('on',b===this));toast('Using '+this.dataset.l)">${esc(label(c))}</button>`).join('');
       if(chats.length===1){ $('st-tg-chat').value=chats[0].id; toast('Found: '+label(chats[0])); } else toast(chats.length+' chats found — tap the one to use',"ok",4000);
     }catch(e){ toast('Telegram: '+e.message,'err',4000); }
   },
@@ -581,7 +596,7 @@ const Home = {
     const open=S.filter(s=>['New','Paid','Sent to Courier'].includes(s.status)).length;
     if(App.courier){ // courier sees his work and his pay, not your revenue
       const toPack=S.filter(s=>s.fulfilment==='Shipped'&&['Paid','Sent to Courier'].includes(s.status)); const vials=sum(toPack,s=>sum(s.items||[],it=>(it.pack_qty||1)*(it.count||1)));
-      const T=Courier.totals(); const shipped=S.filter(s=>s.fulfilment==='Shipped'&&s.dispatched_at&&s.dispatched_at.slice(0,10)>=Courier.weekStart(today())).length;
+      const T=Courier.totals(); const shipped=S.filter(s=>s.fulfilment==='Shipped'&&s.dispatched_at&&localDay(s.dispatched_at)>=Courier.weekStart(today())).length;
       $('home-strip').innerHTML=`<div class="s"><div class="k">To pack</div><div class="v ${toPack.length?'amber':''}">${toPack.length}</div><div class="d">${vials} vial${vials!==1?'s':''}</div></div><div class="s"><div class="k">Your pay · week</div><div class="v go">${money(T.week)}</div><div class="d">last week ${money(T.lastWeek)}</div></div><div class="s"><div class="k">Sent · week</div><div class="v">${shipped}</div><div class="d">order${shipped!==1?'s':''} posted</div></div>`;
     } else
     $('home-strip').innerHTML=`<div class="s"><div class="k">Today</div><div class="v go">${money(sum(todayS,s=>s.total))}</div><div class="d">${App.courier?(todayS.length+' order'+(todayS.length!==1?'s':'')):money(Profit.sumOf(todayS).net)+' net'}</div></div><div class="s"><div class="k">This week</div><div class="v">${money(rev)}</div><div class="d ${d===null?'':d>=0?'up':'down'}">${App.courier?(weekS.length+' order'+(weekS.length!==1?'s':'')):money(Profit.sumOf(weekS).net)+' net'}${d!==null?` · ${d>=0?'▲':'▼'}${Math.abs(d)}%`:''}</div></div><div class="s"><div class="k">To dispatch</div><div class="v ${open?'amber':''}">${open}</div><div class="d">open</div></div>`;
@@ -597,7 +612,7 @@ const Home = {
     const low=Store.cache.products.filter(p=>!p.soon&&!p.hidden&&p.stock<=p.reorder);
     if(low.length&&!App.courier) att.push({k:'Reorder',sku:low[0].sku,ic:ICON.rocket,c:low.some(p=>p.stock<=0)?'red':'amber',t:`${low.length} product${low.length>1?'s':''} below minimum`,u:low.slice(0,4).map(p=>p.name+' ('+p.stock+')').join(', ')+(low.length>4?'…':''),a:`<button class="btn xs" onclick="Reports.launch()">Reorder report</button>`});
     const od=Store.cache.purchase_orders.filter(o=>o.status==='pending'&&o.eta&&o.eta<t);
-    if(od.length) att.push({k:'Incoming',ic:ICON.truck,c:'amber',t:`${od.length} incoming order${od.length>1?'s':''} overdue`,u:od.map(o=>(Store.cache.products.find(p=>p.id===o.product_id)||{}).name).filter(Boolean).slice(0,3).join(', '),a:`<button class="btn xs" onclick="Nav.go('stock');Inv.view('po')">View</button>`});
+    if(od.length&&!App.courier) att.push({k:'Incoming',ic:ICON.truck,c:'amber',t:`${od.length} incoming order${od.length>1?'s':''} overdue`,u:od.map(o=>(Store.cache.products.find(p=>p.id===o.product_id)||{}).name).filter(Boolean).slice(0,3).join(', '),a:`<button class="btn xs" onclick="Nav.go('stock');Inv.view('po')">View</button>`});
     $('att-count').textContent=att.length?att.length+' items':''; 
     $('att-list').innerHTML=att.length?att.map(a=>`<div class="att"><div class="ic ${a.c}">${a.ic}</div><div class="m"><div class="t">${esc(a.k)} — ${esc(a.t)}</div><div class="u">${esc(a.u)}</div><div class="a">${a.a}</div></div></div>`).join(''):'<div class="empty"><div class="big">✓</div>Nothing needs attention</div>';
     $('home-recent').innerHTML=S.slice(0,5).map(s=>Sales.row(s)).join('')||'<div class="empty">No sales yet</div>';
@@ -622,14 +637,16 @@ const Sell = {
   render(){ this.renderCart(); this.search(); this.recent(); this.foot(); },
   step(d){
     if(d>0&&this.s===1&&!this.cart.length){ if(!confirm('No items — continue with an empty sale?')) return; }
+    if(d>0&&this.s===1){ const over=this.overStock(); if(over.length&&!confirm(`More than what's in stock:\n${over.join('\n')}\n\nContinue anyway? Stock will go below zero until you recount.`)) return; }
     if(d>0&&this.s===3){ this.complete(); return; }
     this.s=Math.min(3,Math.max(1,this.s+d)); 
     $$('#sell-steps .st').forEach((e,i)=>{ e.className='st'+(i+1<this.s?' done':i+1===this.s?' on':''); });
     [1,2,3].forEach(n=>$('sell-'+n).style.display=n===this.s?'block':'none');
     $('sell-back').style.display=this.s>1?'inline-flex':'none';
     $('sell-next').textContent=this.s===3?'Complete sale':'Next'; $('sell-next').className='btn '+(this.s===3?'go':'ink');
-    if(this.s===3) this.review(); this.foot(); $('.sheet-b')&&$$('#sh-sell .sheet-b')[0].scrollTo({top:0});
+    if(this.s===3) this.review(); this.foot(); document.querySelector('#sh-sell .sheet-b')?.scrollTo({top:0});
   },
+  overStock(){ const need={}; this.cart.forEach(c=>{ if(c.product_id) need[c.product_id]=(need[c.product_id]||0)+c.pack_qty*c.count; }); return Object.entries(need).map(([id,n])=>{ const p=Store.cache.products.find(x=>x.id===id); return p&&n>(+p.stock||0)?`${p.name}: ${n} needed${App.courier?'':', '+(+p.stock||0)+' in stock'}`:null; }).filter(Boolean); },
   foot(){ const t=this.totals(); $('sell-foot-v').textContent=money(t.total); $('sell-foot-k').textContent=this.s===3?'Total':this.cart.length?`${sum(this.cart,c=>c.count)} item${sum(this.cart,c=>c.count)!==1?'s':''}`:'Cart total'; },
 
   // step 1
@@ -653,13 +670,13 @@ const Sell = {
   },
   addCustom(){
     const name=$('m-name').value.trim(), price=+$('m-price').value, qty=Math.max(1,Math.floor(+$('m-qty').value||1));
-    if(!name){ toast('Give the item a name','err'); $('m-name').focus(); return; } if(!(price>=0)){ toast('Enter a price','err'); $('m-price').focus(); return; }
+    if(!name){ toast('Give the item a name','err'); $('m-name').focus(); return; } if($('m-price').value.trim()===''||!(price>=0)){ toast('Enter a price','err'); $('m-price').focus(); return; }
     this.cart.push({product_id:null,name,sku:'',pack_qty:1,count:qty,price,custom:true});
     $('m-name').value=''; $('m-price').value=''; $('m-qty').value='1'; this.renderCart(); toast('Added '+name);
   },
   autoBac(){ let a=0,b=0; this.cart.forEach(c=>{ const n=c.pack_qty*c.count; if(c.bac_size==='10ml') b+=n; else if(c.bac_size==='3ml') a+=n; }); this.bac={bac3:a,bac10:b}; $('bac3').textContent=a; $('bac10').textContent=b; },
   bacAdj(k,d){ this.bac[k]=Math.max(0,this.bac[k]+d); $(k).textContent=this.bac[k]; },
-  qty(i,d){ this.cart[i].count=Math.max(1,this.cart[i].count+d); this.autoBac(); this.renderCart(); },
+  qty(i,d){ this.cart[i].count=Math.max(1,this.cart[i].count+d); this.autoBac(); this.renderCart(); if(d>0&&this.overStock().length) toast('That’s more than what’s in stock','err'); },
   rm(i){ this.cart.splice(i,1); this.autoBac(); this.renderCart(); },
   renderCart(){
     $('cart-lines').innerHTML=this.cart.length?this.cart.map((c,i)=>`<div class="cl"><div class="n"><b>${esc(c.name)}</b><small>${c.custom?'custom':esc(c.sku||'')} · ${c.pack_qty===1?(c.custom?'each':'single'):c.pack_qty+'-pack'} · ${money(c.price)}</small></div><div class="qty"><button onclick="Sell.qty(${i},-1)">−</button><b>${c.count}</b><button onclick="Sell.qty(${i},1)">+</button></div><span class="amt">${money(c.price*c.count)}</span><button class="x" onclick="Sell.rm(${i})">×</button></div>`).join(''):'<div class="empty">Search above to add products</div>';
@@ -674,7 +691,7 @@ const Sell = {
   suggest(){
     const q=$('c-search').value.trim().toLowerCase(); const el=$('c-sugg'); if(!q){ el.classList.remove('on'); return; }
     const m=Store.cache.customers.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.email||'').toLowerCase().includes(q)).slice(0,6);
-    el.innerHTML=m.length?m.map(c=>`<div class="row tap" onclick="Sell.fillCustomer('${c.id}')"><div class="av">${esc((c.name||'?')[0].toUpperCase())}</div><div class="m"><div class="t">${esc(c.name)}</div><div class="u">${esc([c.phone,c.city].filter(Boolean).join(' · '))}</div></div><div class="e"><span class="mono" style="font-size:12px;color:var(--go)">${money(c.total_spent||0)}</span><span class="hint" style="margin:0">${c.order_count||0} orders</span></div></div>`).join(''):'<div class="row"><div class="u">No match — new customer will be created</div></div>';
+    el.innerHTML=m.length?m.map(c=>`<div class="row tap" onclick="Sell.fillCustomer('${c.id}')"><div class="av">${esc((c.name||'?')[0].toUpperCase())}</div><div class="m"><div class="t">${esc(c.name)}</div><div class="u">${esc([c.phone,c.city].filter(Boolean).join(' · '))}</div></div><div class="e">${App.courier?'':`<span class="mono" style="font-size:12px;color:var(--go)">${money(c.total_spent||0)}</span>`}<span class="hint" style="margin:0">${c.order_count||0} orders</span></div></div>`).join(''):'<div class="row"><div class="u">No match — new customer will be created</div></div>';
     el.classList.add('on');
   },
   fillCustomer(id){ const c=Store.cache.customers.find(x=>x.id===id); if(!c) return; ['name','phone','email','address','city','state','postcode','tags','source'].forEach(k=>{ const e=$('c-'+k); if(e) e.value=c[k]||''; }); $('c-search').value=''; $('c-sugg').classList.remove('on'); this.customerId=c.id; toast(c.name); },
@@ -769,7 +786,7 @@ const Sell = {
     const n=[name,phone,email,address,city,pc].filter(Boolean).length; $('paste-status').textContent=`✓ ${n} field${n!==1?'s':''} detected — check below`;
     this.customerId=null;
     // check existing by phone
-    if(phone){ const ex=Store.cache.customers.find(c=>c.phone===phone); if(ex){ this.customerId=ex.id; $('paste-status').textContent+=' · matched existing customer'; this.customerId=ex.id; } }
+    if(phone){ const ex=Store.cache.customers.find(c=>WA.num(c.phone)&&WA.num(c.phone)===WA.num(phone)); if(ex){ this.customerId=ex.id; $('paste-status').textContent+=' · matched existing customer'; this.customerId=ex.id; } }
   },
 
   // ---- quote (copy or WhatsApp) ----
@@ -802,8 +819,8 @@ const Sell = {
   renderSplits(){ $('split-rows').innerHTML=this.splits.map((r,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px"><select class="in" style="flex:1;min-height:40px" onchange="Sell.splits[${i}].method=this.value">${['Cash','BKP','KJ'].map(m=>`<option ${r.method===m?'selected':''}>${m}</option>`).join('')}</select><input class="in" type="number" inputmode="decimal" placeholder="$" value="${r.amount}" style="width:100px;min-height:40px;text-align:right" oninput="Sell.splits[${i}].amount=this.value;Sell.calc()"><button class="iconb" onclick="Sell.splits.splice(${i},1);Sell.renderSplits()">×</button></div>`).join(''); this.calc(); },
   totals(){
     const sh=Store.get('shipping')||{flat:15,free_over:200}; const manual=0; const sub=sum(this.cart,c=>c.price*c.count);
-    const freeAuto=sub>=sh.free_over&&sub>0; const ship=this.shipOverride!=null?this.shipOverride:(this.fulfilment==='Walk-in'?0:this.shipMode==='free'?0:this.shipMode==='paid'?(+sh.flat||0):(freeAuto?0:(+sh.flat||0)));
-    let disc=0; if(this.discMode!=='none'){ const v=+($('disc-val')?.value||0); disc=this.discMode==='pct'?Math.round(sub*Math.min(v,100)/100):Math.min(v,sub); }
+    const freeAuto=+sh.free_over>0&&sub>=+sh.free_over&&sub>0; const ship=this.fulfilment==='Walk-in'?0:this.shipOverride!=null?this.shipOverride:(this.shipMode==='free'?0:this.shipMode==='paid'?(+sh.flat||0):(freeAuto?0:(+sh.flat||0)));
+    let disc=0; if(this.discMode!=='none'){ const v=+($('disc-val')?.value||0); const vv=Math.max(0,v); disc=this.discMode==='pct'?Math.round(sub*Math.min(vv,100))/100:Math.min(vv,sub); }
     return {sub,ship,disc,total:Math.max(0,sub-disc+ship),manual,freeAuto};
   },
   calc(){
@@ -819,28 +836,35 @@ const Sell = {
     const t=this.totals(); const g=k=>($('c-'+k)?.value||'').trim();
     const cust={name:g('name'),phone:g('phone'),email:g('email'),address:g('address'),city:g('city'),state:g('state').toUpperCase(),postcode:g('postcode')}; const notes=g('notes');
     if(this.payment==='Split'&&Math.round((sum(this.splits,s=>s.amount)-t.total)*100)!==0){ toast('Split must equal total','err'); return; }
-    $('sell-next').disabled=true;
+    // picked one customer, then typed a different person's name → ask before touching the picked record
+    let pickedId=this.customerId; const picked=pickedId?Store.cache.customers.find(x=>x.id===pickedId):null;
+    if(picked&&cust.name&&firstName(cust.name).toLowerCase()!==firstName(picked.name).toLowerCase()){ if(confirm(`You picked ${picked.name}, but the name now says ${cust.name}.\n\nOK = save as a NEW customer (${cust.name})\nCancel = update ${picked.name}'s record`)) pickedId=null; }
+    if(this._saving) return; this._saving=true;
+    $('sell-next').disabled=true; let custRec=null;
     try{
-      let customerId=this.customerId;
+      let customerId=pickedId;
       if(cust.name||cust.phone){
-        let c=customerId?Store.cache.customers.find(x=>x.id===customerId):(cust.phone?Store.cache.customers.find(x=>x.phone===cust.phone):null);
+        let c=customerId?Store.cache.customers.find(x=>x.id===customerId):(cust.phone?Store.cache.customers.find(x=>WA.num(x.phone)&&WA.num(x.phone)===WA.num(cust.phone)):null);
         if(!c) c={id:uid('c'),...cust,tags:'',source:'',notes:'',order_count:0,total_spent:0,created_at:new Date().toISOString()};
         Object.keys(cust).forEach(k=>{ if(cust[k]) c[k]=cust[k]; }); if(g('tags')) c.tags=g('tags'); if(g('source')) c.source=g('source');
-        c.order_count=(c.order_count||0)+1; c.total_spent=(+c.total_spent||0)+t.total; c.last_seen=today(); await Store.upsert('customers',c); customerId=c.id;
+        await Store.upsert('customers',c); customerId=c.id; custRec=c;
       }
       const status=this.isPaid?'Paid':'New';
       const sale={id:uid('s'),date:today(),...(status==='Paid'?{paid_at:new Date().toISOString()}:{}),customer_id:customerId,customer:cust,items:this.cart.map(c=>{ const p=Store.cache.products.find(x=>x.id===c.product_id); return {product_id:c.product_id,name:c.name,sku:c.sku,pack_qty:c.pack_qty,count:c.count,price:c.price,cost_usd:p?(+p.cost||0):0}; }),bac3:this.bac.bac3,bac10:this.bac.bac10,bac3_cost_usd:(Store.cache.products.find(p=>p.sku==='BW03')||{}).cost||0,bac10_cost_usd:(Store.cache.products.find(p=>p.sku==='BW10')||{}).cost||0,manual_amount:t.manual,subtotal:t.sub,discount:t.disc,shipping:t.ship,total:t.total,payment:this.payment,split_payments:this.payment==='Split'?this.splits.filter(s=>s.amount).map(s=>({method:s.method,amount:+s.amount})):[],fulfilment:this.fulfilment,status,tracking:'',notes,created_at:new Date().toISOString()};
       if(Store.mode==='local') sale.sale_no=Math.max(0,...Store.cache.sales.map(s=>+s.sale_no||0))+1;
       await Store.upsert('sales',sale);
+      const taken=[];
       try{
       if(Store.mode==='cloud'){ const {data}=await Store.sb.from('sales').select('sale_no').eq('id',sale.id).single(); if(data){ sale.sale_no=data.sale_no; const i=Store.cache.sales.findIndex(x=>x.id===sale.id); if(i>=0) Store.cache.sales[i].sale_no=data.sale_no; } }
-      for(const c of this.cart){ const p=Store.cache.products.find(x=>x.id===c.product_id); if(p) await Store.adjustStock(p,-(c.pack_qty*c.count),'sale',`#${sale.sale_no} ${cust.name||'Walk-in'}`); }
-      const b3=Store.cache.products.find(p=>p.sku==='BW03'),b10=Store.cache.products.find(p=>p.sku==='BW10'); if(this.bac.bac3&&b3) await Store.adjustStock(b3,-this.bac.bac3,'sale',`#${sale.sale_no}`); if(this.bac.bac10&&b10) await Store.adjustStock(b10,-this.bac.bac10,'sale',`#${sale.sale_no}`);
-      }catch(e){ try{ await Store.remove('sales',sale.id); }catch(_){} throw e; }
+      for(const c of this.cart){ const p=Store.cache.products.find(x=>x.id===c.product_id); if(p){ await Store.adjustStock(p,-(c.pack_qty*c.count),'sale',`#${sale.sale_no} ${cust.name||'Walk-in'}`); taken.push([p,c.pack_qty*c.count]); } }
+      const b3=Store.cache.products.find(p=>p.sku==='BW03'),b10=Store.cache.products.find(p=>p.sku==='BW10'); if(this.bac.bac3&&b3){ await Store.adjustStock(b3,-this.bac.bac3,'sale',`#${sale.sale_no}`); taken.push([b3,this.bac.bac3]); } if(this.bac.bac10&&b10){ await Store.adjustStock(b10,-this.bac.bac10,'sale',`#${sale.sale_no}`); taken.push([b10,this.bac.bac10]); }
+      }catch(e){ for(const [p,n] of taken){ try{ await Store.adjustStock(p,n,'in',`#${sale.sale_no} didn't save — returned`); }catch(_){} } try{ await Store.remove('sales',sale.id); }catch(_){} throw e; }
+      // the customer's totals only move once the sale and its stock are saved
+      if(custRec){ custRec.order_count=(+custRec.order_count||0)+1; custRec.total_spent=Math.round(((+custRec.total_spent||0)+t.total)*100)/100; custRec.last_seen=today(); try{ await Store.upsert('customers',{id:custRec.id,order_count:custRec.order_count,total_spent:custRec.total_spent,last_seen:custRec.last_seen}); }catch(_){} }
       let msg=`Sale #${sale.sale_no} saved`; if(status==='Paid'&&this.fulfilment==='Shipped'){ const ok=await Telegram.sendOrder(sale); msg+=ok?' · courier notified ✓':' · courier NOT sent (set up Telegram)'; }
       this.reset(); Sheet.close('sh-sell'); toast(msg,'ok',4000); Nav.go('sales'); Sales.detail(sale.id);
     }catch(e){ console.error(e); toast('Failed: '+e.message,'err',5000); }
-    $('sell-next').disabled=false;
+    this._saving=false; $('sell-next').disabled=false;
   },
   reset(keepOpen){
     this.cart=[]; this.bac={bac3:0,bac10:0}; this.splits=[]; this.customerId=null; this.s=1; this.shipOverride=null; this.orderRef=''; this._orderText=''; $('order-paste-wrap').style.display='none'; $('order-paste-box').value=''; $('order-paste-status').textContent='';
@@ -890,8 +914,8 @@ const Sales = {
     if(['Paid','Sent to Courier','Dispatched'].includes(s.status)&&['Shipped','Self'].includes(s.fulfilment)) actions.push(`<button class="btn ink" onclick="Sales.openDispatch('${s.id}')">${s.status==='Dispatched'?'Dispatch message':'Add tracking & dispatch'}</button>`);
     if(['Dispatched','Paid','Sent to Courier'].includes(s.status)) actions.push(`<button class="btn" onclick="Sales.setStatus('${s.id}','Delivered')">Mark delivered</button>`);
     actions.push(`<button class="btn" onclick="Sales.copyCourier('${s.id}')">Copy courier text</button>`);
-    if(c.phone) actions.push(`<button class="btn" onclick="WA.open('${esc(c.phone)}','')">WhatsApp</button><a class="btn" href="sms:${esc(c.phone)}">SMS</a><a class="btn" href="tel:${esc(c.phone)}">Call</a>`);
-    if((WA.cfg().courier||'')&&s.fulfilment==='Shipped') actions.push(`<button class="btn" onclick="WA.open('${esc(WA.cfg().courier)}',Telegram.courierMessage(Store.cache.sales.find(x=>x.id==='${s.id}')))">Courier on WhatsApp</button>`);
+    if(c.phone) actions.push(`<button class="btn" onclick="WA.open(${jsq(c.phone)},'')">WhatsApp</button><a class="btn" href="sms:${esc(c.phone)}">SMS</a><a class="btn" href="tel:${esc(c.phone)}">Call</a>`);
+    if((WA.cfg().courier||'')&&s.fulfilment==='Shipped') actions.push(`<button class="btn" onclick="WA.open(${jsq(WA.cfg().courier)},Telegram.courierMessage(Store.cache.sales.find(x=>x.id==='${s.id}')))">Courier on WhatsApp</button>`);
     $('sd-body').innerHTML=`
       <div class="card" style="margin-bottom:12px"><div class="pad" style="display:flex;gap:12px;align-items:center"><div class="av" style="width:44px;height:44px;font-size:18px">${esc((c.name||'W')[0].toUpperCase())}</div><div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:500">${esc(c.name||'Walk-in')}</div><div class="hint" style="margin:2px 0 0">${esc(addr||'No address')}</div>${c.phone?`<div class="hint mono" style="margin:0">${esc(c.phone)}</div>`:''}</div>${s.customer_id?`<button class="iconb" onclick="Cust.detail('${s.customer_id}')">›</button>`:''}</div></div>
       <div class="card" style="margin-bottom:12px"><div class="pad">${tl}
@@ -904,8 +928,10 @@ const Sales = {
         <div class="f" style="margin-top:8px"><label>Notes</label><textarea class="in" rows="2" onblur="Sales.saveNotes('${s.id}',this.value)">${esc(s.notes||'')}</textarea></div></div></div>`;
     Sheet.open('sh-sale');
   },
-  async setFulfilment(id,f){ const s=Store.cache.sales.find(x=>x.id===id); if(!s||s.fulfilment===f) return; if(s.courier_paid_at&&f!=='Shipped'&&!confirm('This order is already in a courier payment. Change anyway?')) return; s.fulfilment=f; if(f!=='Shipped'&&s.status==='Sent to Courier') s.status='Paid'; await Store.upsert('sales',s); toast('#'+s.sale_no+' → '+(f==='Shipped'?'courier':f==='Self'?'posting myself':'walk-in')); this.refresh(id); },
-  async saveNotes(id,v){ const s=Store.cache.sales.find(x=>x.id===id); if(s&&s.notes!==v){ s.notes=v; await Store.upsert('sales',s); } },
+  async setFulfilment(id,f){ const s=Store.cache.sales.find(x=>x.id===id); if(!s||s.fulfilment===f) return; if(s.courier_paid_at&&f!=='Shipped'&&!confirm('This order is already in a courier payment. Change anyway?')) return; s.fulfilment=f; if(f!=='Shipped'&&s.status==='Sent to Courier') s.status='Paid'; await Store.upsert('sales',{id:s.id,fulfilment:s.fulfilment,status:s.status}); toast('#'+s.sale_no+' → '+(f==='Shipped'?'courier':f==='Self'?'posting myself':'walk-in')); this.refresh(id); },
+  async saveNotes(id,v){ const s=Store.cache.sales.find(x=>x.id===id); if(s&&s.notes!==v){ s.notes=v; await Store.upsert('sales',{id:s.id,notes:v}); } },
+  // keep the customer's order count / spend / last order in step when a sale is cancelled, reinstated or deleted
+  async custStat(s,dir){ const c=s.customer_id&&Store.cache.customers.find(x=>x.id===s.customer_id); if(!c) return; c.order_count=Math.max(0,(+c.order_count||0)+dir); c.total_spent=Math.max(0,Math.round(((+c.total_spent||0)+dir*(+s.total||0))*100)/100); const others=Store.cache.sales.filter(x=>x.customer_id===c.id&&x.id!==s.id&&x.status!=='Cancelled').map(x=>x.date).sort(); if(dir>0){ if(!c.last_seen||s.date>c.last_seen) c.last_seen=s.date; } else if(c.last_seen===s.date&&others.length) c.last_seen=others[others.length-1]; try{ await Store.upsert('customers',{id:c.id,order_count:c.order_count,total_spent:c.total_spent,last_seen:c.last_seen}); }catch(e){} },
   // put stock back for a cancelled (or deleted) sale; take it again if the sale is un-cancelled
   async restock(s,dir){ // dir +1 = return to shelf, -1 = deduct again
     const note=`#${s.sale_no} ${dir>0?'cancelled — returned to stock':'reinstated'}`;
@@ -914,23 +940,29 @@ const Sales = {
     if(s.bac3&&b3) await Store.adjustStock(b3,dir*s.bac3,dir>0?'in':'sale',note); if(s.bac10&&b10) await Store.adjustStock(b10,dir*s.bac10,dir>0?'in':'sale',note);
     s.stock_restored=dir>0; await Store.upsert('sales',{id:s.id,stock_restored:s.stock_restored});
   },
-  async setStatus(id,st){ const s=Store.cache.sales.find(x=>x.id===id); if(!s) return; const was=s.status; s.status=st;
-    if(st==='Cancelled'&&!s.stock_restored) await this.restock(s,+1); else if(was==='Cancelled'&&st!=='Cancelled'&&s.stock_restored) await this.restock(s,-1); const k={Paid:'paid_at',Dispatched:'dispatched_at',Delivered:'delivered_at'}[st]; if(k&&!s[k]) s[k]=new Date().toISOString(); await Store.upsert('sales',s); toast('#'+s.sale_no+' → '+st+(st==='Cancelled'?' · stock returned':was==='Cancelled'?' · stock deducted again':'')); this.refresh(id); Nav.badges(); },
-  async markPaid(id){ const s=Store.cache.sales.find(x=>x.id===id); if(!s) return; const wasNew=s.status==='New'; if(wasNew) s.status='Paid'; s.paid_at=new Date().toISOString(); await Store.upsert('sales',s); let m='Marked paid'; if(wasNew&&s.fulfilment==='Shipped'){ const ok=await Telegram.sendOrder(s); m+=ok?' · courier notified ✓':' · courier not sent'; } toast(m,'ok',3500); this.refresh(id); },
+  async setStatus(id,st){ const s=Store.cache.sales.find(x=>x.id===id); if(!s||s.status===st) return; const was=s.status; s.status=st;
+    if(st==='Cancelled'&&!s.stock_restored) await this.restock(s,+1); else if(was==='Cancelled'&&st!=='Cancelled'&&s.stock_restored) await this.restock(s,-1);
+    if(st==='Cancelled'&&was!=='Cancelled') await this.custStat(s,-1); else if(was==='Cancelled'&&st!=='Cancelled') await this.custStat(s,+1);
+    const k={Paid:'paid_at',Dispatched:'dispatched_at',Delivered:'delivered_at'}[st]; if(k&&!s[k]) s[k]=new Date().toISOString(); await Store.upsert('sales',{id:s.id,status:st,...(k?{[k]:s[k]}:{})}); toast('#'+s.sale_no+' → '+st+(st==='Cancelled'?' · stock returned':was==='Cancelled'?' · stock deducted again':'')); this.refresh(id); Nav.badges(); },
+  async markPaid(id){ const s=Store.cache.sales.find(x=>x.id===id); if(!s) return; const wasNew=s.status==='New'; if(wasNew) s.status='Paid'; s.paid_at=new Date().toISOString(); await Store.upsert('sales',{id:s.id,status:s.status,paid_at:s.paid_at}); let m='Marked paid'; if(wasNew&&s.fulfilment==='Shipped'){ const ok=await Telegram.sendOrder(s); m+=ok?' · courier notified ✓':' · courier not sent'; } toast(m,'ok',3500); this.refresh(id); },
   async resend(id){ const s=Store.cache.sales.find(x=>x.id===id); if(!s) return; const ok=await Telegram.sendOrder(s); toast(ok?'Sent to courier ✓':'Telegram failed — check Settings',ok?'ok':'err',3500); this.refresh(id); },
   copyCourier(id){ const s=Store.cache.sales.find(x=>x.id===id); copyText(Telegram.courierMessage(s)); toast('Courier text copied'); },
   refresh(id){ if($('sh-sale').classList.contains('on')&&this.cur&&this.cur.id===id) this.detail(id); if(Nav.cur==='sales') this.render(); if(Nav.cur==='home') Home.render(); Nav.badges(); },
-  async delCurrent(){ const s=this.cur; const back=!s?false:!s.stock_restored&&s.status!=='Cancelled'; if(!s||!confirm(`Delete sale #${s.sale_no}?${back?' Its items go back into stock.':''}`)) return; if(back) await this.restock(s,+1); await Store.remove('sales',s.id); Sheet.close('sh-sale'); toast('Sale deleted'); this.render(); Home.render(); },
+  async delCurrent(){ if(!App.ownerOnly()) return; const s=this.cur; const back=!s?false:!s.stock_restored&&s.status!=='Cancelled'; if(!s||!confirm(`Delete sale #${s.sale_no}?${back?' Its items go back into stock.':''}`)) return; if(back) await this.restock(s,+1); if(s.status!=='Cancelled') await this.custStat(s,-1); await Store.remove('sales',s.id); Sheet.close('sh-sale'); toast('Sale deleted'); this.render(); Home.render(); },
   // dispatch
   openDispatch(id){ const s=Store.cache.sales.find(x=>x.id===id); if(!s) return; this.cur=s; $('dp-tracking').value=s.tracking||''; $('dp-scan-status').style.display='none'; this.dispatchPreview(); const ph=(s.customer||{}).phone; const tg=Store.get('telegram')||{}; const tgOk=!!(tg.token&&tg.chat); $('dp-tg').disabled=!tgOk; $('dp-tg-hint').textContent=tgOk?'Posts the message to your Telegram orders group.':'Telegram not set up — Settings → Telegram.'; $('dp-wa').disabled=!WA.num(ph); $('dp-wa-hint').textContent=!WA.num(ph)?'No phone number on this sale — copy the message instead.':(WA.apiReady()?'Sends automatically via the WhatsApp Business API to '+ph:'Opens WhatsApp to '+ph+' with the message ready — press send there.'); Sheet.open('dr-dispatch'); },
   async tgDispatch(){ const s=this.cur; const tr=$('dp-tracking').value.trim(); if(!tr){ toast('Enter the tracking number','err'); return; } const cfg=Store.get('telegram')||{}; if(!cfg.token||!cfg.chat){ toast('Set up Telegram in Settings first','err'); return; }
     const ok=await Telegram.send(this.dispatchMessage(s,tr)); if(!ok){ toast('Telegram failed — check Settings','err',4000); return; }
-    s.tracking=tr; if(['Paid','Sent to Courier','New'].includes(s.status)){ s.status='Dispatched'; s.dispatched_at=new Date().toISOString(); } s.customer_notified_at=new Date().toISOString(); s.customer_notified_via='telegram'; await Store.upsert('sales',s);
+    s.tracking=tr; if(['Paid','Sent to Courier','New'].includes(s.status)){ s.status='Dispatched'; s.dispatched_at=new Date().toISOString(); } s.customer_notified_at=new Date().toISOString(); s.customer_notified_via='telegram'; await Store.upsert('sales',{id:s.id,tracking:tr,status:s.status,dispatched_at:s.dispatched_at||null,customer_notified_at:s.customer_notified_at,customer_notified_via:'telegram'});
     Sheet.close('dr-dispatch'); toast('Sent to Telegram · #'+s.sale_no+' dispatched'); this.refresh(s.id); },
-  async waDispatch(){ const s=this.cur; const tr=$('dp-tracking').value.trim(); if(!tr){ toast('Enter the tracking number','err'); return; } s.tracking=tr; if(['Paid','Sent to Courier','New'].includes(s.status)){ s.status='Dispatched'; s.dispatched_at=new Date().toISOString(); } await Store.upsert('sales',s); const how=await WA.dispatch(s,tr); if(how){ s.customer_notified_at=new Date().toISOString(); s.customer_notified_via='whatsapp'; await Store.upsert('sales',s); } Sheet.close('dr-dispatch'); toast(how==='api'?'Sent on WhatsApp · #'+s.sale_no+' dispatched':'#'+s.sale_no+' dispatched — send it in WhatsApp'); this.refresh(s.id); },
+  async waDispatch(){ const s=this.cur; const tr=$('dp-tracking').value.trim(); if(!tr){ toast('Enter the tracking number','err'); return; }
+    // open WhatsApp first, while the tap still counts (iPhone blocks it after a network save)
+    const how=(WA.apiReady()&&WA.cfg().dispatch_template)?await WA.dispatch(s,tr):(WA.open((s.customer||{}).phone,this.dispatchMessage(s,tr))?'app':null);
+    s.tracking=tr; if(['Paid','Sent to Courier','New'].includes(s.status)){ s.status='Dispatched'; s.dispatched_at=new Date().toISOString(); } const patch={id:s.id,tracking:tr,status:s.status,dispatched_at:s.dispatched_at||null}; if(how){ s.customer_notified_at=new Date().toISOString(); s.customer_notified_via='whatsapp'; Object.assign(patch,{customer_notified_at:s.customer_notified_at,customer_notified_via:'whatsapp'}); } await Store.upsert('sales',patch); Sheet.close('dr-dispatch'); toast(how==='api'?'Sent on WhatsApp · #'+s.sale_no+' dispatched':'#'+s.sale_no+' dispatched — send it in WhatsApp'); this.refresh(s.id); },
   dispatchMessage(s,tr){ const c=s.customer||{}; const t=Store.get('dispatch_template')||DEFAULT_SETTINGS.dispatch_template; return t.replace(/{first_name}/g,firstName(c.name)||'there').replace(/{name}/g,c.name||'').replace(/{tracking}/g,tr||'').replace(/{sale_no}/g,s.sale_no); },
   dispatchPreview(){ if(!this.cur) return; $('dp-preview').textContent=this.dispatchMessage(this.cur,$('dp-tracking').value.trim()||'[tracking]'); },
-  async copyDispatch(){ const s=this.cur; const tr=$('dp-tracking').value.trim(); if(!tr){ toast('Enter the tracking number','err'); return; } s.tracking=tr; if(['Paid','Sent to Courier','New'].includes(s.status)){ s.status='Dispatched'; s.dispatched_at=new Date().toISOString(); } await Store.upsert('sales',s); copyText(this.dispatchMessage(s,tr)); Sheet.close('dr-dispatch'); toast('Copied · #'+s.sale_no+' dispatched'); this.refresh(s.id); },
+  async copyDispatch(){ const s=this.cur; const tr=$('dp-tracking').value.trim(); if(!tr){ toast('Enter the tracking number','err'); return; } const copied=await copyText(this.dispatchMessage(s,tr)); // copy first, while the tap still counts
+    s.tracking=tr; if(['Paid','Sent to Courier','New'].includes(s.status)){ s.status='Dispatched'; s.dispatched_at=new Date().toISOString(); } await Store.upsert('sales',{id:s.id,tracking:tr,status:s.status,dispatched_at:s.dispatched_at||null}); Sheet.close('dr-dispatch'); toast(copied?'Copied · #'+s.sale_no+' dispatched':'#'+s.sale_no+' dispatched — copy didn’t work, use Telegram or WhatsApp',copied?'ok':'err',copied?2600:4500); this.refresh(s.id); },
   scanTracking(){
     const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
     inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; const st=$('dp-scan-status'); st.style.display='block'; st.textContent='Reading barcode…';
@@ -974,13 +1006,16 @@ const Inv = {
   },
   async save(){
     const name=$('p-name').value.trim(); if(!name){ toast('Name required','err'); return; }
-    const p=this.cur||{id:uid('p'),stock:0,created_at:new Date().toISOString()}; const oldStock=this.cur?+this.cur.stock:null;
+    const isNew=!this.cur; const p={...(this.cur||{id:uid('p'),stock:0,created_at:new Date().toISOString()})}; const oldStock=isNew?null:+this.cur.stock; // edit a copy — nothing changes until it's saved
     Object.assign(p,{name,sku:$('p-sku').value.trim().toUpperCase(),category:$('p-cat').value.trim()||'Other',stock:+$('p-stock').value||0,reorder:+$('p-reorder').value||0,sell1:+$('p-sell1').value||null,sell3:+$('p-sell3').value||null,sell5:+$('p-sell5').value||null,sell10:+$('p-sell10').value||null,cost:+$('p-cost').value||null,supplier_sku:$('p-supsku').value.trim(),bac_size:$('p-bac').value,launch:true,soon:$('p-soon').classList.contains('on'),hidden:$('p-hidden').classList.contains('on')});
     const stockChanged=oldStock!==null&&oldStock!==p.stock;
-    const go=async()=>{ await Store.upsert('products',p); if(stockChanged) await Store.logMove(p,'adj',p.stock-oldStock,'manual edit'); Sheet.close('dr-prod'); toast('Saved'); this.render(); Nav.badges(); };
+    const go=async()=>{ if(this._busy) return; this._busy=true; try{
+      if(isNew) await Store.upsert('products',p);
+      else { const cur=this.cur; const stock=p.stock; const rest={id:cur.id}; ['name','sku','category','reorder','sell1','sell3','sell5','sell10','cost','supplier_sku','bac_size','launch','soon','hidden'].forEach(k=>rest[k]=p[k]); Object.assign(cur,rest); await Store.upsert('products',rest); if(stockChanged){ await Store.freshStock(cur); await Store.adjustStock(cur,stock-(+cur.stock||0),'adj','manual edit → '+stock); } }
+      Sheet.close('dr-prod'); toast('Saved'); this.render(); Nav.badges(); } finally { this._busy=false; } };
     if(stockChanged) Lock.require(go); else go();
   },
-  async del(){ if(!this.cur||!confirm('Delete '+this.cur.name+'?')) return; await Store.remove('products',this.cur.id); Sheet.close('dr-prod'); toast('Deleted'); this.render(); },
+  async del(){ if(!App.ownerOnly()||!this.cur||!confirm('Delete '+this.cur.name+'?')) return; await Store.remove('products',this.cur.id); Sheet.close('dr-prod'); toast('Deleted'); this.render(); },
 };
 
 const PO = {
@@ -1001,13 +1036,14 @@ const PO = {
   fillCost(i){ const l=this.lines[i]; const p=Store.cache.products.find(x=>x.id===l.product_id); if(!p||l.cost_auto===false) return; const fx=Profit.cfg().fx; const c=+p.cost||0; l.unit_cost=c?(l.currency==='AUD'?Math.round(c*fx*100)/100:c):''; l.cost_auto=true; const row=$('po-lines').children[i]; const inp=row&&row.querySelector('input[data-k="cost"]'); if(inp) inp.value=l.unit_cost; },
   rowHtml(l,i){ const P=Store.cache.products.filter(p=>!p.hidden); return `<div style="display:flex;gap:6px"><select class="in" style="flex:1;min-height:40px" onchange="PO.pick(${i},this.value)"><option value="">Product…</option>${P.map(p=>`<option value="${p.id}" ${p.id===l.product_id?'selected':''}>${esc(p.name)} (${p.stock})</option>`).join('')}</select><input class="in" type="number" inputmode="numeric" value="${l.qty}" placeholder="Qty" style="width:64px;min-height:40px;text-align:right" oninput="PO.lines[${i}].qty=+this.value"><input class="in" data-k="cost" type="number" inputmode="decimal" step="0.01" value="${l.unit_cost??''}" placeholder="$/vial" style="width:72px;min-height:40px;text-align:right" oninput="PO.lines[${i}].unit_cost=this.value;PO.lines[${i}].cost_auto=false"><select class="in" style="width:64px;min-height:40px;padding:0 4px" onchange="PO.cur(${i},this.value)"><option ${(l.currency||'USD')==='USD'?'selected':''}>USD</option><option ${l.currency==='AUD'?'selected':''}>AUD</option></select><button class="iconb" onclick="PO.lines.splice(${i},1);PO.renderLines()">×</button></div>`; },
   renderLines(){ $('po-lines').innerHTML=this.lines.map((l,i)=>this.rowHtml(l,i)).join(''); },
-  async save(){
-    const L=this.lines.filter(l=>l.product_id&&l.qty>0); if(!L.length){ toast('Add at least one product','err'); return; }
+  async save(){ if(this._busy) return;
+    const L=this.lines.filter(l=>l.product_id&&l.qty>0); if(!L.length){ toast('Add at least one product','err'); return; } this._busy=true; try{
     const base={supplier:$('po-supplier').value.trim(),ref:$('po-ref').value.trim(),order_date:$('po-date').value||today(),eta:$('po-eta').value||addDays(14),delivery:{name:$('po-dname').value.trim(),phone:$('po-dphone').value.trim(),email:$('po-demail').value.trim(),address:$('po-daddr').value.trim()},status:'pending'};
     for(const l of L) await Store.upsert('purchase_orders',{id:uid('po'),product_id:l.product_id,qty:+l.qty,unit_cost:l.unit_cost!==''&&l.unit_cost!=null?+l.unit_cost:null,currency:l.currency||'USD',...base,created_at:new Date().toISOString()});
     Sheet.close('dr-po'); toast(L.length+' line'+(L.length>1?'s':'')+' added to incoming'); this.render(); Nav.badges();
+    } finally { this._busy=false; }
   },
-  arrive(id){ Lock.require(async()=>{ const o=Store.cache.purchase_orders.find(x=>x.id===id); const p=Store.cache.products.find(x=>x.id===o.product_id); if(!confirm(`Mark ${o.qty} × ${p?p.name:'?'} as arrived? Stock will be added.`)) return; o.status='arrived'; o.arrived_date=today(); await Store.upsert('purchase_orders',o); let msg='Stock added ✓'; if(p){ if(+o.unit_cost>0){ const nc=await Store.receiveStock(p,o.qty,+o.unit_cost,o.currency||'USD','PO '+(o.ref||'')+' arrived'); msg+=` · cost now US$${nc}/vial`; } else await Store.adjustStock(p,o.qty,'in','PO '+(o.ref||'')+' arrived'); } toast(msg,'ok',3500); this.render(); Nav.badges(); }); },
+  arrive(id){ Lock.require(async()=>{ const o=Store.cache.purchase_orders.find(x=>x.id===id); if(!o||o.status!=='pending'||this._busy) return; const p=Store.cache.products.find(x=>x.id===o.product_id); if(!confirm(`Mark ${o.qty} × ${p?p.name:'?'} as arrived? Stock will be added.`)) return; this._busy=true; try{ o.status='arrived'; o.arrived_date=today(); await Store.upsert('purchase_orders',{id:o.id,status:'arrived',arrived_date:o.arrived_date}); let msg='Stock added ✓'; if(p){ if(+o.unit_cost>0){ const nc=await Store.receiveStock(p,o.qty,+o.unit_cost,o.currency||'USD','PO '+(o.ref||'')+' arrived'); msg+=` · cost now US$${nc}/vial`; } else await Store.adjustStock(p,o.qty,'in','PO '+(o.ref||'')+' arrived'); } toast(msg,'ok',3500); this.render(); Nav.badges(); } finally { this._busy=false; } }); },
   async del(id){ if(!confirm('Remove this record?')) return; await Store.remove('purchase_orders',id); this.render(); },
 };
 
@@ -1065,8 +1101,8 @@ const Take = {
 };
 const Mov = {
   t:'in',
-  render(){ const M=[...Store.cache.movements].sort((a,b)=>(b.date||'')>(a.date||'')?1:-1).slice(0,150); const ic={in:['↑','go'],out:['↓','red'],sale:['$','blue'],adj:['±','amber']};
-    $('mov-list').innerHTML=M.map(m=>{ const [i,c]=ic[m.type]||['·','gray']; return `<div class="row"><div class="av" style="background:var(--paper-3);color:var(--${c});font-family:var(--mono)">${i}</div><div class="m"><div class="t">${esc(m.product_name||'')}</div><div class="u">${esc(m.note||m.type)}${m.cost_note?' · '+esc(m.cost_note):''}</div></div><div class="e"><span class="amt" style="color:var(--${c})">${m.qty>0?'+':''}${m.qty}</span><span class="hint mono" style="margin:0;font-size:11px">${new Date(m.date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span></div></div>`; }).join('')||'<div class="empty">No movements yet</div>'; },
+  render(){ const M=[...Store.cache.movements].sort((a,b)=>(b.created_at||b.date||'')>(a.created_at||a.date||'')?1:-1).slice(0,150); const ic={in:['↑','go'],out:['↓','red'],sale:['$','blue'],adj:['±','amber']};
+    $('mov-list').innerHTML=M.map(m=>{ const [i,c]=ic[m.type]||['·','gray']; return `<div class="row"><div class="av" style="background:var(--paper-3);color:var(--${c});font-family:var(--mono)">${i}</div><div class="m"><div class="t">${esc(m.product_name||'')}</div><div class="u">${esc(m.note||m.type)}${m.cost_note?' · '+esc(m.cost_note):''}</div></div><div class="e"><span class="amt" style="color:var(--${c})">${m.qty>0?'+':''}${m.qty}</span><span class="hint mono" style="margin:0;font-size:11px">${m.created_at?new Date(m.created_at).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):fmtDate(m.date)}${m.created_by&&typeof Who!=='undefined'&&Who.name(m.created_by)?' · '+esc(Who.name(m.created_by)):''}</span></div></div>`; }).join('')||'<div class="empty">No movements yet</div>'; },
   open(){ if(!App.ownerOnly()) return; $('mov-prod').innerHTML=Store.cache.products.filter(p=>!p.hidden).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.stock})</option>`).join(''); $('mov-qty').value=''; $('mov-note').value=''; this._costManual=false; this.curSet('USD'); this.type('in'); Sheet.open('dr-mov'); },
   cur:'USD',
   type(t){ this.t=t; $$('#mov-type button').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); $('mov-qty').placeholder=t==='adj'?'New stock count':'Quantity'; $('mov-cost-wrap').style.display=t==='in'?'block':'none'; this.costPreview(); },
@@ -1076,7 +1112,7 @@ const Mov = {
     if(!c){ el.textContent=p.cost?`Current cost US$${p.cost}/vial — leave blank to keep it.`:'No cost on this product yet.'; return; }
     const fx=Profit.cfg().fx; const usd=this.cur==='AUD'?c/fx:c; const onHand=Math.max(0,+p.stock||0), oldCost=+p.cost||0; const avg=(oldCost>0&&onHand>0&&q>0)?(onHand*oldCost+q*usd)/(onHand+q):usd;
     el.textContent=`${this.cur==='AUD'?'A$'+c+' = US$'+(Math.round(usd*100)/100)+' at '+fx+' · ':''}${onHand>0&&oldCost?`${onHand} on hand @ US$${oldCost} + ${q||0} @ US$${Math.round(usd*100)/100} → `:''}new average US$${Math.round(avg*100)/100}/vial`; },
-  save(){ Lock.require(async()=>{ const p=Store.cache.products.find(x=>x.id===$('mov-prod').value); const q=+$('mov-qty').value; if(!p||isNaN(q)||$('mov-qty').value===''){ toast('Enter a quantity','err'); return; } const d=this.t==='in'?q:this.t==='out'?-q:q-p.stock; if(p.stock+d<0){ toast('Not enough stock','err'); return; } const uc=+$('mov-cost').value; if(this.t==='in'&&q>0&&uc>0){ const nc=await Store.receiveStock(p,q,uc,this.cur,$('mov-note').value.trim()||'stock in'); Sheet.close('dr-mov'); toast(`${p.name}: ${p.stock} · cost now US$${nc}/vial`,'ok',3500); this.render(); if(Nav.cur==='stock') Nav.badges(); return; } await Store.adjustStock(p,d,this.t,$('mov-note').value.trim()||(this.t==='adj'?'stock count':'manual')); Sheet.close('dr-mov'); toast(`${p.name}: ${p.stock}`); this.render(); if(Nav.cur==='stock') Nav.badges(); }); },
+  save(){ Lock.require(async()=>{ const p=Store.cache.products.find(x=>x.id===$('mov-prod').value); const q=+$('mov-qty').value; if(!p||isNaN(q)||$('mov-qty').value===''){ toast('Enter a quantity','err'); return; } if(this.t==='adj') await Store.freshStock(p); const d=this.t==='in'?q:this.t==='out'?-q:q-p.stock; if(p.stock+d<0){ toast('Not enough stock','err'); return; } const uc=+$('mov-cost').value; if(this.t==='in'&&q>0&&uc>0){ const nc=await Store.receiveStock(p,q,uc,this.cur,$('mov-note').value.trim()||'stock in'); Sheet.close('dr-mov'); toast(`${p.name}: ${p.stock} · cost now US$${nc}/vial`,'ok',3500); this.render(); if(Nav.cur==='stock') Nav.badges(); return; } await Store.adjustStock(p,d,this.t,$('mov-note').value.trim()||(this.t==='adj'?'stock count':'manual')); Sheet.close('dr-mov'); toast(`${p.name}: ${p.stock}`); this.render(); if(Nav.cur==='stock') Nav.badges(); }); },
 };
 
 // ============================================================
@@ -1090,7 +1126,7 @@ const Cust = {
     $('cust-strip').innerHTML=`<div class="s"><div class="k">Customers</div><div class="v">${C.length}</div><div class="d">+${newC} this week</div></div>${App.courier?`<div class="s"><div class="k">Repeat</div><div class="v go">${C.filter(c=>(c.order_count||0)>=2).length}</div><div class="d">2+ orders</div></div>`:`<div class="s"><div class="k">Lifetime</div><div class="v go">${money(sum(C,c=>c.total_spent||0))}</div><div class="d">avg ${money(C.length?sum(C,c=>c.total_spent||0)/C.length:0)}</div></div>`}<div class="s"><div class="k">Reorder due</div><div class="v ${due?'amber':''}">${due}</div><div class="d">30+ days</div></div>`;
     const q=$('cust-q').value.trim().toLowerCase();
     const L=C.filter(c=>!q||(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.email||'').toLowerCase().includes(q)||(c.city||'').toLowerCase().includes(q)).sort((a,b)=>(b.last_seen||'')>(a.last_seen||'')?1:-1);
-    $('cust-list').innerHTML=L.map(c=>`<div class="row tap" onclick="Cust.detail('${c.id}')"><div class="av">${esc((c.name||'?')[0].toUpperCase())}</div><div class="m"><div class="t">${esc(c.name)}${c.last_seen&&c.last_seen<t30&&c.order_count?'<span class="tag amber">due</span>':''}${(c.order_count||0)>=5?'<span class="tag violet">VIP</span>':''}</div><div class="u">${esc([c.phone,c.city].filter(Boolean).join(' · ')||c.email||'')}</div><div class="w"><span>${c.order_count||0} order${(c.order_count||0)!==1?'s':''}</span><span>${c.last_seen?'last '+fmtDate(c.last_seen):'no orders'}</span></div></div><div class="e"><span class="amt">${money(c.total_spent||0)}</span><span class="chev">›</span></div></div>`).join('')||'<div class="empty">No customers yet — they appear automatically from sales</div>';
+    $('cust-list').innerHTML=L.map(c=>`<div class="row tap" onclick="Cust.detail('${c.id}')"><div class="av">${esc((c.name||'?')[0].toUpperCase())}</div><div class="m"><div class="t">${esc(c.name)}${c.last_seen&&c.last_seen<t30&&c.order_count?'<span class="tag amber">due</span>':''}${(c.order_count||0)>=5?'<span class="tag violet">VIP</span>':''}</div><div class="u">${esc([c.phone,c.city].filter(Boolean).join(' · ')||c.email||'')}</div><div class="w"><span>${c.order_count||0} order${(c.order_count||0)!==1?'s':''}</span><span>${c.last_seen?'last '+fmtDate(c.last_seen):'no orders'}</span></div></div><div class="e">${App.courier?'':`<span class="amt">${money(c.total_spent||0)}</span>`}<span class="chev">›</span></div></div>`).join('')||'<div class="empty">No customers yet — they appear automatically from sales</div>';
   },
   detail(id){
     const c=Store.cache.customers.find(x=>x.id===id); if(!c) return; this.cur=c; $('cd-title').textContent=c.name; $('cd-edit').onclick=()=>this.openEdit(c.id);
@@ -1098,12 +1134,12 @@ const Cust = {
     const prodCount={}; S.forEach(s=>(s.items||[]).forEach(i=>prodCount[i.name]=(prodCount[i.name]||0)+i.count)); const fav=Object.entries(prodCount).sort((a,b)=>b[1]-a[1]).slice(0,3);
     const tpl=[['Reorder nudge',`Hey ${firstName(c.name)}, just checking in — ready to reorder${fav[0]?' your '+fav[0][0]:''}? Let me know and I'll get it sorted 🙌`],['Thanks',`Hey ${firstName(c.name)}, thanks again for your order! Any questions at all just message me.`],['New stock',`Hey ${firstName(c.name)}, we've just restocked — let me know if you want anything put aside.`]];
     $('cd-body').innerHTML=`
-      <div class="strip" style="margin-bottom:12px"><div class="s"><div class="k">Spent</div><div class="v go">${money(c.total_spent||0)}</div></div><div class="s"><div class="k">Orders</div><div class="v">${c.order_count||0}</div></div><div class="s"><div class="k">Last</div><div class="v" style="font-size:16px">${c.last_seen?fmtDate(c.last_seen):'—'}</div></div></div>
+      <div class="strip${App.courier?' c2':''}" style="margin-bottom:12px">${App.courier?'':`<div class="s"><div class="k">Spent</div><div class="v go">${money(c.total_spent||0)}</div></div>`}<div class="s"><div class="k">Orders</div><div class="v">${c.order_count||0}</div></div><div class="s"><div class="k">Last</div><div class="v" style="font-size:16px">${c.last_seen?fmtDate(c.last_seen):'—'}</div></div></div>
       <div class="card" style="margin-bottom:12px"><div class="pad">
         ${c.phone?`<div class="tl"><span class="k">Phone</span><span class="v">${esc(c.phone)}</span></div>`:''}${c.email?`<div class="tl"><span class="k">Email</span><span class="v" style="font-family:var(--sans);font-size:13px">${esc(c.email)}</span></div>`:''}<div class="tl"><span class="k">Address</span><span class="v" style="font-family:var(--sans);font-weight:400;text-align:right;max-width:60%">${esc(addr||'—')}</span></div>${c.tags?`<div class="tl"><span class="k">Tags</span><span class="v" style="font-family:var(--sans)">${esc(c.tags)}</span></div>`:''}${c.source?`<div class="tl"><span class="k">Source</span><span class="v" style="font-family:var(--sans)">${esc(c.source)}</span></div>`:''}${c.notes?`<div class="note" style="margin-top:8px">${esc(c.notes)}</div>`:''}
-        <div class="actions" style="margin-top:10px">${c.phone?`<button class="btn go" onclick="WA.open('${esc(c.phone)}','')">WhatsApp</button><a class="btn" href="tel:${esc(c.phone)}">Call</a><a class="btn" href="sms:${esc(c.phone)}">SMS</a>`:''}${c.email?`<a class="btn" href="mailto:${esc(c.email)}">Email</a>`:''}<button class="btn go" onclick="Cust.newSale('${c.id}')">New sale</button></div></div></div>
+        <div class="actions" style="margin-top:10px">${c.phone?`<button class="btn go" onclick="WA.open(${jsq(c.phone)},'')">WhatsApp</button><a class="btn" href="tel:${esc(c.phone)}">Call</a><a class="btn" href="sms:${esc(c.phone)}">SMS</a>`:''}${c.email?`<a class="btn" href="mailto:${esc(c.email)}">Email</a>`:''}<button class="btn go" onclick="Cust.newSale('${c.id}')">New sale</button></div></div></div>
       ${fav.length?`<div class="sec">Buys most</div><div class="card" style="margin-bottom:12px"><div class="pad" style="padding-top:6px;padding-bottom:6px">${fav.map(([n,q])=>`<div class="hbar"><span class="l">${esc(n)}</span><div class="b"><i style="width:${Math.round(q/fav[0][1]*100)}%"></i></div><span class="v">${q} vials</span></div>`).join('')}</div></div>`:''}
-      <div class="sec">Quick messages</div><div class="card" style="margin-bottom:12px">${tpl.map(([l,m])=>`<div class="row"><div class="m"><div class="t">${l}</div><div class="u wrap" style="font-size:12.5px">${esc(m)}</div><div class="actions" style="margin-top:8px"><button class="btn xs go" onclick="WA.open('${esc(c.phone||'')}',${JSON.stringify(m).replace(/"/g,'&quot;')})">Send on WhatsApp</button><button class="btn xs" onclick="copyText(${JSON.stringify(m).replace(/"/g,'&quot;')});toast('Copied')">Copy</button></div></div></div>`).join('')}</div>
+      <div class="sec">Quick messages</div><div class="card" style="margin-bottom:12px">${tpl.map(([l,m])=>`<div class="row"><div class="m"><div class="t">${l}</div><div class="u wrap" style="font-size:12.5px">${esc(m)}</div><div class="actions" style="margin-top:8px"><button class="btn xs go" onclick="WA.open(${jsq(c.phone)},${esc(JSON.stringify(m))})">Send on WhatsApp</button><button class="btn xs" onclick="copyText(${esc(JSON.stringify(m))});toast('Copied')">Copy</button></div></div></div>`).join('')}</div>
       <div class="sec">Orders (${S.length})</div><div class="card">${S.map(s=>Sales.row(s)).join('')||'<div class="empty">No orders</div>'}</div>`;
     Sheet.open('sh-cust');
   },
@@ -1163,20 +1199,20 @@ window.Reports = {
   ordersBody(){ const O=Store.cache.purchase_orders; const name=o=>esc((Store.cache.products.find(p=>p.id===o.product_id)||{}).name||'?'); const t=today();
     return `<h2>Pending</h2>`+this.table(['Product','#Qty','Supplier','Ref','Ordered','ETA'],O.filter(o=>o.status==='pending').sort((a,b)=>(a.eta||'')<(b.eta||'')?-1:1).map(o=>[name(o),o.qty,esc(o.supplier||''),esc(o.ref||''),fmtDate(o.order_date),fmtDate(o.eta)+(o.eta<t?' ⚠ overdue':'')]),r=>r[5].includes('overdue')?'hl':'')
       +`<h2>Arrived</h2>`+this.table(['Product','#Qty','Supplier','Ref','Ordered','Arrived'],O.filter(o=>o.status==='arrived').sort((a,b)=>(b.arrived_date||'')>(a.arrived_date||'')?1:-1).map(o=>[name(o),o.qty,esc(o.supplier||''),esc(o.ref||''),fmtDate(o.order_date),fmtDate(o.arrived_date)])); },
-  orders(){ this.show('Incoming orders','purchase orders',this.ordersBody()); },
+  orders(){ if(!App.ownerOnly()) return; this.show('Incoming orders','purchase orders',this.ordersBody()); },
   movementsBody(){ const M=[...Store.cache.movements].sort((a,b)=>(b.created_at||b.date)>(a.created_at||a.date)?1:-1).slice(0,500); return this.table(['When','Product','Type','#Qty','Note'],M.map(m=>[new Date(m.created_at||m.date).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}),esc(m.product_name||''),m.type,(m.qty>0?'+':'')+m.qty,esc(m.note||'')])); },
   movements(){ if(!App.ownerOnly()) return; this.show('Stock movements','last 500',this.movementsBody()); },
   customersBody(){ const C=[...Store.cache.customers].sort((a,b)=>(b.total_spent||0)-(a.total_spent||0)); const t30=addDays(-30);
     return this.kpi([['Customers',C.length],['Lifetime revenue',money(sum(C,c=>c.total_spent||0))],['Repeat (2+)',C.filter(c=>(c.order_count||0)>=2).length],['Reorder due',C.filter(c=>c.last_seen&&c.last_seen<t30&&c.order_count).length]])
       +this.table(['Customer','Phone','City','#Orders','#Spent','Last order'],C.map(c=>[esc(c.name),esc(c.phone||''),esc([c.city,c.state].filter(Boolean).join(' ')),c.order_count||0,money(c.total_spent||0),c.last_seen?fmtDate(c.last_seen):'—']),r=>''); },
-  customers(){ this.show('Customers','ranked by spend',this.customersBody()); },
+  customers(){ if(!App.ownerOnly()) return; this.show('Customers','ranked by spend',this.customersBody()); },
   courier(){
     const T=Courier.totals(); const U=Courier.unpaid(); const pc=Profit.cfg(); const P=[...Store.cache.courier_payments].sort((a,b)=>b.date>a.date?1:-1);
     const all=Courier.owedSales().sort((a,b)=>b.date>a.date?1:-1);
     this.show('Courier statement',`${pc.pct}% of (sale − ${money(pc.postage)} postage − ${money(pc.packaging)} packaging − product cost) on shipped orders · paid weekly`,this.kpi([['Owed now',money(T.balance)],['Unpaid orders',U.length],['This week',money(T.week)],['Last week',money(T.lastWeek)],['Paid to date',money(T.paid)],['Earned to date',money(T.accrued)],['Postage / expenses',money(T.exp)]].filter(()=>true))
       +Courier.byWeek(U).map(w=>`<h2>Week ${Courier.weekLabel(w.ws)}</h2>`+(App.courier?this.table(['#','Date','Customer','#Your share'],w.sales.map(s=>[s.sale_no,fmtDate(s.date),esc((s.customer||{}).name||'Walk-in'),money(Profit.of(s).courier)]).concat([['<b>Week total</b>','','',`<b>${money(w.total)}</b>`]]),r=>r[0]==='<b>Week total</b>'?'tot':''):this.table(['#','Date','Customer','#Sale','#Product cost','#Post + pack','#Base','#Courier share'],w.sales.map(s=>{ const p=Profit.of(s); return [s.sale_no,fmtDate(s.date),esc((s.customer||{}).name||'Walk-in'),money(s.total),money(p.cogs),money(p.ship+p.pack),money(p.base),money(p.courier)]; }).concat([['<b>Week total</b>','','','','','','',`<b>${money(w.total)}</b>`]]),r=>r[0]==='<b>Week total</b>'?'tot':''))).join('')+(Courier.openExp_().length?`<h2>Postage / expenses</h2>`+this.table(['Date','What for','#Amount'],Courier.openExp_().map(p=>[fmtDateFull(p.date),esc(p.note||'Postage'),money(p.amount)])):'')+(T.balance>0?`<p><b>Owed now: ${money(T.balance)}</b></p>`:'<p>All settled.</p>')
       +`<h2>Payments &amp; expenses</h2>`+this.table(['Date','#Amount','Type','Note','#Orders'],P.map(p=>[fmtDateFull(p.date),(p.kind==='expense'?'+':'')+money(p.amount),p.kind==='expense'?'Expense':esc(p.method||''),esc(p.note||''),(p.sale_ids||[]).length||'']))
-      +`<h2>All dispatched orders</h2>`+this.table(['#','Date','Customer','#Sale','#Courier share','Paid'],all.map(s=>[s.sale_no,fmtDate(s.date),esc((s.customer||{}).name||'Walk-in'),money(s.total),money(Profit.of(s).courier),s.courier_paid_at?fmtDate(s.courier_paid_at.slice(0,10)):'—'])));
+      +`<h2>All dispatched orders</h2>`+this.table(['#','Date','Customer','#Sale','#Courier share','Paid'],all.map(s=>[s.sale_no,fmtDate(s.date),esc((s.customer||{}).name||'Walk-in'),money(s.total),money(Profit.of(s).courier),s.courier_paid_at?fmtDate(localDay(s.courier_paid_at)):'—'])));
   },
   full(){ if(!App.ownerOnly()) return; const [f,t]=this.rangeOf('30'); this.show('Full business report','everything',`<h2 style="margin-top:10px">Sales — last 30 days</h2>`+this.salesBody(f,t)+`<h2>Launch & reorder</h2>`+this.launchBody()+`<h2>Inventory</h2>`+this.inventoryBody()+`<h2>Incoming orders</h2>`+this.ordersBody()+`<h2>Customers</h2>`+this.customersBody()); },
 };
@@ -1216,7 +1252,7 @@ const App = {
     Sell.applyShipping(); Nav.go('home'); this.realtime();
   },
   async reload(){ await Store.loadAll(); Nav.go(Nav.cur); },
-  async refresh(){ if(Store.mode!=='cloud'||this._busy) return; this._busy=true; try{ await Store.loadAll(); Nav.go(Nav.cur); Nav.sync('ok','Synced'); }catch(e){ Nav.sync('err','Offline'); } this._busy=false; },
+  async refresh(){ if(Store.mode!=='cloud'||this._busy) return; this._busy=true; try{ await Store.loadAll(); Nav.go(Nav.cur,true); Nav.sync('ok','Synced'); }catch(e){ Nav.sync('err','Offline'); } this._busy=false; },
   realtime(){
     if(Store.mode!=='cloud'||this._rt) return; this._rt=true;
     const bump=()=>{ clearTimeout(this._t); this._t=setTimeout(()=>this.refresh(),600); };

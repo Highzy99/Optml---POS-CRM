@@ -62,7 +62,7 @@
     <div class="seg scroll" id="sales-seg"></div>
     <div class="search" style="margin:12px 0"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="sales-q" placeholder="Search name, phone, tracking" oninput="Sales.render()"></div>
     <div class="card" id="sales-list"></div>
-    <button class="btn block" onclick="Reports.sales()">Sales report</button>
+    <button class="btn block owner-only" onclick="Reports.sales()">Sales report</button>
   </section>
 
   <!-- STOCK -->
@@ -94,7 +94,7 @@
     <div class="strip" id="cust-strip"></div>
     <div class="search" style="margin-bottom:12px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input id="cust-q" placeholder="Search customers" oninput="Cust.render()"></div>
     <div class="card" id="cust-list"></div>
-    <button class="btn block" onclick="Reports.customers()">Customer report</button>
+    <button class="btn block owner-only" onclick="Reports.customers()">Customer report</button>
   </section>
 
   <!-- MORE -->
@@ -217,7 +217,7 @@
 
 <!-- ================= SALE DETAIL SHEET ================= -->
 <div class="sheet" id="sh-sale">
-  <div class="sheet-h"><button class="iconb" onclick="Sheet.close('sh-sale')">×</button><h2 id="sd-title">Sale</h2><button class="iconb" onclick="Sales.delCurrent()" style="color:var(--red)">🗑</button></div>
+  <div class="sheet-h"><button class="iconb" onclick="Sheet.close('sh-sale')">×</button><h2 id="sd-title">Sale</h2><button class="iconb owner-only" onclick="Sales.delCurrent()" style="color:var(--red)">🗑</button></div>
   <div class="sheet-b" id="sd-body" style="padding-bottom:40px"></div>
 </div>
 
@@ -374,5 +374,6 @@
 <div id="toast"></div>
 <div id="pf"><iframe id="pf-i"></iframe></div>
 <script src="app.js"></script>
+<script src="features.js"></script>
 </body>
 </html>

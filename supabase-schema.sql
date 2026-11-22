@@ -388,3 +388,72 @@ alter table public.courier_payments add column if not exists kind text not null 
 -- app_users(user_id, email, name, role owner|courier); invites(code, role, note, expires_at, used_by)
 -- every data table: policy members_all using (public.is_member()) — a signed-up account that isn't in app_users sees nothing
 -- claim_invite(code, name) turns an invite into an app_users row; my_role() tells the app which view to show
+
+-- ---------------------------------------------------------------
+-- Migration: intel_audit_safety (expenses, audit log, adjust_stock, courier_share, settings owner-write)
+-- ===== intel + audit + safety (v3) =====
+-- business expenses (owner only)
+create table if not exists public.expenses(
+  id text primary key, date date not null default current_date, amount numeric not null default 0,
+  category text not null default 'Other', note text default '', method text default '',
+  created_at timestamptz not null default now(), created_by uuid default auth.uid());
+alter table public.expenses enable row level security;
+drop policy if exists expenses_owner on public.expenses;
+create policy expenses_owner on public.expenses for all using ((select public.is_owner())) with check ((select public.is_owner()));
+do $$ begin alter publication supabase_realtime add table public.expenses; exception when duplicate_object then null; end $$;
+
+-- who did it / last messaged / courier share frozen when paid
+alter table public.movements add column if not exists created_by uuid default auth.uid();
+alter table public.sales add column if not exists created_by uuid default auth.uid();
+alter table public.sales add column if not exists courier_share numeric;
+alter table public.courier_payments add column if not exists created_by uuid default auth.uid();
+alter table public.customers add column if not exists last_contacted_at timestamptz;
+
+-- stock changes as +/- in one step, so two phones never overwrite each other
+create or replace function public.adjust_stock(p_id text, p_delta integer) returns integer
+language sql security invoker set search_path = public as $$
+  update public.products set stock = coalesce(stock,0) + p_delta where id = p_id returning stock;
+$$;
+revoke all on function public.adjust_stock(text,integer) from public, anon;
+grant execute on function public.adjust_stock(text,integer) to authenticated;
+
+-- settings (tokens, passcode, templates): everyone on the team can read, only the owner can change
+drop policy if exists members_all on public.settings;
+drop policy if exists settings_read on public.settings;
+drop policy if exists settings_owner_write on public.settings;
+create policy settings_read on public.settings for select using ((select public.is_member()));
+create policy settings_owner_write on public.settings for all using ((select public.is_owner())) with check ((select public.is_owner()));
+
+-- audit log: every insert / update / delete on the business tables, with who did it
+create table if not exists public.audit_log(
+  id bigint generated always as identity primary key, at timestamptz not null default now(),
+  actor uuid, tbl text not null, row_id text, action text not null, changes jsonb);
+alter table public.audit_log enable row level security;
+drop policy if exists audit_owner_read on public.audit_log;
+create policy audit_owner_read on public.audit_log for select using ((select public.is_owner()));
+create index if not exists audit_log_at_idx on public.audit_log(at desc);
+
+create or replace function public.audit_trg() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare d jsonb := '{}'::jsonb; o jsonb; n jsonb; k text;
+begin
+  if TG_OP = 'INSERT' then
+    n := to_jsonb(NEW); insert into public.audit_log(actor,tbl,row_id,action,changes) values (auth.uid(), TG_TABLE_NAME, n->>'id', 'insert', n); return NEW;
+  elsif TG_OP = 'DELETE' then
+    o := to_jsonb(OLD); insert into public.audit_log(actor,tbl,row_id,action,changes) values (auth.uid(), TG_TABLE_NAME, o->>'id', 'delete', o); return OLD;
+  else
+    o := to_jsonb(OLD); n := to_jsonb(NEW);
+    for k in select jsonb_object_keys(n) loop
+      if k <> 'updated_at' and (o->k) is distinct from (n->k) then d := d || jsonb_build_object(k, jsonb_build_array(o->k, n->k)); end if;
+    end loop;
+    if d <> '{}'::jsonb then insert into public.audit_log(actor,tbl,row_id,action,changes) values (auth.uid(), TG_TABLE_NAME, n->>'id', 'update', d); end if;
+    return NEW;
+  end if;
+end $$;
+revoke all on function public.audit_trg() from public, anon, authenticated;
+do $$ declare t text; begin
+  foreach t in array array['sales','products','customers','courier_payments','purchase_orders','stocktakes','expenses'] loop
+    execute format('drop trigger if exists trg_audit on public.%I', t);
+    execute format('create trigger trg_audit after insert or update or delete on public.%I for each row execute function public.audit_trg()', t);
+  end loop;
+end $$;
