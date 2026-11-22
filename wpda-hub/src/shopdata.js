@@ -119,3 +119,6 @@ function makeRef() {
 
 // Product photos for the shop cards, keyed by SKU (path under assets/products/). A card without one shows its goal badge.
 const PRODUCT_PHOTOS = {};
+
+// Top sellers carousel, best first. From POS sales 25 Oct to 23 Nov 2026 (vials sold and number of orders). Edit this list to change the carousel.
+const TOP_SELLERS = ['RE20', 'CJ10', 'KL80', 'MO10', 'WO20', 'TE10'];

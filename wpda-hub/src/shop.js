@@ -115,16 +115,34 @@ function ShipCountdown() {
   return html`<span>Same-day dispatch: order within <b style="font-variant-numeric:tabular-nums">${(h ? h + 'h ' : '') + m + 'm' + (h ? '' : ' ' + s + 's')}</b></span>`;
 }
 
+// Offer to turn one or two single vials into a 3-pack when that saves money.
+function packOffer(p, cart) {
+  const q1 = cart[p.sku + ':1'] || 0;
+  if (!p.prices[3] || q1 < 1 || q1 > 2) return null;
+  const save = p.prices[1] * 3 - p.prices[3]; const extra = p.prices[3] - p.prices[1] * q1;
+  return save > 0 && extra > 0 ? { q1, save, extra } : null;
+}
+function PackNudge({ p, sh, bump, dark }) {
+  const of = packOffer(p, sh.cart);
+  if (!of) return null;
+  return html`<button type="button" class=${'nudge' + (dark ? ' dark' : '')} onClick=${() => { bump(p.sku + ':1', -of.q1); bump(p.sku + ':3', 1); }}>
+    <span><b>Make it a 3-pack</b> for ${money(of.extra)} more</span><i>Save ${money(of.save)}</i></button>`;
+}
+function bestTier(p) {
+  const ts = TIERS.filter(n => n > 1 && p.prices[n]);
+  return ts.length ? ts.reduce((a, n) => p.prices[n] / n < p.prices[a] / a ? n : a, ts[0]) : 0;
+}
+
 function Tiers({ p, sh, bump, compact }) {
-  const tiers = TIERS.filter(n => p.prices[n]);
+  const tiers = TIERS.filter(n => p.prices[n]); const bestN = compact ? 0 : bestTier(p);
   return html`<div class="tiers" style=${'grid-template-columns:repeat(' + tiers.length + ',minmax(0,1fr))'}>${tiers.map(n => {
     const key = p.sku + ':' + n; const t = tierInfo(p, n, sh.cart[key] || 0);
     return t.qty ? html`<div class="tier on" role="group" aria-label=${t.label + ' of ' + p.name + ', ' + t.qty + ' in your order'}>
         <span class="tl">${t.label}${compact ? '' : ', ' + t.price}</span>
         <span class="stepper"><button type="button" aria-label=${'Remove one ' + t.label + ' of ' + p.name} onClick=${() => bump(key, -1)}>−</button><b>${t.qty}</b><button type="button" aria-label=${'Add another ' + t.label + ' of ' + p.name} onClick=${() => bump(key, 1)}>+</button></span>
       </div>`
-      : html`<button type="button" class="tier" aria-label=${'Add ' + t.label + ' of ' + p.name + ', ' + t.price} onClick=${() => bump(key, 1)}>
-        <span class="tl">${t.label}</span><span class="tp">${t.price}</span>
+      : html`<button type="button" class=${'tier' + (n === bestN ? ' best' : '')} aria-label=${'Add ' + t.label + ' of ' + p.name + ', ' + t.price + (n === bestN ? ', best value' : '')} onClick=${() => bump(key, 1)}>
+        ${n === bestN ? html`<span class="tag">Best value</span>` : null}<span class="tl">${t.label}</span><span class="tp">${t.price}</span>
         <span class="tn">${n === 1 ? (t.was ? html`<s>${t.was}</s>` : null) : t.each}</span>
         ${!compact && n > 1 && t.saveAmt ? html`<span class="sv">${t.saveAmt}</span>` : null}
       </button>`;
@@ -142,8 +160,7 @@ function groupProducts(list) {
 function ProductCard({ g, cur, setPick, sh, onAdd }) {
   const p = cur.p; const coa = COAS[p.sku]; const t1 = tierInfo(p, 1, 0);
   const inOrder = g.items.reduce((a, x) => a + TIERS.reduce((b, n) => b + (sh.cart[x.p.sku + ':' + n] || 0), 0), 0);
-  const packs = TIERS.filter(n => n > 1 && p.prices[n]);
-  const best = packs.length ? Math.min.apply(null, packs.map(n => Math.round(p.prices[n] / n))) : 0;
+  const save3 = p.prices[3] ? p.prices[1] * 3 - p.prices[3] : 0;
   const photo = PRODUCT_PHOTOS[p.sku];
   return html`<article class=${'pcard s-' + g.goal}>
     <div class="pmedia">
@@ -156,8 +173,8 @@ function ProductCard({ g, cur, setPick, sh, onAdd }) {
       <a class="ptitle" href=${'#/p/' + p.sku}>${g.base}${g.items.length === 1 && cur.strength ? ' ' + cur.strength : ''}</a>
       <span class="psub">${coa ? html`<i class="okdot"></i>${coa[0]} pure` : 'Research peptide'}</span>
       ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}
-      <div class="pmeta"><span class="pprice">${t1.price}</span>${t1.was ? html`<s>${t1.was}</s>` : null}<span class="pserves">${cur.strength ? cur.strength + ' vial' : 'per vial'}</span></div>
-      ${best ? html`<span class="ppack">Packs from ${money(best)} a vial</span>` : null}
+      <div class="pmeta"><span class="pprice">${t1.price}</span>${t1.was ? html`<s>${t1.was}</s>` : null}</div>
+      ${save3 > 0 ? html`<button type="button" class="psave" aria-label=${'Buy 3 ' + p.name + ' and save ' + money(save3) + '. Choose a pack'} onClick=${() => onAdd(g.key)}>Buy 3, save ${money(save3)}</button>` : null}
     </div>
   </article>`;
 }
@@ -179,11 +196,31 @@ function QuickAdd({ g, cur, setPick, sh, bump, o, onClose }) {
         <button type="button" class="qa-x" aria-label="Close" onClick=${onClose}>×</button></div>
       ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill lg" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}
       <${Tiers} p=${p} sh=${sh} bump=${bump} />
+      <${PackNudge} p=${p} sh=${sh} bump=${bump} />
       <p class="qa-note"><img src="assets/features/auto.svg" alt="" />Bac water comes free in the box with every vial.</p>
       <div class="qa-foot"><a class="btn outline" href=${'#/p/' + p.sku}>How to use</a>
         ${o.packCount ? html`<a class="btn" href="#/order">View order, ${money(o.total)}</a>` : html`<button type="button" class="btn" onClick=${onClose}>Done</button>`}</div>
     </div>
   </div>`;
+}
+
+function TopSellers({ groups, current, pick, setPick, sh, onAdd }) {
+  const ref = useRef(null);
+  const [edge, setEdge] = useState({ start: true, end: false });
+  const sync = () => { const el = ref.current; if (el) setEdge({ start: el.scrollLeft < 8, end: el.scrollLeft + el.clientWidth > el.scrollWidth - 8 }); };
+  useEffect(() => { sync(); window.addEventListener('resize', sync); return () => window.removeEventListener('resize', sync); }, []);
+  const step = dir => { const el = ref.current; if (!el) return; const card = el.querySelector('.pcard'); const w = card ? card.getBoundingClientRect().width + 14 : 240;
+    el.scrollBy({ left: dir * w * Math.max(1, Math.floor(el.clientWidth / w)), behavior: 'smooth' }); };
+  const items = TOP_SELLERS.map(sku => { const g = groups.find(x => x.items.some(i => i.p.sku === sku)); return g ? { g, top: g.items.find(i => i.p.sku === sku) } : null; }).filter(Boolean);
+  if (!items.length) return null;
+  return html`<section class="tsell" aria-labelledby="h-top">
+    <div class="tsell-head"><h2 id="h-top">Top sellers</h2>
+      <div class="tsell-nav"><button type="button" aria-label="Previous top sellers" disabled=${edge.start} onClick=${() => step(-1)}><${Icon} name="back" size=${18} /></button><button type="button" aria-label="More top sellers" disabled=${edge.end} onClick=${() => step(1)}><${Icon} name="arrow" size=${18} /></button></div></div>
+    <div class="tsell-track" ref=${ref} onScroll=${sync}>
+      ${items.map(x => { const cur = pick[x.g.key] ? current(x.g) : x.top;
+        return html`<${ProductCard} key=${x.g.key} g=${x.g} cur=${cur} setPick=${setPick} sh=${sh} onAdd=${key => { if (!pick[key]) setPick(key, cur.p.sku); onAdd(key); }} />`; })}
+    </div>
+  </section>`;
 }
 
 function ShopSection({ sh, setSh, bump, o }) {
@@ -195,9 +232,12 @@ function ShopSection({ sh, setSh, bump, o }) {
   const groups = groupProducts(list);
   const inCart = sku => TIERS.some(n => sh.cart[sku + ':' + n] > 0);
   const current = g => g.items.find(x => x.p.sku === pick[g.key]) || g.items.find(x => inCart(x.p.sku)) || g.items[0];
-  const qg = quick ? groupProducts(SHOP_PRODUCTS).find(g => g.key === quick) : null;
+  const allGroups = groupProducts(SHOP_PRODUCTS);
+  const qg = quick ? allGroups.find(g => g.key === quick) : null;
+  const browsing = !q && sh.goal === 'all';
   return html`<section id="shop" aria-labelledby="h-shop"><div class="wrap">
-    <h2 id="h-shop" class="sr">${WHOLESALE ? 'Wholesale price list' : 'Price list'}</h2>
+    ${browsing ? html`<${TopSellers} groups=${allGroups} current=${current} pick=${pick} setPick=${setPick} sh=${sh} onAdd=${setQuick} />` : null}
+    <h2 id="h-shop" class=${browsing ? 'allhead' : 'sr'}>${WHOLESALE ? 'Wholesale price list' : 'All products'}</h2>
     <div class="finder">
       <label class="field"><span class="sr">Search the price list</span><input class="input" type="search" placeholder="Search — reta, bpc, ghk…" value=${sh.q} onInput=${e => setSh({ q: e.target.value })} /></label>
       <div class="sticky-filters">
@@ -207,7 +247,7 @@ function ShopSection({ sh, setSh, bump, o }) {
         </div>
       </div>
     </div>
-    <p class="taphint"><span aria-hidden="true">+</span>Tap + to pick a pack. Tap a product to see how to use it.</p>
+    <p class="taphint"><span aria-hidden="true">+</span>Tap + to add. Packs of 3 and 5 cost less per vial.</p>
     <div class="pgrid">
       ${groups.map(g => html`<${ProductCard} key=${g.key} g=${g} cur=${current(g)} setPick=${setPick} sh=${sh} onAdd=${setQuick} />`)}
     </div>
@@ -244,7 +284,8 @@ function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
       </div>` : null}
 
       ${o.items.length ? html`<div class="olines">${o.items.map(it => html`<div class="oline"><b class="on">${it.p.name}</b><b class="op">${money(it.amount)}</b><span class="ok">${it.pack}</span>
-          <span class="stepper dark"><button type="button" aria-label=${'One less ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, -1)}>−</button><b>${it.qty}</b><button type="button" aria-label=${'One more ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, 1)}>+</button></span></div>`)}</div>
+          <span class="stepper dark"><button type="button" aria-label=${'One less ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, -1)}>−</button><b>${it.qty}</b><button type="button" aria-label=${'One more ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, 1)}>+</button></span>
+          ${it.key.split(':')[1] === '1' && !sh.sent ? html`<${PackNudge} p=${it.p} sh=${sh} bump=${bump} dark />` : null}</div>`)}</div>
         ${!o.nz ? html`<div class="shipbar"><div class="tiny">${o.freeShip ? 'Free express shipping unlocked' : 'Add ' + money(o.remaining) + ' more for free express shipping'}</div><div class="bar"><i style=${'width:' + Math.min(100, Math.round(o.afterDiscount / FREE_SHIP_AT * 100)) + '%'}></i></div></div>` : null}
         <div class="otot">
           <div><span>Subtotal (AUD)</span><b>${money(o.subtotal)}</b></div>
