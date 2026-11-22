@@ -8,7 +8,7 @@ Live: https://wpda-protocol-hub.vercel.app (Vercel project `wpda-hub`, root dire
 
 ## Design
 
-One flat colour field per page (the "lid", taken from the optml box): periwinkle `--lid` on the home hero and the order summary, the goal colour on each product page. Everything around it stays white, paper grey and ink. Goal colours are set by the `.g-<goal>` classes in `src/shell.html`. The price list shows one card per compound with a strength switch.
+The shop page uses the original optml palette (white, #f5f6f7 paper, #222326 ink, goal gradients) and shows products the way stayoptml.com does: a square goal-gradient stage with a + button, goal chip, title, strength pills and price. The + button opens a bottom sheet to pick a pack. To show a product photo on a card, put the image in `assets/products/` and add it to `PRODUCT_PHOTOS` in `src/shopdata.js` (keyed by SKU); cards without one show the goal badge. Product pages use the goal colour as a header block and the order summary uses the box periwinkle (`--lid`).
 
 ## Structure
 

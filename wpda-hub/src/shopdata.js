@@ -116,3 +116,6 @@ function makeRef() {
   return 'OPT-' + s;
 }
 
+
+// Product photos for the shop cards, keyed by SKU (path under assets/products/). A card without one shows its goal badge.
+const PRODUCT_PHOTOS = {};

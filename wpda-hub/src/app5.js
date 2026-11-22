@@ -121,15 +121,37 @@ function parseRoute() {
   return { page: 'shop' };
 }
 
+function Ticker() {
+  const row = hidden => html`<div class="tk-row" aria-hidden=${hidden ? 'true' : null}>
+    <span>Free express shipping over $200 AUD</span><i></i><span><${ShipCountdown} /></span><i></i>
+    <span>Free bac water with every vial</span><i></i><span>Batch-matched certificate with every order</span><i></i></div>`;
+  return html`<div class="ticker screen"><div class="tk-track">${row(false)}${row(true)}</div></div>`;
+}
+
 function ShopHero() {
-  return html`<section class="wrap"><div class="lid hero-lid">
-    <figure class="lid-photo"><img src="assets/brand/hero-vials-web.jpg" alt="Three optml vials with printed labels, lot numbers and QR codes" fetchpriority="high" /></figure>
-    <div class="lid-body">
-      <h1>${WHOLESALE ? 'Wholesale price list' : 'Research\u2011grade peptides, properly tested.'}</h1>
-      ${WHOLESALE ? html`<p class="lid-lead">Your confirmed wholesale rates. Add what you need and send it as one order on WhatsApp.</p>` : null}
-      <ul class="lid-pills"><li><${Icon} name="drop" size=${16} /> Free bac water in every box</li><li class="line">Batch certificate</li><li class="line">Dosing guide</li></ul>
-      <p class="lid-foot"><${ShipCountdown} /></p>
+  const best = Math.max.apply(null, SHOP_PRODUCTS.map(p => Math.max.apply(null, TIERS.filter(n => n > 1 && p.prices[n]).map(n => 1 - p.prices[n] / (p.prices[1] * n)).concat([0]))));
+  return html`<section class="wrap"><div class="shero">
+    <div class="sh-copy">
+      <h1>${WHOLESALE ? 'Wholesale price list' : 'Research‑grade peptides, properly tested.'}</h1>
+      <p class="lead">${WHOLESALE ? 'Your confirmed wholesale rates. Every vial ships with bacteriostatic water included and a batch-matched certificate of analysis.' : 'Every vial ships with bacteriostatic water included and a batch-matched certificate of analysis. Order before 2pm and it ships the same day.'}</p>
+      <ul class="sh-feats">
+        <li><a href="#/coa"><img src="assets/features/tested.svg" alt="" />98%+ purity, see the certificates<${Icon} name="chev" size=${16} /></a></li>
+        <li><span><img src="assets/features/auto.svg" alt="" />Free bac water with every vial</span></li>
+        <li><span><img src="assets/features/discreet.svg" alt="" />Discreet, tracked express shipping</span></li>
+        <li><a href="#/guide"><img class="seal" src="assets/brand/label-circle.png" alt="" />A dosing guide for everything you order<${Icon} name="chev" size=${16} /></a></li>
+      </ul>
     </div>
+    <figure class="sh-photo"><img src="assets/brand/hero-vials-web.jpg" alt="Three optml vials with printed labels, lot numbers and QR codes" fetchpriority="high" />
+      <figcaption class="sh-pill"><img src="assets/features/save.svg" alt="" />Pack pricing, up to ${Math.floor(best * 100)}% off</figcaption></figure>
+  </div></section>`;
+}
+
+function GuideCard() {
+  return html`<section class="wrap"><div class="gcard">
+    <img src="assets/brand/label-circle.png" alt="World Peptide Dosage Association" />
+    <div class="stack g8"><h2>Not sure how to dose or mix?</h2>
+      <p>Every compound on this list has a guide: the dose week by week, mixing steps, injection sites and a daily tracker.</p></div>
+    <a class="btn on-dark" href="#/guide">Open the guide</a>
   </div></section>`;
 }
 
@@ -262,9 +284,9 @@ function App() {
   else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} />`;
   else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
   else if (route.page === 'coa') page = html`<${CoaSection} />`;
-  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} /><${AfterOrder} />`;
+  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} /><${AfterOrder} /><${GuideCard} />`;
 
-  return html`<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
+  return html`${route.page === 'shop' ? html`<${Ticker} />` : null}<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
     <main class="screen" id="main">${page}</main>
     <${Doc} st=${Object.assign({}, st, { preview: st.preview && route.page === 'build' })} items=${items} />
     <${Footer} />

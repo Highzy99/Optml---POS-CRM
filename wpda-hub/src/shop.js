@@ -139,16 +139,67 @@ function groupProducts(list) {
   return groups;
 }
 
-function ShopSection({ sh, setSh, bump }) {
-  const [pick, setPick] = useState({});
+function ProductCard({ g, cur, setPick, sh, onAdd }) {
+  const p = cur.p; const coa = COAS[p.sku]; const t1 = tierInfo(p, 1, 0);
+  const inOrder = g.items.reduce((a, x) => a + TIERS.reduce((b, n) => b + (sh.cart[x.p.sku + ':' + n] || 0), 0), 0);
+  const packs = TIERS.filter(n => n > 1 && p.prices[n]);
+  const best = packs.length ? Math.min.apply(null, packs.map(n => Math.round(p.prices[n] / n))) : 0;
+  const photo = PRODUCT_PHOTOS[p.sku];
+  return html`<article class=${'pcard s-' + g.goal}>
+    <div class="pmedia">
+      ${t1.was ? html`<span class="pflag">${t1.badge}</span>` : null}
+      ${photo ? html`<img class="pphoto" src=${photo} alt=${p.name + ' vial'} loading="lazy" />` : html`<img class="pglyph" src=${GOAL_ICONS[g.goal]} alt="" />`}
+      <button type="button" class=${'padd' + (inOrder ? ' has' : '')} aria-label=${inOrder ? g.base + ': ' + inOrder + ' in your order. Change packs' : 'Add ' + p.name + ' to your order'} onClick=${() => onAdd(g.key)}>${inOrder ? inOrder : '+'}</button>
+    </div>
+    <div class="pbody">
+      <span class="gchip"><i></i>${GOAL_LABELS[g.goal]}</span>
+      <a class="ptitle" href=${'#/p/' + p.sku}>${g.base}${g.items.length === 1 && cur.strength ? ' ' + cur.strength : ''}</a>
+      <span class="psub">${coa ? html`<i class="okdot"></i>${coa[0]} pure` : 'Research peptide'}</span>
+      ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}
+      <div class="pmeta"><span class="pprice">${t1.price}</span>${t1.was ? html`<s>${t1.was}</s>` : null}<span class="pserves">${cur.strength ? cur.strength + ' vial' : 'per vial'}</span></div>
+      ${best ? html`<span class="ppack">Packs from ${money(best)} a vial</span>` : null}
+    </div>
+  </article>`;
+}
+
+// Bottom sheet opened by a card's + button: pick a pack for the chosen strength.
+function QuickAdd({ g, cur, setPick, sh, bump, o, onClose }) {
+  useEffect(() => {
+    const k = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', k);
+    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    const el = document.querySelector('.qa'); if (el) el.focus();
+    return () => { document.removeEventListener('keydown', k); document.body.style.overflow = prev; };
+  }, []);
+  const p = cur.p; const coa = COAS[p.sku];
+  return html`<div class="qa-back" onClick=${e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div class="qa" role="dialog" aria-modal="true" aria-label=${'Add ' + p.name + ' to your order'} tabindex="-1">
+      <div class="qa-head"><img src=${GOAL_ICONS[g.goal]} alt="" />
+        <div class="grow"><h2>${g.base}${g.items.length === 1 && cur.strength ? ' ' + cur.strength : ''}</h2><div class="psub">${coa ? html`<i class="okdot"></i>${coa[0]} pure` : GOAL_LABELS[g.goal]}</div></div>
+        <button type="button" class="qa-x" aria-label="Close" onClick=${onClose}>×</button></div>
+      ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill lg" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}
+      <${Tiers} p=${p} sh=${sh} bump=${bump} />
+      <p class="qa-note"><img src="assets/features/auto.svg" alt="" />Bac water comes free in the box with every vial.</p>
+      <div class="qa-foot"><a class="btn outline" href=${'#/p/' + p.sku}>How to use</a>
+        ${o.packCount ? html`<a class="btn" href="#/order">View order, ${money(o.total)}</a>` : html`<button type="button" class="btn" onClick=${onClose}>Done</button>`}</div>
+    </div>
+  </div>`;
+}
+
+function ShopSection({ sh, setSh, bump, o }) {
+  const [pick, setPickRaw] = useState({});
+  const [quick, setQuick] = useState(null);
+  const setPick = (key, sku) => setPickRaw(s => Object.assign({}, s, { [key]: sku }));
   const q = sh.q.trim().toLowerCase();
   const list = SHOP_PRODUCTS.filter(p => (sh.goal === 'all' || p.goal === sh.goal) && (!q || (p.name + ' ' + p.sku + ' ' + GOAL_LABELS[p.goal] + ' ' + (INFO[p.sku] || '')).toLowerCase().includes(q)));
   const groups = groupProducts(list);
   const inCart = sku => TIERS.some(n => sh.cart[sku + ':' + n] > 0);
+  const current = g => g.items.find(x => x.p.sku === pick[g.key]) || g.items.find(x => inCart(x.p.sku)) || g.items[0];
+  const qg = quick ? groupProducts(SHOP_PRODUCTS).find(g => g.key === quick) : null;
   return html`<section id="shop" aria-labelledby="h-shop"><div class="wrap">
     <h2 id="h-shop" class="sr">${WHOLESALE ? 'Wholesale price list' : 'Price list'}</h2>
     <div class="finder">
-      <label class="field"><span class="sr">Search the price list</span><input class="input" type="search" placeholder="Search the price list" value=${sh.q} onInput=${e => setSh({ q: e.target.value })} /></label>
+      <label class="field"><span class="sr">Search the price list</span><input class="input" type="search" placeholder="Search — reta, bpc, ghk…" value=${sh.q} onInput=${e => setSh({ q: e.target.value })} /></label>
       <div class="sticky-filters">
         <div class="scrollx" role="group" aria-label="Filter by goal">
           <button type="button" class="pill" aria-pressed=${String(sh.goal === 'all')} onClick=${() => setSh({ goal: 'all' })}>All</button>
@@ -156,23 +207,13 @@ function ShopSection({ sh, setSh, bump }) {
         </div>
       </div>
     </div>
-    <div class="plist">
-      ${groups.map(g => {
-        const cur = g.items.find(x => x.p.sku === pick[g.key]) || g.items.find(x => inCart(x.p.sku)) || g.items[0];
-        const p = cur.p; const coa = COAS[p.sku];
-        return html`<article class="pc" key=${g.key}>
-          <a class="pc-head" href=${'#/p/' + p.sku} aria-label=${p.name + ': how to use, mixing and certificate'}>
-            <img src=${GOAL_ICONS[g.goal]} alt="" width="40" height="40" />
-            <div class="grow"><h3>${g.base}${g.items.length === 1 && cur.strength ? html` <span class="str">${cur.strength}</span>` : null}</h3>
-              <div class="pc-meta"><span>${GOAL_LABELS[g.goal]}</span>${coa ? html`<span>${coa[0]} pure</span>` : null}</div></div>
-            <span class="pc-how">How to use<${Icon} name="chev" size=${16} /></span>
-          </a>
-          ${g.items.length > 1 ? html`<div class="strengths" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(s => Object.assign({}, s, { [g.key]: x.p.sku }))}>${x.strength}${inCart(x.p.sku) ? html`<i role="img" aria-label="in your order"></i>` : null}</button>`)}</div>` : null}
-          <${Tiers} p=${p} sh=${sh} bump=${bump} compact />
-        </article>`; })}
+    <p class="taphint"><span aria-hidden="true">+</span>Tap + to pick a pack. Tap a product to see how to use it.</p>
+    <div class="pgrid">
+      ${groups.map(g => html`<${ProductCard} key=${g.key} g=${g} cur=${current(g)} setPick=${setPick} sh=${sh} onAdd=${setQuick} />`)}
     </div>
     ${list.length === 0 ? html`<div class="empty" style="margin-top:12px">Nothing matches "${sh.q.trim()}". Try a compound name or clear the search.</div>` : null}
     <p class="listnote">Prices in AUD${WHOLESALE ? '; 10-vial rates are wholesale only' : ''}. Express shipping is $15 in Australia and free over $200. New Zealand from $20.</p>
+    ${qg ? html`<${QuickAdd} g=${qg} cur=${current(qg)} setPick=${setPick} sh=${sh} bump=${bump} o=${o} onClose=${() => setQuick(null)} />` : null}
   </div></section>`;
 }
 

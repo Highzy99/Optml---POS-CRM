@@ -18,14 +18,14 @@ if base:
         f'<meta property="og:title" content="{html.escape(title)}">',
         f'<meta property="og:description" content="{html.escape(desc)}">',
         f'<meta property="og:url" content="{base}/">',
-        f'<meta property="og:image" content="{base}/og.jpg?v=4">',
+        f'<meta property="og:image" content="{base}/og.jpg?v=5">',
         '<meta property="og:image:width" content="1200">',
         '<meta property="og:image:height" content="630">',
         '<meta property="og:image:alt" content="optml price list: research-grade peptides, properly tested">',
         '<meta name="twitter:card" content="summary_large_image">',
         f'<meta name="twitter:title" content="{html.escape(title)}">',
         f'<meta name="twitter:description" content="{html.escape(desc)}">',
-        f'<meta name="twitter:image" content="{base}/og.jpg?v=4">',
+        f'<meta name="twitter:image" content="{base}/og.jpg?v=5">',
     ])
 out = shell.replace('%%OG%%', og).replace('%%LIB%%', lib).replace('%%DATA%%', rd('data.js')).replace('%%LOGIC%%', rd('logic.js')).replace('%%APP%%', app)
 open(os.path.join(B, '..', 'index.html'), 'w', encoding='utf-8').write(out)
