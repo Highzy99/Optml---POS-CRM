@@ -157,23 +157,21 @@ function groupProducts(list) {
   return groups;
 }
 
-function ProductCard({ g, cur, setPick, sh, onAdd }) {
+function ProductCard({ g, cur, sh, onOpen }) {
   const p = cur.p; const coa = COAS[p.sku]; const t1 = tierInfo(p, 1, 0);
   const inOrder = g.items.reduce((a, x) => a + TIERS.reduce((b, n) => b + (sh.cart[x.p.sku + ':' + n] || 0), 0), 0);
-  const save3 = p.prices[3] ? p.prices[1] * 3 - p.prices[3] : 0;
   const photo = PRODUCT_PHOTOS[p.sku];
   return html`<article class=${'pcard s-' + g.goal}>
-    <div class="pmedia">
+    <div class="pmedia" onClick=${() => onOpen(g.key, p.sku)}>
       ${t1.was ? html`<span class="pflag">${t1.badge}</span>` : null}
       ${photo ? html`<img class="pphoto" src=${photo} alt=${p.name + ' vial'} loading="lazy" />` : html`<img class="pglyph" src=${GOAL_ICONS[g.goal]} alt="" />`}
-      <button type="button" class=${'padd' + (inOrder ? ' has' : '')} aria-label=${inOrder ? g.base + ': ' + inOrder + ' in your order. Change packs' : 'Add ' + p.name + ' to your order'} onClick=${() => onAdd(g.key)}>${inOrder ? inOrder : '+'}</button>
+      <button type="button" class=${'padd' + (inOrder ? ' has' : '')} aria-label=${inOrder ? g.base + ': ' + inOrder + ' in your order. Change packs' : 'Choose a pack of ' + p.name}>${inOrder ? inOrder : '+'}</button>
     </div>
     <div class="pbody">
       <a class="ptitle" href=${'#/p/' + p.sku}>${g.base}${g.items.length === 1 && cur.strength ? ' ' + cur.strength : ''}</a>
       <span class="psub">${coa ? html`<i class="okdot"></i>${coa[0]} pure` : 'Research peptide'}</span>
-      ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}
-      <div class="pmeta"><span class="pprice">${t1.price}</span>${t1.was ? html`<s>${t1.was}</s>` : null}</div>
-      ${save3 > 0 ? html`<button type="button" class="psave" aria-label=${'Buy 3 ' + p.name + ' and save ' + money(save3) + '. Choose a pack'} onClick=${() => onAdd(g.key)}>Buy 3, save ${money(save3)}</button>` : null}
+      ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill" aria-pressed=${String(x.p.sku === p.sku)} aria-label=${g.base + ' ' + x.strength + ': choose a pack'} onClick=${() => onOpen(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}
+      <button type="button" class="pbuy" aria-label=${'Add ' + p.name + ' to cart, from ' + t1.price + '. Choose a pack'} onClick=${() => onOpen(g.key, p.sku)}><span>Add to cart</span><b>${t1.price}</b></button>
     </div>
   </article>`;
 }
@@ -203,7 +201,7 @@ function QuickAdd({ g, cur, setPick, sh, bump, o, onClose }) {
   </div>`;
 }
 
-function TopSellers({ groups, current, pick, setPick, sh, onAdd }) {
+function TopSellers({ groups, current, pick, sh, onOpen }) {
   const ref = useRef(null);
   const [edge, setEdge] = useState({ start: true, end: false });
   const sync = () => { const el = ref.current; if (el) setEdge({ start: el.scrollLeft < 8, end: el.scrollLeft + el.clientWidth > el.scrollWidth - 8 }); };
@@ -217,7 +215,7 @@ function TopSellers({ groups, current, pick, setPick, sh, onAdd }) {
       <div class="tsell-nav"><button type="button" aria-label="Previous top sellers" disabled=${edge.start} onClick=${() => step(-1)}><${Icon} name="back" size=${18} /></button><button type="button" aria-label="More top sellers" disabled=${edge.end} onClick=${() => step(1)}><${Icon} name="arrow" size=${18} /></button></div></div>
     <div class="tsell-track" ref=${ref} onScroll=${sync}>
       ${items.map(x => { const cur = pick[x.g.key] ? current(x.g) : x.top;
-        return html`<${ProductCard} key=${x.g.key} g=${x.g} cur=${cur} setPick=${setPick} sh=${sh} onAdd=${key => { if (!pick[key]) setPick(key, cur.p.sku); onAdd(key); }} />`; })}
+        return html`<${ProductCard} key=${x.g.key} g=${x.g} cur=${cur} sh=${sh} onOpen=${onOpen} />`; })}
     </div>
   </section>`;
 }
@@ -234,8 +232,9 @@ function ShopSection({ sh, setSh, bump, o }) {
   const allGroups = groupProducts(SHOP_PRODUCTS);
   const qg = quick ? allGroups.find(g => g.key === quick) : null;
   const browsing = !q && sh.goal === 'all';
+  const open = (key, sku) => { if (sku) setPick(key, sku); setQuick(key); };
   return html`<section id="shop" aria-labelledby="h-shop"><div class="wrap">
-    ${browsing ? html`<${TopSellers} groups=${allGroups} current=${current} pick=${pick} setPick=${setPick} sh=${sh} onAdd=${setQuick} />` : null}
+    ${browsing ? html`<${TopSellers} groups=${allGroups} current=${current} pick=${pick} sh=${sh} onOpen=${open} />` : null}
     <h2 id="h-shop" class=${browsing ? 'allhead' : 'sr'}>${WHOLESALE ? 'Wholesale price list' : 'All products'}</h2>
     <div class="finder">
       <label class="field"><span class="sr">Search the price list</span><input class="input" type="search" placeholder="Search — reta, bpc, ghk…" value=${sh.q} onInput=${e => setSh({ q: e.target.value })} /></label>
@@ -246,9 +245,9 @@ function ShopSection({ sh, setSh, bump, o }) {
         </div>
       </div>
     </div>
-    <p class="taphint"><span aria-hidden="true">+</span>Tap + to add. Packs of 3 and 5 cost less per vial.</p>
+    <p class="taphint"><span aria-hidden="true">+</span>Tap a product to choose 1, 3 or 5 vials.</p>
     <div class="pgrid">
-      ${groups.map(g => html`<${ProductCard} key=${g.key} g=${g} cur=${current(g)} setPick=${setPick} sh=${sh} onAdd=${setQuick} />`)}
+      ${groups.map(g => html`<${ProductCard} key=${g.key} g=${g} cur=${current(g)} sh=${sh} onOpen=${open} />`)}
     </div>
     ${list.length === 0 ? html`<div class="empty" style="margin-top:12px">Nothing matches "${sh.q.trim()}". Try a compound name or clear the search.</div>` : null}
     <p class="listnote">Prices in AUD${WHOLESALE ? '; 10-vial rates are wholesale only' : ''}. Express shipping is $15 in Australia and free over $200. New Zealand from $20.</p>
