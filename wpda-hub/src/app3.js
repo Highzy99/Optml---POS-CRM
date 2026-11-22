@@ -85,7 +85,7 @@ function Builder({ st, set, items, act }) {
   };
   const share = () => { if (navigator.share) navigator.share({ title: 'Your protocol · WPDA', text: shareText, url: link }).catch(() => {}); else copy(); };
   return html`<section class="blk" id="build" aria-labelledby="h-build"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">Build and export</div><h2 id="h-build">Build a protocol in three steps</h2>
+    <div class="sec-head"><h2 id="h-build">Build a protocol in three steps</h2>
       <p class="lead">Pick from the range or add anything that is not on the list, set weekly doses and titrations, then export a client-ready PDF or send a link with a built-in daily tracker.</p></div>
     ${st.shared ? html`<div class="banner"><b style="color:var(--ink);font-size:17px">${st.client ? 'Protocol for ' + st.client : 'A protocol was shared with you'}${st.by ? ' · prepared by ' + st.by : ''}</b>
       <p class="small">Everything below is your plan. Your daily tracker is at the top of the page, and you can export the full PDF guide any time.</p>

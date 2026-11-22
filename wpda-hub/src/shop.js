@@ -101,7 +101,7 @@ function tierInfo(p, n, qty) {
   const wasN = (p.was && p.was[n]) || 0;
   const onSale = wasN > p.prices[n];
   return { n, qty, price: money(p.prices[n]), was: onSale ? money(wasN) : '', label: n === 1 ? '1 vial' : n + ' vials',
-    sub: n > 1 ? money(Math.round(p.prices[n] / n)) + ' / vial' : 'Single vial',
+    each: n > 1 ? money(Math.round(p.prices[n] / n)) + ' each' : '', saveAmt: saveAmt > 0 ? 'Save ' + money(saveAmt) : '',
     badge: onSale ? '−' + Math.round((1 - p.prices[n] / wasN) * 100) + '%' : (save >= 5 ? 'Save ' + save + '%' : '') };
 }
 
@@ -116,45 +116,63 @@ function ShipCountdown() {
 }
 
 function Tiers({ p, sh, bump, compact }) {
-  return html`<div class="tiers" style=${'grid-template-columns:repeat(' + TIERS.length + ',minmax(0,1fr))'}>${TIERS.filter(n => p.prices[n]).map(n => {
+  const tiers = TIERS.filter(n => p.prices[n]);
+  return html`<div class="tiers" style=${'grid-template-columns:repeat(' + tiers.length + ',minmax(0,1fr))'}>${tiers.map(n => {
     const key = p.sku + ':' + n; const t = tierInfo(p, n, sh.cart[key] || 0);
-    return t.qty ? html`<div class="tier on" role="group" aria-label=${t.label + ' of ' + p.name + ', ' + t.qty + ' in order'}>
-        <span class="tl">${t.label}</span><span class="tp">${t.price}</span>
+    return t.qty ? html`<div class="tier on" role="group" aria-label=${t.label + ' of ' + p.name + ', ' + t.qty + ' in your order'}>
+        <span class="tl">${t.label}${compact ? '' : ', ' + t.price}</span>
         <span class="stepper"><button type="button" aria-label=${'Remove one ' + t.label + ' of ' + p.name} onClick=${() => bump(key, -1)}>−</button><b>${t.qty}</b><button type="button" aria-label=${'Add another ' + t.label + ' of ' + p.name} onClick=${() => bump(key, 1)}>+</button></span>
       </div>`
       : html`<button type="button" class="tier" aria-label=${'Add ' + t.label + ' of ' + p.name + ', ' + t.price} onClick=${() => bump(key, 1)}>
-        ${t.badge ? html`<span class="badge">${t.badge}</span>` : null}
-        <span class="tl">${t.label}</span><span class="tp">${t.price}</span>${t.was ? html`<s class="tw">${t.was}</s>` : null}${compact ? null : html`<span class="ts">${t.sub}</span>`}
+        <span class="tl">${t.label}</span><span class="tp">${t.price}</span>
+        <span class="tn">${n === 1 ? (t.was ? html`<s>${t.was}</s>` : null) : t.each}</span>
+        ${!compact && n > 1 && t.saveAmt ? html`<span class="sv">${t.saveAmt}</span>` : null}
       </button>`;
   })}</div>`;
 }
 
+function groupProducts(list) {
+  const groups = [], by = {};
+  list.forEach(p => { const [base, strength] = splitName(p.name); const k = strength ? base + '|' + p.goal : p.sku;
+    if (!by[k]) { by[k] = { key: k, base: strength ? base : p.name, goal: p.goal, items: [] }; groups.push(by[k]); }
+    by[k].items.push({ p, strength }); });
+  return groups;
+}
+
 function ShopSection({ sh, setSh, bump }) {
+  const [pick, setPick] = useState({});
   const q = sh.q.trim().toLowerCase();
-  const list = SHOP_PRODUCTS.filter(p => (sh.goal === 'all' || p.goal === sh.goal) && (!q || (p.name + ' ' + p.sku + ' ' + (INFO[p.sku] || '')).toLowerCase().includes(q)));
-  return html`<section id="shop" aria-labelledby="h-shop" style="padding-top:8px"><div class="wrap">
+  const list = SHOP_PRODUCTS.filter(p => (sh.goal === 'all' || p.goal === sh.goal) && (!q || (p.name + ' ' + p.sku + ' ' + GOAL_LABELS[p.goal] + ' ' + (INFO[p.sku] || '')).toLowerCase().includes(q)));
+  const groups = groupProducts(list);
+  const inCart = sku => TIERS.some(n => sh.cart[sku + ':' + n] > 0);
+  return html`<section id="shop" aria-labelledby="h-shop"><div class="wrap">
     <h2 id="h-shop" class="sr">${WHOLESALE ? 'Wholesale price list' : 'Price list'}</h2>
-    <label class="field" style="max-width:460px;margin-top:18px"><span class="sr">Search the price list</span><input class="input" type="search" placeholder="Search compounds" value=${sh.q} onInput=${e => setSh({ q: e.target.value })} /></label>
-    <div class="sticky-filters">
-      <div class="scrollx" role="group" aria-label="Filter by goal">
-        <button type="button" class="pill" aria-pressed=${String(sh.goal === 'all')} onClick=${() => setSh({ goal: 'all' })}>All</button>
-        ${GOALS.map(g => html`<button type="button" class="pill" aria-pressed=${String(sh.goal === g)} onClick=${() => setSh({ goal: sh.goal === g ? 'all' : g })}><img src=${GOAL_ICONS[g]} alt="" />${GOAL_LABELS[g]}</button>`)}
+    <div class="finder">
+      <label class="field"><span class="sr">Search the price list</span><input class="input" type="search" placeholder="Search the price list" value=${sh.q} onInput=${e => setSh({ q: e.target.value })} /></label>
+      <div class="sticky-filters">
+        <div class="scrollx" role="group" aria-label="Filter by goal">
+          <button type="button" class="pill" aria-pressed=${String(sh.goal === 'all')} onClick=${() => setSh({ goal: 'all' })}>All</button>
+          ${GOALS.map(g => html`<button type="button" class="pill" aria-pressed=${String(sh.goal === g)} onClick=${() => setSh({ goal: sh.goal === g ? 'all' : g })}><img src=${GOAL_ICONS[g]} alt="" />${GOAL_LABELS[g]}</button>`)}
+        </div>
       </div>
     </div>
-    <div class="plist" style="margin-top:14px">
-      ${list.map(p => { const [base, strength] = splitName(p.name); const coa = COAS[p.sku];
-        return html`<article class="prow" style=${'--tint:' + GOAL_TINT[p.goal]}>
-          <a class="ptop" href=${'#/p/' + p.sku} aria-label=${p.name + ': prices, how to use and certificate'}>
-            <img src=${GOAL_ICONS[p.goal]} alt="" />
-            <div class="grow"><h3>${base} ${strength ? html`<span class="str">${strength}</span>` : null}</h3>
-              <div class="tiny muted">${GOAL_LABELS[p.goal]}${coa ? ' · ' + coa[0] + ' purity' : ''}</div></div>
-            <span class="how">How to use <${Icon} name="arrow" size=${14} /></span>
+    <div class="plist">
+      ${groups.map(g => {
+        const cur = g.items.find(x => x.p.sku === pick[g.key]) || g.items.find(x => inCart(x.p.sku)) || g.items[0];
+        const p = cur.p; const coa = COAS[p.sku];
+        return html`<article class="pc" key=${g.key}>
+          <a class="pc-head" href=${'#/p/' + p.sku} aria-label=${p.name + ': how to use, mixing and certificate'}>
+            <img src=${GOAL_ICONS[g.goal]} alt="" width="40" height="40" />
+            <div class="grow"><h3>${g.base}${g.items.length === 1 && cur.strength ? html` <span class="str">${cur.strength}</span>` : null}</h3>
+              <div class="pc-meta"><span>${GOAL_LABELS[g.goal]}</span>${coa ? html`<span>${coa[0]} pure</span>` : null}</div></div>
+            <span class="pc-how">How to use<${Icon} name="chev" size=${16} /></span>
           </a>
+          ${g.items.length > 1 ? html`<div class="strengths" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(s => Object.assign({}, s, { [g.key]: x.p.sku }))}>${x.strength}${inCart(x.p.sku) ? html`<i role="img" aria-label="in your order"></i>` : null}</button>`)}</div>` : null}
           <${Tiers} p=${p} sh=${sh} bump=${bump} compact />
         </article>`; })}
     </div>
-    ${list.length === 0 ? html`<div class="empty" style="margin-top:12px">Nothing matches that search.</div>` : null}
-    <p class="tiny muted" style="margin-top:14px">Prices in AUD${WHOLESALE ? ' · 10-vial rates are wholesale only' : ''}. Bac water included with every vial. Free express shipping in Australia over $200, New Zealand from $20.</p>
+    ${list.length === 0 ? html`<div class="empty" style="margin-top:12px">Nothing matches "${sh.q.trim()}". Try a compound name or clear the search.</div>` : null}
+    <p class="listnote">Prices in AUD${WHOLESALE ? '; 10-vial rates are wholesale only' : ''}. Express shipping is $15 in Australia and free over $200. New Zealand from $20.</p>
   </div></section>`;
 }
 
@@ -166,18 +184,26 @@ function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
   const copy = () => { const done = () => { setSh({ copied: true }); setTimeout(() => setSh({ copied: false }), 2000); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(o.plainText).then(done, done); else done(); };
   const send = () => { onSent(o.items); };
   const lastItems = sh.lastOrder && sh.lastOrder.cart ? Object.keys(sh.lastOrder.cart).map(k => { const b = k.split(':'); const p = SHOP_BY_SKU[b[0]]; const n = parseInt(b[1], 10); return p && p.prices[n] ? { key: k, qty: sh.lastOrder.cart[k], p, n } : null; }).filter(Boolean) : [];
-  const inp = (k, label, extra = {}) => html`<label class="field"><span>${label}</span><input class="input" style=${o.err[k] ? 'border-color:var(--bad)' : ''} value=${sh[k]} onInput=${field(k)} onBlur=${blur(k)} aria-invalid=${o.err[k] ? 'true' : 'false'} ...${extra} />${o.err[k] ? html`<small style="color:var(--bad)">${o.err[k]}</small>` : null}</label>`;
+  const inp = (k, label, extra = {}) => html`<label class="field"><span>${label}</span><input class="input" style=${o.err[k] ? 'border-color:var(--bad)' : ''} value=${sh[k]} onInput=${field(k)} onBlur=${blur(k)} aria-invalid=${o.err[k] ? 'true' : 'false'} ...${extra} />${o.err[k] ? html`<small>${o.err[k]}</small>` : null}</label>`;
   return html`<div class="wrap page narrow" id="order">
     <div class="orderbox">
-      <div class="row g12 wrapx" style="justify-content:space-between"><div><div class="lbl" style="color:rgba(255,255,255,.6)">${WHOLESALE ? 'Wholesale order' : 'Your order'} · ${sh.ref}</div><h2 id="h-order" style="color:#fff;font-size:clamp(26px,5vw,34px);margin-top:4px">${stage === 4 ? 'Order sent' : 'Your order'}</h2></div>
+      <div class="row g12 wrapx" style="justify-content:space-between;align-items:flex-end"><div><div class="ref">${WHOLESALE ? 'Wholesale order ' : 'Order '}${sh.ref}</div><h2 id="h-order" style="margin-top:6px">${stage === 4 ? 'Order sent' : 'Your order'}</h2></div>
         <ol class="ostep" aria-label="Order progress">${['Build', 'Details', 'Send'].map((l, i) => html`<li class=${i + 1 < stage ? 'done' : i + 1 === stage ? 'now' : ''}><span>${i + 1 < stage ? '✓' : i + 1}</span>${l}</li>`)}</ol></div>
 
       ${!o.items.length && !sh.sent ? html`<div class="oempty"><p>Tap any price in the list to add a pack. Tap again for more, minus to take one off.</p>
         ${lastItems.length ? html`<button type="button" class="btn on-dark sm" onClick=${() => { const c = {}; lastItems.forEach(it => { c[it.key] = it.qty; }); setSh({ cart: c, sent: false }); }}>Order again: ${lastItems.slice(0, 2).map(it => it.qty + '× ' + it.p.name).join(', ')}${lastItems.length > 2 ? ' + more' : ''}</button>` : html`<a class="btn on-dark sm" href="#/">Browse the price list</a>`}</div>` : null}
 
-      ${o.items.length ? html`<div class="olines">${o.items.map(it => html`<div class="oline"><div class="grow"><b>${it.p.name}</b><div class="tiny" style="color:rgba(255,255,255,.65)">${it.pack}</div></div>
-          <span class="stepper dark"><button type="button" aria-label=${'One less ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, -1)}>−</button><b>${it.qty}</b><button type="button" aria-label=${'One more ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, 1)}>+</button></span>
-          <b style="width:72px;text-align:right">${money(it.amount)}</b></div>`)}</div>
+      ${sh.sent && o.items.length ? html`<div class="osent">
+        <p>Your order is in WhatsApp. We confirm stock and send payment details by reply. ${REPLY_NOTE}</p>
+        <div class="row g8 wrapx"><a class="btn sm on-dark-outline" href=${o.orderHref} target="_blank" rel="noopener">Didn't open? Resend on WhatsApp</a>
+          <button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ cart: {}, sent: false, code: '', codeInput: '', ref: makeRef() })}>Start a new order</button></div>
+        ${planReady ? html`<div class="guidecard"><b style="font-size:20px;letter-spacing:-.02em;color:var(--ink)">Your guide is ready</b>
+          <p class="small">Exact units to draw for each compound, how to mix it with the bac water in the box, where to inject, and a daily tracker. Save it as a PDF to keep.</p>
+          <div class="row g8 wrapx"><a class="btn sm" href="#/plan">Open my tracker</a><button type="button" class="btn sm outline" onClick=${() => window.print()}>Save my guide as PDF</button></div></div>` : null}
+      </div>` : null}
+
+      ${o.items.length ? html`<div class="olines">${o.items.map(it => html`<div class="oline"><b class="on">${it.p.name}</b><b class="op">${money(it.amount)}</b><span class="ok">${it.pack}</span>
+          <span class="stepper dark"><button type="button" aria-label=${'One less ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, -1)}>−</button><b>${it.qty}</b><button type="button" aria-label=${'One more ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, 1)}>+</button></span></div>`)}</div>
         ${!o.nz ? html`<div class="shipbar"><div class="tiny">${o.freeShip ? 'Free express shipping unlocked' : 'Add ' + money(o.remaining) + ' more for free express shipping'}</div><div class="bar"><i style=${'width:' + Math.min(100, Math.round(o.afterDiscount / FREE_SHIP_AT * 100)) + '%'}></i></div></div>` : null}
         <div class="otot">
           <div><span>Subtotal (AUD)</span><b>${money(o.subtotal)}</b></div>
@@ -186,13 +212,14 @@ function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
           <div class="grand"><span>Total</span><b>${money(o.total)} AUD</b></div>
         </div>
         <div>${sh.code ? html`<div class="row g8 wrapx tiny"><span>${o.codeNote}</span><button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ code: '', codeOpen: false, codeError: '' })}>Remove code</button></div>`
-          : sh.codeOpen ? html`<div class="row g8"><label class="grow"><span class="sr">Discount code</span><input class="input" placeholder="Discount code" value=${sh.codeInput} onInput=${e => setSh({ codeInput: e.target.value.toUpperCase(), codeError: '' })} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } }} /></label><button type="button" class="btn on-dark sm" onClick=${applyCode}>Apply</button></div>${sh.codeError ? html`<div class="tiny" style="color:#ffb4b0;margin-top:6px">${sh.codeError}</div>` : null}`
+          : sh.codeOpen ? html`<div class="row g8"><label class="grow"><span class="sr">Discount code</span><input class="input" placeholder="Discount code" value=${sh.codeInput} onInput=${e => setSh({ codeInput: e.target.value.toUpperCase(), codeError: '' })} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } }} /></label><button type="button" class="btn on-dark sm" onClick=${applyCode}>Apply</button></div>${sh.codeError ? html`<div class="tiny" style="color:#fff;font-weight:600;margin-top:6px">${sh.codeError}</div>` : null}`
           : html`<button type="button" class="linkbtn" onClick=${() => setSh({ codeOpen: true, codeError: '' })}>Have a discount code?</button>`}</div>
       ` : null}
 
-      ${o.items.length && !sh.sent ? html`<div class="odetails">
-        <div class="row g12 wrapx" style="justify-content:space-between"><h3 style="color:#fff;font-size:20px">Your details</h3>
-          <div class="seg dark" role="group" aria-label="Shipping country"><button type="button" aria-pressed=${String(!o.nz)} onClick=${() => setSh(p => p.country === 'NZ' ? { country: 'AU', region: '' } : {})}>Australia</button><button type="button" aria-pressed=${String(o.nz)} onClick=${() => setSh(p => p.country !== 'NZ' ? { country: 'NZ', region: '' } : {})}>New Zealand</button></div></div>
+    </div>
+    ${o.items.length && !sh.sent ? html`<div class="odetails">
+        <div class="row g12 wrapx" style="justify-content:space-between"><h2 style="font-size:24px;letter-spacing:-.03em">Your details</h2>
+          <div class="seg" role="group" aria-label="Shipping country"><button type="button" aria-pressed=${String(!o.nz)} onClick=${() => setSh(p => p.country === 'NZ' ? { country: 'AU', region: '' } : {})}>Australia</button><button type="button" aria-pressed=${String(o.nz)} onClick=${() => setSh(p => p.country !== 'NZ' ? { country: 'NZ', region: '' } : {})}>New Zealand</button></div></div>
         <div class="fgrid light">
           ${inp('name', 'Full name', { autocomplete: 'name' })}
           ${inp('phone', 'Mobile', { autocomplete: 'tel', inputmode: 'tel' })}
@@ -201,29 +228,20 @@ function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
         <div class="fgrid light">
           ${inp('street', 'Street address', { autocomplete: 'street-address' })}
           ${inp('suburb', o.nz ? 'Suburb / town' : 'Suburb', { autocomplete: 'address-level2' })}
-          <label class="field"><span>${o.nz ? 'Region' : 'State'}</span><select class="select" style=${o.err.region ? 'border-color:var(--bad)' : ''} value=${sh.region} onChange=${field('region')} onBlur=${blur('region')}><option value="">Choose…</option>${(o.nz ? NZ_REGIONS : STATES).map(r => html`<option value=${r}>${r}</option>`)}</select>${o.err.region ? html`<small style="color:var(--bad)">${o.err.region}</small>` : null}</label>
+          <label class="field"><span>${o.nz ? 'Region' : 'State'}</span><select class="select" style=${o.err.region ? 'border-color:var(--bad)' : ''} value=${sh.region} onChange=${field('region')} onBlur=${blur('region')}><option value="">Choose…</option>${(o.nz ? NZ_REGIONS : STATES).map(r => html`<option value=${r}>${r}</option>`)}</select>${o.err.region ? html`<small>${o.err.region}</small>` : null}</label>
           ${inp('postcode', 'Postcode', { autocomplete: 'postal-code', inputmode: 'numeric' })}
         </div>
         ${o.regionWarn ? html`<div class="warn">${o.regionWarn}</div>` : null}
-        ${o.nz ? html`<div class="seg dark" role="group" aria-label="NZ shipping"><button type="button" aria-pressed=${String(!o.nzExp)} onClick=${() => setSh({ nzShip: 'standard' })}>Standard · $20</button><button type="button" aria-pressed=${String(o.nzExp)} onClick=${() => setSh({ nzShip: 'express' })}>Express · $25</button></div>` : null}
+        ${o.nz ? html`<div class="seg" role="group" aria-label="NZ shipping"><button type="button" aria-pressed=${String(!o.nzExp)} onClick=${() => setSh({ nzShip: 'standard' })}>Standard · $20</button><button type="button" aria-pressed=${String(o.nzExp)} onClick=${() => setSh({ nzShip: 'express' })}>Express · $25</button></div>` : null}
         <label class="field"><span>Delivery notes (optional)</span><textarea class="textarea" value=${sh.notes} onInput=${field('notes')}></textarea></label>
         <div class="stack g8">
-          ${o.detailsOk ? html`<a class="btn on-dark block" style="min-height:52px;font-size:16px" href=${o.orderHref} target="_blank" rel="noopener" onClick=${send}>Send order on WhatsApp</a>`
-            : html`<button type="button" class="btn on-dark block" style="min-height:52px;font-size:16px" disabled>Send order on WhatsApp</button><div class="tiny" style="color:rgba(255,255,255,.75)">Still needed: ${o.missing.join(', ')}</div>`}
-          <div class="row g8 wrapx"><a class=${'btn sm on-dark-outline' + (o.detailsOk ? '' : ' disabled')} href=${o.detailsOk ? o.emailHref : null} aria-disabled=${String(!o.detailsOk)} onClick=${o.detailsOk ? send : null}>Email instead</a><button type="button" class="btn sm on-dark-outline" onClick=${copy}>${sh.copied ? 'Copied' : 'Copy order'}</button></div>
-          <p class="tiny" style="color:rgba(255,255,255,.7)">Opens WhatsApp with your order filled in. Nothing is charged here: ${PAYMENT_NOTE} ${REPLY_NOTE}</p>
+          ${o.detailsOk ? html`<a class="btn block" href=${o.orderHref} target="_blank" rel="noopener" onClick=${send}>Send order on WhatsApp</a>`
+            : html`<button type="button" class="btn block" disabled>Send order on WhatsApp</button><div class="small" style="color:var(--ink);font-weight:600">Still needed: ${o.missing.join(', ')}</div>`}
+          <div class="row g8 wrapx"><a class=${'btn sm outline' + (o.detailsOk ? '' : ' disabled')} href=${o.detailsOk ? o.emailHref : null} aria-disabled=${String(!o.detailsOk)} onClick=${o.detailsOk ? send : null}>Email instead</a><button type="button" class="btn sm outline" onClick=${copy}>${sh.copied ? 'Copied' : 'Copy order'}</button></div>
+          <p class="tiny muted">Opens WhatsApp with your order filled in. Nothing is charged here: ${PAYMENT_NOTE} ${REPLY_NOTE}</p>
         </div>
       </div>` : null}
 
-      ${sh.sent && o.items.length ? html`<div class="osent">
-        <p>Your order is in WhatsApp. We confirm stock and send payment details by reply. ${REPLY_NOTE}</p>
-        <div class="row g8 wrapx"><a class="btn sm on-dark-outline" href=${o.orderHref} target="_blank" rel="noopener">Didn't open? Resend on WhatsApp</a>
-          <button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ cart: {}, sent: false, code: '', codeInput: '', ref: makeRef() })}>Start a new order</button></div>
-        ${planReady ? html`<div class="guidecard"><div class="lbl">Your how-to guide is ready</div><b style="font-size:19px;color:var(--ink)">Everything you ordered, step by step</b>
-          <p class="small">Exact units to draw for each compound, how to mix it with the bac water in the box, where to inject, and a daily tracker. Save it as a PDF to keep.</p>
-          <div class="row g8 wrapx"><a class="btn sm" href="#/plan">Open my tracker</a><button type="button" class="btn sm outline" onClick=${() => window.print()}>Save my guide as PDF</button></div></div>` : null}
-      </div>` : null}
-    </div>
   </div>`;
 }
 
@@ -240,7 +258,7 @@ function CoaSection({ goal }) {
   const purities = withCoa.map(p => parseFloat(COAS[p.sku][0]));
   const pending = SHOP_PRODUCTS.filter(p => !COAS[p.sku]).map(p => p.name);
   return html`<div class="wrap page" id="coa">
-    <div class="page-head"><div class="eyebrow">Certificates of analysis</div><h1>Every batch, independently tested.</h1>
+    <div class="page-head"><h1>Every batch, independently tested.</h1>
       <p class="lead">${withCoa.length} compounds with batch certificates, purity ${Math.min.apply(null, purities).toFixed(2)}–${Math.max.apply(null, purities).toFixed(2)}%. Identity confirmed by HPLC-MS. Tap one to open the PDF.</p></div>
     <div class="coagrid">${shown.map(p => html`<a class="coacard" href=${COA_BASE + COAS[p.sku][2]} target="_blank" rel="noopener"><img src=${GOAL_ICONS[p.goal]} alt="" /><div class="grow"><b>${p.name}</b><div class="tiny muted">Tested ${COAS[p.sku][1]}</div></div><span class="pur">${COAS[p.sku][0]}</span></a>`)}</div>
     <div class="row g8 wrapx" style="margin-top:12px"><button type="button" class="btn sm outline" onClick=${() => setAll(!all)}>${all ? 'Show fewer' : 'Show all ' + withCoa.length + ' certificates'}</button>

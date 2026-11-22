@@ -226,7 +226,7 @@ function Guide({ st, set, chapter }) {
   const go = i => { location.hash = '#/guide/' + CHAPTERS[i].key; };
   useEffect(() => { const el = document.querySelector('.chap-nav [aria-current="step"]'); if (el && el.scrollIntoView) el.scrollIntoView({ inline: 'center', block: 'nearest' }); }, [ci]);
   return html`<div class="wrap page">
-    <div class="page-head"><div class="eyebrow">How to use</div><h1>Get it right the first time</h1></div>
+    <div class="page-head"><h1>Get it right the first time</h1></div>
     <div class="chap-nav" role="tablist" aria-label="Guide chapters">${CHAPTERS.map((c, i) => html`<button type="button" role="tab" aria-selected=${String(i === ci)} aria-current=${i === ci ? 'step' : null} onClick=${() => go(i)}><span class="n">${i + 1}</span>${c.title}</button>`)}</div>
     <div class="progress" aria-hidden="true"><div style=${'width:' + ((ci + 1) / CHAPTERS.length * 100) + '%'}></div></div>
     <div role="tabpanel" aria-label=${ch.title}>

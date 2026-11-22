@@ -6,6 +6,10 @@ Pages (hash routes): `#/` price list, `#/p/SKU` product (prices, how to use, mix
 
 Live: https://wpda-protocol-hub.vercel.app (Vercel project `wpda-hub`, root directory `wpda-hub/`).
 
+## Design
+
+One flat colour field per page (the "lid", taken from the optml box): periwinkle `--lid` on the home hero and the order summary, the goal colour on each product page. Everything around it stays white, paper grey and ink. Goal colours are set by the `.g-<goal>` classes in `src/shell.html`. The price list shows one card per compound with a strength switch.
+
 ## Structure
 
 ```

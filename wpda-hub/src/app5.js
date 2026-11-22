@@ -122,53 +122,50 @@ function parseRoute() {
 }
 
 function ShopHero() {
-  return html`<section class="shero"><div class="wrap">
-    <div class="shero-grid">
-      <div class="stack g12">
-        <div class="eyebrow">${WHOLESALE ? 'optml wholesale' : 'optml price list'}</div>
-        <h1>Research-grade peptides, properly tested.</h1>
-        <p class="lead">${WHOLESALE ? 'Your confirmed wholesale rates. Add what you need and send it as one order on WhatsApp.' : 'Free bac water, a batch-matched certificate and a step-by-step guide with every vial.'}</p>
-        <div class="scrollx"><span class="chip soft">Free bac water in every box</span><span class="chip soft">98%+ purity</span><span class="chip soft">Free shipping over $200</span></div>
-        <div class="tiny muted"><${ShipCountdown} /></div>
-      </div>
-      <figure class="shero-img"><img src="assets/brand/hero-vials-web.jpg" alt="optml vials with printed labels, batch numbers and QR codes" fetchpriority="high" /></figure>
+  return html`<section class="wrap"><div class="lid hero-lid">
+    <figure class="lid-photo"><img src="assets/brand/hero-vials-web.jpg" alt="Three optml vials with printed labels, lot numbers and QR codes" fetchpriority="high" /></figure>
+    <div class="lid-body">
+      <h1>${WHOLESALE ? 'Wholesale price list' : 'Research\u2011grade peptides, properly tested.'}</h1>
+      ${WHOLESALE ? html`<p class="lid-lead">Your confirmed wholesale rates. Add what you need and send it as one order on WhatsApp.</p>` : null}
+      <ul class="lid-pills"><li><${Icon} name="drop" size=${16} /> Free bac water in every box</li><li class="line">Batch certificate</li><li class="line">Dosing guide</li></ul>
+      <p class="lid-foot"><${ShipCountdown} /></p>
     </div>
   </div></section>`;
 }
 
-function HowItWorks() {
-  const steps = [['Order', 'Tap packs, then send your order on WhatsApp. We confirm and send payment details.'], ['Unbox', 'Your vial arrives with a free vial of bac water to mix it.'], ['Follow your guide', 'Your plan appears under My plan: exact draws, sites and a daily tracker.']];
-  return html`<section class="wrap" aria-label="How it works" style="margin-top:18px"><div class="hiw">${steps.map((x, i) => html`<div class="hiw-step"><span class="n">${i + 1}</span><div><b>${x[0]}</b><p class="tiny muted">${x[1]}</p></div></div>`)}</div></section>`;
-}
-
-function BoxStrip() {
-  return html`<section class="wrap" aria-label="What arrives" style="margin-top:22px"><div class="boxstrip">
-    <figure><img src="assets/brand/box-insert.jpg" alt="Open optml box with a vial of Bacteriostatic Water beside a vial of Wolverine Stack" loading="lazy" /></figure>
-    <div class="stack g8" style="justify-content:center"><div class="lbl">In every box</div><b style="font-size:19px;color:var(--ink);line-height:1.25">Your vial, plus the bac water to mix it. Free.</b>
-      <p class="small muted">Most people expect to buy bacteriostatic water separately. With optml it's already in the box, with a fitted insert and fridge-ready labels.</p></div>
+function AfterOrder() {
+  return html`<section class="wrap" aria-labelledby="h-after"><div class="after">
+    <h2 id="h-after">What happens after you order</h2>
+    <ol class="flow">
+      <li><b>We confirm on WhatsApp</b><span>We check stock and reply with PayID details. Nothing is charged on this page.</span></li>
+      <li><b>Your box ships express</b><span>Every vial arrives with a vial of bac water to mix it, free.</span></li>
+      <li><b>Your guide is ready</b><span>My plan shows what to draw, where to inject and what's due each day.</span></li>
+    </ol>
   </div></section>`;
 }
 
 function Header({ route, count, total, planCount }) {
   const cur = p => (route.page === p || (p === 'shop' && route.page === 'product')) ? 'page' : null;
-  return html`<header class="top screen"><div class="wrap inner">
-    <a href="#/" aria-label="optml price list home" style="justify-self:start;display:flex;align-items:center;gap:10px;text-decoration:none"><img class="logo" src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:22px" /></a>
-    <a class="btn sm plan" href="#/order" aria-label=${'Order, ' + count + ' packs'}>${count ? money(total) : 'Order'} <span class="count">${count}</span></a>
-    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan${planCount ? ' · ' + planCount : ''}</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => { const on = () => setStuck(window.scrollY > 4); on(); window.addEventListener('scroll', on, { passive: true }); return () => window.removeEventListener('scroll', on); }, []);
+  return html`<header class=${'top screen' + (stuck ? ' stuck' : '')}><div class="wrap inner">
+    <a href="#/" aria-label="optml price list home" style="justify-self:start;display:flex;align-items:center;min-height:40px;text-decoration:none"><img class="logo" src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:24px" /></a>
+    <a class=${'btn sm plan' + (count ? '' : ' outline')} href="#/order" aria-label=${count ? 'Your order, ' + count + ' pack' + (count === 1 ? '' : 's') + ', ' + money(total) : 'Your order, empty'}>${count ? html`${money(total)}<span class="count">${count}</span>` : 'Order'}</a>
+    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
   </div></header>`;
 }
 
 function TabBar({ route, count, planCount }) {
   const tabs = [['shop', '#/', 'Shop', 'shop'], ['guide', '#/guide', 'How to use', 'book'], ['plan', '#/plan', 'My plan', 'plan'], ['order', '#/order', 'Order', 'bag']];
   return html`<nav class="tabbar screen" aria-label="Pages">${tabs.map(t => { const on = route.page === t[0] || (t[0] === 'shop' && route.page === 'product');
-    return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><${Icon} name=${t[3]} size=${22} />${t[2]}${t[0] === 'order' && count ? html`<span class="dot">${count}</span>` : t[0] === 'plan' && planCount ? html`<span class="dot soft">${planCount}</span>` : null}</a>`; })}</nav>`;
+    return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
 }
 
 function PlanPage({ st, set, items, onReorder }) {
-  if (!items.length) return html`<div class="wrap page"><div class="page-head"><div class="eyebrow">My plan</div><h1>Your guide lives here</h1></div>
-    <div class="empty" style="text-align:left;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink);font-size:17px">Order something and your personal guide appears here automatically.</b>
-      <p class="small">Exact units to draw for everything you bought, how to mix it, where to inject, a daily tracker and a PDF to keep.</p>
-      <div class="row g8 wrapx"><a class="btn sm" href="#/">Browse the price list</a><a class="btn sm outline" href="#/build">Build a protocol yourself</a></div></div></div>`;
+  if (!items.length) return html`<div class="wrap page narrow"><div class="page-head"><h1>Your guide lives here</h1>
+      <p class="lead">Send an order and this page fills in with what you bought: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
+    <div class="stack g12">
+      <div class="row g8 wrapx"><a class="btn" href="#/">Browse the price list</a><a class="btn outline" href="#/build">Build a protocol yourself</a></div></div></div>`;
   return html`<div class="wrap page narrow">
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
     <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
@@ -265,7 +262,7 @@ function App() {
   else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} />`;
   else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
   else if (route.page === 'coa') page = html`<${CoaSection} />`;
-  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} /><${HowItWorks} /><${BoxStrip} />`;
+  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} /><${AfterOrder} />`;
 
   return html`<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
     <main class="screen" id="main">${page}</main>

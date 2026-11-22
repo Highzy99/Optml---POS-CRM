@@ -5,21 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>optml · price list and dosing guide</title>
 <meta name="description" content="Research-grade peptides with free bac water, batch-matched certificates and a step-by-step dosing guide for every vial. Order on WhatsApp in under a minute.">
-<meta name="theme-color" content="#222326">
+<meta name="theme-color" content="#ffffff">
 <link rel="canonical" href="https://wpda-protocol-hub.vercel.app/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="optml">
 <meta property="og:title" content="optml · price list and dosing guide">
 <meta property="og:description" content="Research-grade peptides with free bac water, batch-matched certificates and a step-by-step dosing guide for every vial. Order on WhatsApp in under a minute.">
 <meta property="og:url" content="https://wpda-protocol-hub.vercel.app/">
-<meta property="og:image" content="https://wpda-protocol-hub.vercel.app/og.jpg?v=3">
+<meta property="og:image" content="https://wpda-protocol-hub.vercel.app/og.jpg?v=4">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="optml price list: research-grade peptides, properly tested">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="optml · price list and dosing guide">
 <meta name="twitter:description" content="Research-grade peptides with free bac water, batch-matched certificates and a step-by-step dosing guide for every vial. Order on WhatsApp in under a minute.">
-<meta name="twitter:image" content="https://wpda-protocol-hub.vercel.app/og.jpg?v=3">
+<meta name="twitter:image" content="https://wpda-protocol-hub.vercel.app/og.jpg?v=4">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/brand/icon-192.png">
 <link rel="apple-touch-icon" href="assets/brand/icon-180.png">
 <link rel="preload" href="assets/fonts/onest.woff2" as="font" type="font/woff2" crossorigin>
@@ -283,97 +283,208 @@ main.screen { overflow-x: clip; }
 footer.foot { background: var(--ink); color: rgba(255,255,255,.72); margin-top: 72px; padding: 48px 0 40px; font-size: 14px; }
 footer.foot a { color: var(--white); }
 
-/* ---------- App shell ---------- */
+/* ============ The lid: one flat colour field per page, quiet catalogue around it ============ */
+:root {
+  --lid: #6166cc; --lid-deep: #4b50b4; --lid-soft: #eef0fc; --lid-ink: #353a96; --lid-pill: #e9ecff;
+  --wash: var(--lid-soft);
+  --r-sm: 10px; --r-md: 14px; --r-lg: 18px; --r-xl: 28px;
+}
+.g-restore { --g: #6166cc; --g-ink: #ffffff; --g-soft: #eef0fc; }
+.g-weight { --g: #ff8787; --g-ink: #561213; --g-soft: #ffeded; }
+.g-glow { --g: #ffc3d6; --g-ink: #6d2247; --g-soft: #fff1f5; }
+.g-energy { --g: #ff7848; --g-ink: #471808; --g-soft: #ffeee6; }
+.g-growth { --g: #92e8a6; --g-ink: #1b3a22; --g-soft: #eafaee; }
+.g-edge { --g: #febffc; --g-ink: #4d2f4c; --g-soft: #fef1fe; }
+.g-vitality { --g: #f0ea6a; --g-ink: #383110; --g-soft: #fbf9dc; }
+.g-sleep { --g: #d0b3ff; --g-ink: #35244f; --g-soft: #f4eeff; }
+
+/* Quiet labels: sentence case, no tracking */
+.screen .eyebrow, .screen .lbl { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--n600); }
+.screen .chip { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; padding: 5px 11px; }
+.screen .fact dt, .screen .tbl th, .screen .feature .facts dt { font-size: 12.5px; letter-spacing: 0; text-transform: none; }
+.screen .facts4 { display: block; border-bottom: 1px solid var(--n200); }
+.screen .fact { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: baseline; background: transparent; border-radius: 0; border-top: 1px solid var(--n200); padding: 12px 0; }
+.screen .fact dt { font-size: 14px; font-weight: 500; }
+.screen .fact dd { margin: 0; font-size: 15.5px; }
+.screen .empty { border: 0; background: var(--paper); text-align: left; color: var(--n700); }
+.screen .pill { border-color: var(--n200); }
+.screen .pill[aria-pressed="true"] { border-color: var(--ink); }
+.screen .card { border-radius: var(--r-lg); }
+.screen .banner { background: var(--lid-soft); }
+.screen .okbox { background: var(--lid-soft); color: var(--lid-ink); }
+.screen h1, .screen h2, .screen h3 { font-weight: 700; }
+
+/* App shell */
 .wrap.narrow { max-width: 820px; }
-.page { padding-top: 18px; padding-bottom: 28px; min-height: 60vh; }
-.page-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-.page-head h1 { font-size: clamp(28px, 7vw, 40px); letter-spacing: -.03em; }
-.back { display: inline-flex; align-items: center; min-height: 36px; font-size: 15px; font-weight: 600; color: var(--ink); text-decoration: none; }
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: rgba(255,255,255,.97); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--n200); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
-.tabbar a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 54px; font-size: 11px; font-weight: 600; color: var(--n600); text-decoration: none; border-radius: 12px; }
-.tabbar a[aria-current="page"] { color: var(--ink); background: var(--paper); }
-.tabbar .dot { position: absolute; top: 3px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--ink); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
-.tabbar .dot.soft { background: var(--ok); }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 70; background: var(--ink); color: #fff; border-radius: 999px; padding: 10px 16px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); max-width: 92vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: fade .15s ease; }
+.page { padding-top: 14px; padding-bottom: 28px; min-height: 60vh; }
+.page-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.page-head h1 { font-size: clamp(30px, 7.6vw, 44px); letter-spacing: -.035em; line-height: 1.02; }
+.back { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; margin-left: -4px; padding: 0 8px 0 2px; font-size: 15px; font-weight: 600; color: var(--ink); text-decoration: none; border-radius: var(--pill); }
+.back:hover { background: var(--paper); }
+.top { border-bottom-color: transparent; transition: border-color .15s ease; }
+.top.stuck { border-bottom-color: var(--n200); }
+.top .inner { padding-top: 12px; padding-bottom: 12px; }
+.top .plan { min-height: 40px; padding: 0 6px 0 16px; gap: 10px; font-weight: 600; }
+.top .plan.outline { padding: 0 16px; }
+.top .plan .count { min-width: 28px; height: 28px; font-size: 13px; }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: rgba(255,255,255,.96); backdrop-filter: saturate(1.4) blur(16px); -webkit-backdrop-filter: saturate(1.4) blur(16px); border-top: 1px solid var(--n200); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 8px env(safe-area-inset-bottom); }
+.tabbar a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 60px; font-size: 11.5px; font-weight: 500; color: var(--n500); text-decoration: none; }
+.tabbar a::before { content: ''; position: absolute; top: -1px; left: 50%; width: 28px; height: 3px; margin-left: -14px; border-radius: 0 0 3px 3px; background: transparent; }
+.tabbar a[aria-current="page"] { color: var(--ink); font-weight: 700; }
+.tabbar a[aria-current="page"]::before { background: var(--ink); }
+.tabbar .ico { position: relative; display: flex; }
+.tabbar .dot { position: absolute; top: -6px; left: 14px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--lid); color: #fff; font-size: 11px; font-weight: 700; font-style: normal; display: flex; align-items: center; justify-content: center; padding: 0 5px; box-shadow: 0 0 0 2px #fff; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 70; background: var(--ink); color: #fff; border-radius: 999px; padding: 10px 16px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); max-width: 92vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: toast .18s cubic-bezier(.2,.7,.2,1); }
+@keyframes toast { from { opacity: 0; transform: translate(-50%, 6px); } }
 @media (min-width: 860px) { .toast { bottom: 24px; } }
 .chip.soft { background: var(--paper); }
-/* Shop home */
-.shero { padding: 16px 0 0; }
-.shero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 18px; align-items: center; }
-.shero h1 { font-size: clamp(30px, 8vw, 60px); letter-spacing: -.035em; line-height: 1.02; }
-.shero .lead { font-size: 17px; }
-.shero-img { margin: 0; border-radius: var(--r-xl); overflow: hidden; background: #cfe0f7; aspect-ratio: 16 / 10; }
-.shero-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-@media (max-width: 640px) { .shero-img { aspect-ratio: 16 / 9; order: -1; } }
-.hiw { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.hiw-step { display: flex; gap: 10px; align-items: flex-start; background: var(--paper); border-radius: var(--r-md); padding: 12px; }
-.hiw-step .n { width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
-.hiw-step b { color: var(--ink); font-size: 14px; }
-@media (max-width: 640px) { .hiw { grid-template-columns: 1fr; } .hiw-step { padding: 10px 12px; } }
-.boxstrip { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 14px; background: var(--paper); border-radius: var(--r-xl); padding: 12px; }
-.boxstrip figure { margin: 0; border-radius: var(--r-lg); overflow: hidden; aspect-ratio: 4 / 3; }
-.boxstrip img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.boxstrip > div { padding: 6px 8px 10px; }
-.sticky-filters { position: sticky; top: 56px; z-index: 20; background: rgba(255,255,255,.97); padding: 8px 0; margin-top: 6px; }
-@media (min-width: 860px) { .sticky-filters { top: 60px; } }
-.plist { display: flex; flex-direction: column; gap: 10px; }
-@media (min-width: 860px) { .plist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.prow { border: 1px solid var(--n200); border-radius: var(--r-lg); padding: 12px; display: flex; flex-direction: column; gap: 10px; background: linear-gradient(160deg, #fff 55%, color-mix(in srgb, var(--tint) 22%, #fff)); }
-.prow .ptop { display: flex; gap: 12px; align-items: center; text-decoration: none; color: inherit; }
-.prow .ptop img { width: 38px; height: 38px; flex: none; }
-.prow h3 { font-size: 17px; letter-spacing: -.01em; }
-.prow .str, .pcard .str { font-weight: 600; color: var(--n600); }
-.prow .how { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink); background: var(--paper); border-radius: 999px; padding: 6px 10px; }
+
+/* The lid */
+.lid { background: var(--lid); color: #fff; border-radius: var(--r-xl); overflow: hidden; }
+.lid h1, .lid h2, .lid h3 { color: inherit; }
+.hero-lid { display: grid; margin-top: 4px; }
+.lid-photo { margin: 0; aspect-ratio: 16 / 9; overflow: hidden; background: #cfe0f7; }
+.lid-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 36%; display: block; }
+.lid-body { padding: 20px 20px 16px; display: flex; flex-direction: column; gap: 14px; }
+.lid-body h1 { font-size: clamp(32px, 8.8vw, 60px); letter-spacing: -.04em; line-height: .98; }
+.lid-lead { font-size: 16px; line-height: 1.5; color: rgba(255,255,255,.9); max-width: 44ch; }
+.lid-pills { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.lid-pills li { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 14px; border-radius: var(--pill); font-size: 14px; font-weight: 600; background: var(--lid-pill); color: var(--lid-ink); }
+.lid-pills li.line { background: transparent; color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); font-weight: 500; }
+.lid-foot { font-size: 14px; color: rgba(255,255,255,.9); padding-top: 12px; border-top: 1px solid rgba(255,255,255,.24); }
+.lid-foot b { color: #fff; }
+@media (min-width: 860px) {
+  .hero-lid { grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); margin-top: 10px; }
+  .lid-photo { order: 2; aspect-ratio: auto; min-height: 380px; }
+  .lid-body { padding: 44px 44px 36px; gap: 20px; justify-content: flex-end; }
+  .lid-pills li { min-height: 38px; font-size: 15px; }
+}
+
+/* Catalogue */
+.finder { display: flex; flex-direction: column; gap: 0; margin-top: 22px; }
+.finder .input { border-radius: var(--pill); padding-left: 44px; background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235b5e66' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") no-repeat 16px center; border-color: transparent; }
+.finder .input:focus { background-color: #fff; }
+.sticky-filters { position: sticky; top: 64px; z-index: 20; background: rgba(255,255,255,.97); padding: 10px 0 8px; }
+.sticky-filters .pill { min-height: 38px; padding: 0 14px 0 8px; border: 0; background: var(--paper); font-weight: 600; }
+.sticky-filters .pill:first-child { padding: 0 16px; }
+.sticky-filters .pill[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.plist { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 8px; }
+@media (min-width: 860px) { .plist { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+@media (min-width: 1240px) { .wrap { max-width: 1200px; } .plist { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.pc { border: 1px solid var(--n200); border-radius: var(--r-lg); background: #fff; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.pc .tiers { margin-top: auto; }
+.pc-head { display: flex; gap: 12px; align-items: center; text-decoration: none; color: inherit; min-height: 44px; }
+.pc-head img { width: 40px; height: 40px; flex: none; }
+.pc-head h3 { font-size: 18px; letter-spacing: -.02em; line-height: 1.15; }
+.pc-head .str { font-weight: 500; color: var(--n600); }
+.pc-meta { display: flex; gap: 10px; font-size: 13px; color: var(--n600); margin-top: 2px; }
+.pc-meta span + span { padding-left: 10px; border-left: 1px solid var(--n300); }
+.pc-how { flex: none; display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; color: var(--ink); padding: 8px 4px 8px 12px; border-radius: var(--pill); background: var(--paper); }
+.pc-head:hover .pc-how { background: var(--sunken); }
+.strengths { display: flex; gap: 4px; background: var(--paper); border-radius: var(--pill); padding: 3px; align-self: flex-start; }
+.strengths button { position: relative; min-height: 34px; padding: 0 14px; border: 0; border-radius: var(--pill); background: transparent; font-size: 14px; font-weight: 600; color: var(--n600); cursor: pointer; }
+.strengths button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(34,35,38,.14); }
+.strengths i { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--lid); }
 .tiers { display: grid; gap: 6px; }
-.tier { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 58px; padding: 8px 4px; border-radius: 12px; border: 1px solid var(--n300); background: #fff; cursor: pointer; color: var(--ink); text-align: center; }
-.tier:hover { border-color: var(--ink); }
-.tier:active { transform: scale(.98); }
-.tier .tl { font-size: 12px; color: var(--n600); font-weight: 500; }
-.tier .tp { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
-.tier .tw { font-size: 11px; color: var(--n500); }
-.tier .ts { font-size: 11px; color: var(--n600); }
-.tier .badge { position: absolute; top: -8px; right: 6px; font-size: 10px; font-weight: 700; background: var(--ok); color: #fff; border-radius: 999px; padding: 2px 6px; }
-.tier.on { background: var(--ink); border-color: var(--ink); color: #fff; }
-.tier.on .tl { color: rgba(255,255,255,.7); }
-.stepper { display: inline-flex; align-items: center; gap: 8px; margin-top: 3px; }
-.stepper button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.5); background: transparent; color: #fff; font-size: 17px; line-height: 1; cursor: pointer; }
-.stepper b { min-width: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+.tier { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 68px; padding: 8px 4px; border-radius: var(--r-md); border: 0; background: var(--paper); cursor: pointer; color: var(--ink); text-align: center; transition: background-color .12s ease, transform .1s ease; }
+button.tier:hover { background: var(--sunken); }
+button.tier:active { transform: scale(.97); }
+.tier .tl { font-size: 12.5px; color: var(--n600); font-weight: 500; }
+.tier .tp { font-size: 18px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+.tier .tn { font-size: 12px; color: var(--n600); min-height: 16px; }
+.tier .tn s { color: var(--n500); }
+.tier .sv { font-size: 12px; font-weight: 600; color: var(--ok); }
+.tier.on { background: var(--ink); color: #fff; cursor: default; gap: 4px; }
+.tier.on .tl { color: rgba(255,255,255,.75); }
+.stepper { display: inline-flex; align-items: center; gap: 6px; }
+.stepper button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(255,255,255,.16); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.stepper button:hover { background: rgba(255,255,255,.28); }
+.stepper b { min-width: 18px; text-align: center; font-size: 16px; font-variant-numeric: tabular-nums; }
+.listnote { font-size: 13px; color: var(--n600); margin-top: 14px; max-width: 70ch; }
+.after { margin-top: 44px; padding-top: 28px; border-top: 1px solid var(--n200); display: grid; gap: 18px; }
+.after h2 { font-size: clamp(24px, 6vw, 32px); letter-spacing: -.03em; }
+.flow { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: flow; }
+.flow li { counter-increment: flow; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 2px 8px; padding: 14px 0; border-top: 1px solid var(--n200); }
+.flow li:first-child { border-top: 0; padding-top: 0; }
+.flow li::before { content: counter(flow); grid-row: 1 / span 2; font-size: 26px; font-weight: 700; letter-spacing: -.03em; line-height: 1; color: var(--lid); font-variant-numeric: tabular-nums; }
+.flow b { color: var(--ink); font-size: 16px; }
+.flow span { grid-column: 2; font-size: 14.5px; color: var(--n600); }
+@media (min-width: 860px) {
+  .after { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 40px; }
+  .flow { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+  .flow li { border-top: 0; padding: 0; grid-template-columns: minmax(0, 1fr); }
+  .flow li::before { grid-row: auto; margin-bottom: 10px; }
+  .flow span { grid-column: 1; }
+}
+
 /* Product page */
-.phero { display: flex; gap: 14px; align-items: center; margin-top: 8px; padding: 16px; border-radius: var(--r-lg); background: linear-gradient(150deg, var(--paper) 35%, var(--tint)); }
-.phero img { width: 56px; height: 56px; flex: none; }
-.pills a.pill[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
-.seg.full { display: flex; width: 100%; } .seg.full button { flex: 1; padding: 0 8px; }
-.mixsteps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-.mixsteps li { display: flex; gap: 12px; padding: 12px; border: 1px solid var(--n200); border-radius: var(--r-md); }
-.mixsteps .n { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+.plid { background: var(--g); color: var(--g-ink); border-radius: var(--r-xl); padding: 22px 20px 18px; display: flex; flex-direction: column; gap: 28px; margin-top: 6px; }
+.plid h1 { color: inherit; font-size: clamp(34px, 9.5vw, 56px); letter-spacing: -.04em; line-height: .98; }
+.plid h1 span { display: block; font-weight: 400; opacity: .82; }
+.plid-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lock { display: inline-flex; align-items: center; gap: 6px; }
+.lock img { width: 34px; height: 34px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+.lock span, .plid-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border-radius: var(--pill); background: rgba(255,255,255,.88); color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: none; }
+.lock span { text-transform: lowercase; font-size: 15px; }
+.plid-chip:hover { background: #fff; }
+.plid .strengths { background: rgba(255,255,255,.3); align-self: flex-start; }
+.plid .strengths a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 16px; border-radius: var(--pill); font-size: 15px; font-weight: 600; color: inherit; text-decoration: none; }
+.plid .strengths a[aria-current="page"] { background: #fff; color: var(--ink); }
+.plid-top { display: flex; flex-direction: column; gap: 16px; }
+.inbox { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: var(--r-md); background: var(--lid-soft); color: var(--lid-ink); font-size: 14.5px; line-height: 1.4; }
+.inbox svg { flex: none; }
+.inbox b { font-weight: 700; }
+.pintro { font-size: 16px; max-width: 62ch; }
+.seg.full { display: flex; width: 100%; } .seg.full button { flex: 1; padding: 0 8px; min-height: 40px; font-weight: 600; }
+.mixsteps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.mixsteps li { display: flex; gap: 14px; padding: 14px 0; border-top: 1px solid var(--n200); }
+.mixsteps li:first-child { border-top: 0; }
+.mixsteps .n { width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
 .mixsteps b { color: var(--ink); }
-/* Order page */
-.orderbox { background: var(--ink); color: #fff; border-radius: var(--r-xl); padding: clamp(18px, 4vw, 28px); display: flex; flex-direction: column; gap: 18px; }
-.ostep { display: flex; gap: 12px; list-style: none; padding: 0; margin: 0; font-size: 13px; color: rgba(255,255,255,.6); }
+
+/* Order page: your box */
+.orderbox { background: var(--lid); color: #fff; border-radius: var(--r-xl); padding: clamp(20px, 4vw, 32px); display: flex; flex-direction: column; gap: 20px; }
+.orderbox h2 { color: #fff; font-size: clamp(32px, 8vw, 44px); letter-spacing: -.04em; line-height: 1; }
+.orderbox .ref { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.8); font-variant-numeric: tabular-nums; }
+.ostep { display: flex; gap: 14px; list-style: none; padding: 0; margin: 0; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.75); }
 .ostep li { display: flex; align-items: center; gap: 6px; }
-.ostep span { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,.4); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
-.ostep li.now { color: #fff; } .ostep li.now span { background: #fff; color: var(--ink); border-color: #fff; }
-.ostep li.done span { background: var(--ok); border-color: var(--ok); color: #fff; }
-.oempty p { color: rgba(255,255,255,.8); margin-bottom: 12px; }
+.ostep span { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255,255,255,.55); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.ostep li.now { color: #fff; font-weight: 700; } .ostep li.now span { background: #fff; color: var(--lid-ink); box-shadow: none; }
+.ostep li.done span { background: var(--lid-pill); color: var(--lid-ink); box-shadow: none; }
+.oempty p { color: rgba(255,255,255,.9); margin-bottom: 14px; max-width: 40ch; }
 .olines { display: flex; flex-direction: column; }
-.oline { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.12); }
-.shipbar .bar { height: 6px; border-radius: 6px; background: rgba(255,255,255,.15); overflow: hidden; margin-top: 6px; }
-.shipbar .bar i { display: block; height: 100%; background: var(--ok); border-radius: 6px; }
-.otot { display: flex; flex-direction: column; gap: 6px; }
-.otot > div { display: flex; justify-content: space-between; font-size: 14px; color: rgba(255,255,255,.8); }
-.otot .grand { font-size: 18px; color: #fff; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.15); }
-.linkbtn { background: none; border: 0; color: #fff; text-decoration: underline; font-size: 14px; cursor: pointer; padding: 0; }
-.odetails { display: flex; flex-direction: column; gap: 14px; border-top: 1px solid rgba(255,255,255,.15); padding-top: 18px; }
-.orderbox .field > span { color: #fff; }
-.orderbox .field small { color: #ffb4b0 !important; }
-.seg.dark { background: rgba(255,255,255,.12); } .seg.dark button { color: rgba(255,255,255,.85); } .seg.dark button[aria-pressed="true"] { background: #fff; color: var(--ink); }
-.osent { display: flex; flex-direction: column; gap: 14px; } .osent p { color: rgba(255,255,255,.85); }
+.oline { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 12px; padding: 14px 0; border-top: 1px solid rgba(255,255,255,.22); }
+.oline .on { font-size: 16px; font-weight: 600; }
+.oline .op { font-size: 16px; font-weight: 700; text-align: right; }
+.oline .ok { font-size: 13.5px; color: rgba(255,255,255,.88); }
+.oline .stepper { justify-self: end; }
+
+.shipbar .bar { height: 6px; border-radius: 6px; background: rgba(255,255,255,.25); overflow: hidden; margin-top: 8px; }
+.shipbar .bar i { display: block; height: 100%; background: #fff; border-radius: 6px; transition: width .3s cubic-bezier(.2,.7,.2,1); }
+.otot { display: flex; flex-direction: column; gap: 8px; }
+.otot > div { display: flex; justify-content: space-between; font-size: 15px; color: rgba(255,255,255,.9); }
+.otot .grand { font-size: 22px; letter-spacing: -.02em; color: #fff; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.28); }
+.linkbtn { background: none; border: 0; color: #fff; text-decoration: underline; text-underline-offset: 3px; font-size: 14px; cursor: pointer; padding: 0; min-height: 32px; }
+.odetails { display: flex; flex-direction: column; gap: 16px; margin-top: 28px; }
+.odetails .field small { color: var(--bad); font-weight: 600; }
+.odetails .btn.block { min-height: 56px; font-size: 17px; font-weight: 700; }
+.orderbox .btn.on-dark { color: var(--ink); font-weight: 700; }
+.orderbox .btn.on-dark-outline { border-color: rgba(255,255,255,.6); }
+.orderbox .btn.on-dark-outline:hover { background: rgba(255,255,255,.14); }
+.orderbox .input { border-color: transparent; }
+.oline .stepper button { width: 30px; height: 30px; }
+.osent { display: flex; flex-direction: column; gap: 14px; } .osent p { color: rgba(255,255,255,.92); }
 .guidecard { background: #fff; color: var(--n700); border-radius: var(--r-lg); padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.osent .guidecard p { color: var(--n700); }
+.osent .guidecard .row { margin-top: 6px; }
 .btn.disabled { opacity: .45; pointer-events: none; }
-.coagrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 8px; }
-.coacard { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--n200); border-radius: var(--r-md); text-decoration: none; color: inherit; }
+.coagrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 0 28px; }
+.coacard { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--n200); text-decoration: none; color: inherit; }
+.coacard:hover b { text-decoration: underline; text-underline-offset: 3px; }
 .coacard img { width: 32px; height: 32px; flex: none; }
-.coacard .pur { font-weight: 700; color: var(--ok); font-variant-numeric: tabular-nums; }
+.coacard b { color: var(--ink); }
+.coacard .pur { font-weight: 700; color: var(--ink); }
+footer.foot { margin-top: 56px; }
 
 /* ---------- Export document ---------- */
 .doc { display: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #2c2d31; }
@@ -1319,7 +1430,7 @@ function tierInfo(p, n, qty) {
   const wasN = (p.was && p.was[n]) || 0;
   const onSale = wasN > p.prices[n];
   return { n, qty, price: money(p.prices[n]), was: onSale ? money(wasN) : '', label: n === 1 ? '1 vial' : n + ' vials',
-    sub: n > 1 ? money(Math.round(p.prices[n] / n)) + ' / vial' : 'Single vial',
+    each: n > 1 ? money(Math.round(p.prices[n] / n)) + ' each' : '', saveAmt: saveAmt > 0 ? 'Save ' + money(saveAmt) : '',
     badge: onSale ? '−' + Math.round((1 - p.prices[n] / wasN) * 100) + '%' : (save >= 5 ? 'Save ' + save + '%' : '') };
 }
 
@@ -1334,45 +1445,63 @@ function ShipCountdown() {
 }
 
 function Tiers({ p, sh, bump, compact }) {
-  return html`<div class="tiers" style=${'grid-template-columns:repeat(' + TIERS.length + ',minmax(0,1fr))'}>${TIERS.filter(n => p.prices[n]).map(n => {
+  const tiers = TIERS.filter(n => p.prices[n]);
+  return html`<div class="tiers" style=${'grid-template-columns:repeat(' + tiers.length + ',minmax(0,1fr))'}>${tiers.map(n => {
     const key = p.sku + ':' + n; const t = tierInfo(p, n, sh.cart[key] || 0);
-    return t.qty ? html`<div class="tier on" role="group" aria-label=${t.label + ' of ' + p.name + ', ' + t.qty + ' in order'}>
-        <span class="tl">${t.label}</span><span class="tp">${t.price}</span>
+    return t.qty ? html`<div class="tier on" role="group" aria-label=${t.label + ' of ' + p.name + ', ' + t.qty + ' in your order'}>
+        <span class="tl">${t.label}${compact ? '' : ', ' + t.price}</span>
         <span class="stepper"><button type="button" aria-label=${'Remove one ' + t.label + ' of ' + p.name} onClick=${() => bump(key, -1)}>−</button><b>${t.qty}</b><button type="button" aria-label=${'Add another ' + t.label + ' of ' + p.name} onClick=${() => bump(key, 1)}>+</button></span>
       </div>`
       : html`<button type="button" class="tier" aria-label=${'Add ' + t.label + ' of ' + p.name + ', ' + t.price} onClick=${() => bump(key, 1)}>
-        ${t.badge ? html`<span class="badge">${t.badge}</span>` : null}
-        <span class="tl">${t.label}</span><span class="tp">${t.price}</span>${t.was ? html`<s class="tw">${t.was}</s>` : null}${compact ? null : html`<span class="ts">${t.sub}</span>`}
+        <span class="tl">${t.label}</span><span class="tp">${t.price}</span>
+        <span class="tn">${n === 1 ? (t.was ? html`<s>${t.was}</s>` : null) : t.each}</span>
+        ${!compact && n > 1 && t.saveAmt ? html`<span class="sv">${t.saveAmt}</span>` : null}
       </button>`;
   })}</div>`;
 }
 
+function groupProducts(list) {
+  const groups = [], by = {};
+  list.forEach(p => { const [base, strength] = splitName(p.name); const k = strength ? base + '|' + p.goal : p.sku;
+    if (!by[k]) { by[k] = { key: k, base: strength ? base : p.name, goal: p.goal, items: [] }; groups.push(by[k]); }
+    by[k].items.push({ p, strength }); });
+  return groups;
+}
+
 function ShopSection({ sh, setSh, bump }) {
+  const [pick, setPick] = useState({});
   const q = sh.q.trim().toLowerCase();
-  const list = SHOP_PRODUCTS.filter(p => (sh.goal === 'all' || p.goal === sh.goal) && (!q || (p.name + ' ' + p.sku + ' ' + (INFO[p.sku] || '')).toLowerCase().includes(q)));
-  return html`<section id="shop" aria-labelledby="h-shop" style="padding-top:8px"><div class="wrap">
+  const list = SHOP_PRODUCTS.filter(p => (sh.goal === 'all' || p.goal === sh.goal) && (!q || (p.name + ' ' + p.sku + ' ' + GOAL_LABELS[p.goal] + ' ' + (INFO[p.sku] || '')).toLowerCase().includes(q)));
+  const groups = groupProducts(list);
+  const inCart = sku => TIERS.some(n => sh.cart[sku + ':' + n] > 0);
+  return html`<section id="shop" aria-labelledby="h-shop"><div class="wrap">
     <h2 id="h-shop" class="sr">${WHOLESALE ? 'Wholesale price list' : 'Price list'}</h2>
-    <label class="field" style="max-width:460px;margin-top:18px"><span class="sr">Search the price list</span><input class="input" type="search" placeholder="Search compounds" value=${sh.q} onInput=${e => setSh({ q: e.target.value })} /></label>
-    <div class="sticky-filters">
-      <div class="scrollx" role="group" aria-label="Filter by goal">
-        <button type="button" class="pill" aria-pressed=${String(sh.goal === 'all')} onClick=${() => setSh({ goal: 'all' })}>All</button>
-        ${GOALS.map(g => html`<button type="button" class="pill" aria-pressed=${String(sh.goal === g)} onClick=${() => setSh({ goal: sh.goal === g ? 'all' : g })}><img src=${GOAL_ICONS[g]} alt="" />${GOAL_LABELS[g]}</button>`)}
+    <div class="finder">
+      <label class="field"><span class="sr">Search the price list</span><input class="input" type="search" placeholder="Search the price list" value=${sh.q} onInput=${e => setSh({ q: e.target.value })} /></label>
+      <div class="sticky-filters">
+        <div class="scrollx" role="group" aria-label="Filter by goal">
+          <button type="button" class="pill" aria-pressed=${String(sh.goal === 'all')} onClick=${() => setSh({ goal: 'all' })}>All</button>
+          ${GOALS.map(g => html`<button type="button" class="pill" aria-pressed=${String(sh.goal === g)} onClick=${() => setSh({ goal: sh.goal === g ? 'all' : g })}><img src=${GOAL_ICONS[g]} alt="" />${GOAL_LABELS[g]}</button>`)}
+        </div>
       </div>
     </div>
-    <div class="plist" style="margin-top:14px">
-      ${list.map(p => { const [base, strength] = splitName(p.name); const coa = COAS[p.sku];
-        return html`<article class="prow" style=${'--tint:' + GOAL_TINT[p.goal]}>
-          <a class="ptop" href=${'#/p/' + p.sku} aria-label=${p.name + ': prices, how to use and certificate'}>
-            <img src=${GOAL_ICONS[p.goal]} alt="" />
-            <div class="grow"><h3>${base} ${strength ? html`<span class="str">${strength}</span>` : null}</h3>
-              <div class="tiny muted">${GOAL_LABELS[p.goal]}${coa ? ' · ' + coa[0] + ' purity' : ''}</div></div>
-            <span class="how">How to use <${Icon} name="arrow" size=${14} /></span>
+    <div class="plist">
+      ${groups.map(g => {
+        const cur = g.items.find(x => x.p.sku === pick[g.key]) || g.items.find(x => inCart(x.p.sku)) || g.items[0];
+        const p = cur.p; const coa = COAS[p.sku];
+        return html`<article class="pc" key=${g.key}>
+          <a class="pc-head" href=${'#/p/' + p.sku} aria-label=${p.name + ': how to use, mixing and certificate'}>
+            <img src=${GOAL_ICONS[g.goal]} alt="" width="40" height="40" />
+            <div class="grow"><h3>${g.base}${g.items.length === 1 && cur.strength ? html` <span class="str">${cur.strength}</span>` : null}</h3>
+              <div class="pc-meta"><span>${GOAL_LABELS[g.goal]}</span>${coa ? html`<span>${coa[0]} pure</span>` : null}</div></div>
+            <span class="pc-how">How to use<${Icon} name="chev" size=${16} /></span>
           </a>
+          ${g.items.length > 1 ? html`<div class="strengths" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(s => Object.assign({}, s, { [g.key]: x.p.sku }))}>${x.strength}${inCart(x.p.sku) ? html`<i role="img" aria-label="in your order"></i>` : null}</button>`)}</div>` : null}
           <${Tiers} p=${p} sh=${sh} bump=${bump} compact />
         </article>`; })}
     </div>
-    ${list.length === 0 ? html`<div class="empty" style="margin-top:12px">Nothing matches that search.</div>` : null}
-    <p class="tiny muted" style="margin-top:14px">Prices in AUD${WHOLESALE ? ' · 10-vial rates are wholesale only' : ''}. Bac water included with every vial. Free express shipping in Australia over $200, New Zealand from $20.</p>
+    ${list.length === 0 ? html`<div class="empty" style="margin-top:12px">Nothing matches "${sh.q.trim()}". Try a compound name or clear the search.</div>` : null}
+    <p class="listnote">Prices in AUD${WHOLESALE ? '; 10-vial rates are wholesale only' : ''}. Express shipping is $15 in Australia and free over $200. New Zealand from $20.</p>
   </div></section>`;
 }
 
@@ -1384,18 +1513,26 @@ function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
   const copy = () => { const done = () => { setSh({ copied: true }); setTimeout(() => setSh({ copied: false }), 2000); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(o.plainText).then(done, done); else done(); };
   const send = () => { onSent(o.items); };
   const lastItems = sh.lastOrder && sh.lastOrder.cart ? Object.keys(sh.lastOrder.cart).map(k => { const b = k.split(':'); const p = SHOP_BY_SKU[b[0]]; const n = parseInt(b[1], 10); return p && p.prices[n] ? { key: k, qty: sh.lastOrder.cart[k], p, n } : null; }).filter(Boolean) : [];
-  const inp = (k, label, extra = {}) => html`<label class="field"><span>${label}</span><input class="input" style=${o.err[k] ? 'border-color:var(--bad)' : ''} value=${sh[k]} onInput=${field(k)} onBlur=${blur(k)} aria-invalid=${o.err[k] ? 'true' : 'false'} ...${extra} />${o.err[k] ? html`<small style="color:var(--bad)">${o.err[k]}</small>` : null}</label>`;
+  const inp = (k, label, extra = {}) => html`<label class="field"><span>${label}</span><input class="input" style=${o.err[k] ? 'border-color:var(--bad)' : ''} value=${sh[k]} onInput=${field(k)} onBlur=${blur(k)} aria-invalid=${o.err[k] ? 'true' : 'false'} ...${extra} />${o.err[k] ? html`<small>${o.err[k]}</small>` : null}</label>`;
   return html`<div class="wrap page narrow" id="order">
     <div class="orderbox">
-      <div class="row g12 wrapx" style="justify-content:space-between"><div><div class="lbl" style="color:rgba(255,255,255,.6)">${WHOLESALE ? 'Wholesale order' : 'Your order'} · ${sh.ref}</div><h2 id="h-order" style="color:#fff;font-size:clamp(26px,5vw,34px);margin-top:4px">${stage === 4 ? 'Order sent' : 'Your order'}</h2></div>
+      <div class="row g12 wrapx" style="justify-content:space-between;align-items:flex-end"><div><div class="ref">${WHOLESALE ? 'Wholesale order ' : 'Order '}${sh.ref}</div><h2 id="h-order" style="margin-top:6px">${stage === 4 ? 'Order sent' : 'Your order'}</h2></div>
         <ol class="ostep" aria-label="Order progress">${['Build', 'Details', 'Send'].map((l, i) => html`<li class=${i + 1 < stage ? 'done' : i + 1 === stage ? 'now' : ''}><span>${i + 1 < stage ? '✓' : i + 1}</span>${l}</li>`)}</ol></div>
 
       ${!o.items.length && !sh.sent ? html`<div class="oempty"><p>Tap any price in the list to add a pack. Tap again for more, minus to take one off.</p>
         ${lastItems.length ? html`<button type="button" class="btn on-dark sm" onClick=${() => { const c = {}; lastItems.forEach(it => { c[it.key] = it.qty; }); setSh({ cart: c, sent: false }); }}>Order again: ${lastItems.slice(0, 2).map(it => it.qty + '× ' + it.p.name).join(', ')}${lastItems.length > 2 ? ' + more' : ''}</button>` : html`<a class="btn on-dark sm" href="#/">Browse the price list</a>`}</div>` : null}
 
-      ${o.items.length ? html`<div class="olines">${o.items.map(it => html`<div class="oline"><div class="grow"><b>${it.p.name}</b><div class="tiny" style="color:rgba(255,255,255,.65)">${it.pack}</div></div>
-          <span class="stepper dark"><button type="button" aria-label=${'One less ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, -1)}>−</button><b>${it.qty}</b><button type="button" aria-label=${'One more ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, 1)}>+</button></span>
-          <b style="width:72px;text-align:right">${money(it.amount)}</b></div>`)}</div>
+      ${sh.sent && o.items.length ? html`<div class="osent">
+        <p>Your order is in WhatsApp. We confirm stock and send payment details by reply. ${REPLY_NOTE}</p>
+        <div class="row g8 wrapx"><a class="btn sm on-dark-outline" href=${o.orderHref} target="_blank" rel="noopener">Didn't open? Resend on WhatsApp</a>
+          <button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ cart: {}, sent: false, code: '', codeInput: '', ref: makeRef() })}>Start a new order</button></div>
+        ${planReady ? html`<div class="guidecard"><b style="font-size:20px;letter-spacing:-.02em;color:var(--ink)">Your guide is ready</b>
+          <p class="small">Exact units to draw for each compound, how to mix it with the bac water in the box, where to inject, and a daily tracker. Save it as a PDF to keep.</p>
+          <div class="row g8 wrapx"><a class="btn sm" href="#/plan">Open my tracker</a><button type="button" class="btn sm outline" onClick=${() => window.print()}>Save my guide as PDF</button></div></div>` : null}
+      </div>` : null}
+
+      ${o.items.length ? html`<div class="olines">${o.items.map(it => html`<div class="oline"><b class="on">${it.p.name}</b><b class="op">${money(it.amount)}</b><span class="ok">${it.pack}</span>
+          <span class="stepper dark"><button type="button" aria-label=${'One less ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, -1)}>−</button><b>${it.qty}</b><button type="button" aria-label=${'One more ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, 1)}>+</button></span></div>`)}</div>
         ${!o.nz ? html`<div class="shipbar"><div class="tiny">${o.freeShip ? 'Free express shipping unlocked' : 'Add ' + money(o.remaining) + ' more for free express shipping'}</div><div class="bar"><i style=${'width:' + Math.min(100, Math.round(o.afterDiscount / FREE_SHIP_AT * 100)) + '%'}></i></div></div>` : null}
         <div class="otot">
           <div><span>Subtotal (AUD)</span><b>${money(o.subtotal)}</b></div>
@@ -1404,13 +1541,14 @@ function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
           <div class="grand"><span>Total</span><b>${money(o.total)} AUD</b></div>
         </div>
         <div>${sh.code ? html`<div class="row g8 wrapx tiny"><span>${o.codeNote}</span><button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ code: '', codeOpen: false, codeError: '' })}>Remove code</button></div>`
-          : sh.codeOpen ? html`<div class="row g8"><label class="grow"><span class="sr">Discount code</span><input class="input" placeholder="Discount code" value=${sh.codeInput} onInput=${e => setSh({ codeInput: e.target.value.toUpperCase(), codeError: '' })} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } }} /></label><button type="button" class="btn on-dark sm" onClick=${applyCode}>Apply</button></div>${sh.codeError ? html`<div class="tiny" style="color:#ffb4b0;margin-top:6px">${sh.codeError}</div>` : null}`
+          : sh.codeOpen ? html`<div class="row g8"><label class="grow"><span class="sr">Discount code</span><input class="input" placeholder="Discount code" value=${sh.codeInput} onInput=${e => setSh({ codeInput: e.target.value.toUpperCase(), codeError: '' })} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } }} /></label><button type="button" class="btn on-dark sm" onClick=${applyCode}>Apply</button></div>${sh.codeError ? html`<div class="tiny" style="color:#fff;font-weight:600;margin-top:6px">${sh.codeError}</div>` : null}`
           : html`<button type="button" class="linkbtn" onClick=${() => setSh({ codeOpen: true, codeError: '' })}>Have a discount code?</button>`}</div>
       ` : null}
 
-      ${o.items.length && !sh.sent ? html`<div class="odetails">
-        <div class="row g12 wrapx" style="justify-content:space-between"><h3 style="color:#fff;font-size:20px">Your details</h3>
-          <div class="seg dark" role="group" aria-label="Shipping country"><button type="button" aria-pressed=${String(!o.nz)} onClick=${() => setSh(p => p.country === 'NZ' ? { country: 'AU', region: '' } : {})}>Australia</button><button type="button" aria-pressed=${String(o.nz)} onClick=${() => setSh(p => p.country !== 'NZ' ? { country: 'NZ', region: '' } : {})}>New Zealand</button></div></div>
+    </div>
+    ${o.items.length && !sh.sent ? html`<div class="odetails">
+        <div class="row g12 wrapx" style="justify-content:space-between"><h2 style="font-size:24px;letter-spacing:-.03em">Your details</h2>
+          <div class="seg" role="group" aria-label="Shipping country"><button type="button" aria-pressed=${String(!o.nz)} onClick=${() => setSh(p => p.country === 'NZ' ? { country: 'AU', region: '' } : {})}>Australia</button><button type="button" aria-pressed=${String(o.nz)} onClick=${() => setSh(p => p.country !== 'NZ' ? { country: 'NZ', region: '' } : {})}>New Zealand</button></div></div>
         <div class="fgrid light">
           ${inp('name', 'Full name', { autocomplete: 'name' })}
           ${inp('phone', 'Mobile', { autocomplete: 'tel', inputmode: 'tel' })}
@@ -1419,29 +1557,20 @@ function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
         <div class="fgrid light">
           ${inp('street', 'Street address', { autocomplete: 'street-address' })}
           ${inp('suburb', o.nz ? 'Suburb / town' : 'Suburb', { autocomplete: 'address-level2' })}
-          <label class="field"><span>${o.nz ? 'Region' : 'State'}</span><select class="select" style=${o.err.region ? 'border-color:var(--bad)' : ''} value=${sh.region} onChange=${field('region')} onBlur=${blur('region')}><option value="">Choose…</option>${(o.nz ? NZ_REGIONS : STATES).map(r => html`<option value=${r}>${r}</option>`)}</select>${o.err.region ? html`<small style="color:var(--bad)">${o.err.region}</small>` : null}</label>
+          <label class="field"><span>${o.nz ? 'Region' : 'State'}</span><select class="select" style=${o.err.region ? 'border-color:var(--bad)' : ''} value=${sh.region} onChange=${field('region')} onBlur=${blur('region')}><option value="">Choose…</option>${(o.nz ? NZ_REGIONS : STATES).map(r => html`<option value=${r}>${r}</option>`)}</select>${o.err.region ? html`<small>${o.err.region}</small>` : null}</label>
           ${inp('postcode', 'Postcode', { autocomplete: 'postal-code', inputmode: 'numeric' })}
         </div>
         ${o.regionWarn ? html`<div class="warn">${o.regionWarn}</div>` : null}
-        ${o.nz ? html`<div class="seg dark" role="group" aria-label="NZ shipping"><button type="button" aria-pressed=${String(!o.nzExp)} onClick=${() => setSh({ nzShip: 'standard' })}>Standard · $20</button><button type="button" aria-pressed=${String(o.nzExp)} onClick=${() => setSh({ nzShip: 'express' })}>Express · $25</button></div>` : null}
+        ${o.nz ? html`<div class="seg" role="group" aria-label="NZ shipping"><button type="button" aria-pressed=${String(!o.nzExp)} onClick=${() => setSh({ nzShip: 'standard' })}>Standard · $20</button><button type="button" aria-pressed=${String(o.nzExp)} onClick=${() => setSh({ nzShip: 'express' })}>Express · $25</button></div>` : null}
         <label class="field"><span>Delivery notes (optional)</span><textarea class="textarea" value=${sh.notes} onInput=${field('notes')}></textarea></label>
         <div class="stack g8">
-          ${o.detailsOk ? html`<a class="btn on-dark block" style="min-height:52px;font-size:16px" href=${o.orderHref} target="_blank" rel="noopener" onClick=${send}>Send order on WhatsApp</a>`
-            : html`<button type="button" class="btn on-dark block" style="min-height:52px;font-size:16px" disabled>Send order on WhatsApp</button><div class="tiny" style="color:rgba(255,255,255,.75)">Still needed: ${o.missing.join(', ')}</div>`}
-          <div class="row g8 wrapx"><a class=${'btn sm on-dark-outline' + (o.detailsOk ? '' : ' disabled')} href=${o.detailsOk ? o.emailHref : null} aria-disabled=${String(!o.detailsOk)} onClick=${o.detailsOk ? send : null}>Email instead</a><button type="button" class="btn sm on-dark-outline" onClick=${copy}>${sh.copied ? 'Copied' : 'Copy order'}</button></div>
-          <p class="tiny" style="color:rgba(255,255,255,.7)">Opens WhatsApp with your order filled in. Nothing is charged here: ${PAYMENT_NOTE} ${REPLY_NOTE}</p>
+          ${o.detailsOk ? html`<a class="btn block" href=${o.orderHref} target="_blank" rel="noopener" onClick=${send}>Send order on WhatsApp</a>`
+            : html`<button type="button" class="btn block" disabled>Send order on WhatsApp</button><div class="small" style="color:var(--ink);font-weight:600">Still needed: ${o.missing.join(', ')}</div>`}
+          <div class="row g8 wrapx"><a class=${'btn sm outline' + (o.detailsOk ? '' : ' disabled')} href=${o.detailsOk ? o.emailHref : null} aria-disabled=${String(!o.detailsOk)} onClick=${o.detailsOk ? send : null}>Email instead</a><button type="button" class="btn sm outline" onClick=${copy}>${sh.copied ? 'Copied' : 'Copy order'}</button></div>
+          <p class="tiny muted">Opens WhatsApp with your order filled in. Nothing is charged here: ${PAYMENT_NOTE} ${REPLY_NOTE}</p>
         </div>
       </div>` : null}
 
-      ${sh.sent && o.items.length ? html`<div class="osent">
-        <p>Your order is in WhatsApp. We confirm stock and send payment details by reply. ${REPLY_NOTE}</p>
-        <div class="row g8 wrapx"><a class="btn sm on-dark-outline" href=${o.orderHref} target="_blank" rel="noopener">Didn't open? Resend on WhatsApp</a>
-          <button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ cart: {}, sent: false, code: '', codeInput: '', ref: makeRef() })}>Start a new order</button></div>
-        ${planReady ? html`<div class="guidecard"><div class="lbl">Your how-to guide is ready</div><b style="font-size:19px;color:var(--ink)">Everything you ordered, step by step</b>
-          <p class="small">Exact units to draw for each compound, how to mix it with the bac water in the box, where to inject, and a daily tracker. Save it as a PDF to keep.</p>
-          <div class="row g8 wrapx"><a class="btn sm" href="#/plan">Open my tracker</a><button type="button" class="btn sm outline" onClick=${() => window.print()}>Save my guide as PDF</button></div></div>` : null}
-      </div>` : null}
-    </div>
   </div>`;
 }
 
@@ -1458,7 +1587,7 @@ function CoaSection({ goal }) {
   const purities = withCoa.map(p => parseFloat(COAS[p.sku][0]));
   const pending = SHOP_PRODUCTS.filter(p => !COAS[p.sku]).map(p => p.name);
   return html`<div class="wrap page" id="coa">
-    <div class="page-head"><div class="eyebrow">Certificates of analysis</div><h1>Every batch, independently tested.</h1>
+    <div class="page-head"><h1>Every batch, independently tested.</h1>
       <p class="lead">${withCoa.length} compounds with batch certificates, purity ${Math.min.apply(null, purities).toFixed(2)}–${Math.max.apply(null, purities).toFixed(2)}%. Identity confirmed by HPLC-MS. Tap one to open the PDF.</p></div>
     <div class="coagrid">${shown.map(p => html`<a class="coacard" href=${COA_BASE + COAS[p.sku][2]} target="_blank" rel="noopener"><img src=${GOAL_ICONS[p.goal]} alt="" /><div class="grow"><b>${p.name}</b><div class="tiny muted">Tested ${COAS[p.sku][1]}</div></div><span class="pur">${COAS[p.sku][0]}</span></a>`)}</div>
     <div class="row g8 wrapx" style="margin-top:12px"><button type="button" class="btn sm outline" onClick=${() => setAll(!all)}>${all ? 'Show fewer' : 'Show all ' + withCoa.length + ' certificates'}</button>
@@ -1642,7 +1771,7 @@ function planItems(st) {
 
 function Icon({ name, size = 20 }) {
   const P = {
-    close: 'M6 6l12 12M18 6L6 18', plus: 'M12 5v14M5 12h14', check: 'M5 12.5l4.5 4.5L19 7', arrow: 'M5 12h14M13 6l6 6-6 6',
+    close: 'M6 6l12 12M18 6L6 18', plus: 'M12 5v14M5 12h14', check: 'M5 12.5l4.5 4.5L19 7', arrow: 'M5 12h14M13 6l6 6-6 6', chev: 'M9.5 6.5L15 12l-5.5 5.5',
     search: 'M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-4-4', link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
     print: 'M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M7 14h10v6H7z', trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12',
     back: 'M19 12H5M11 6l-6 6 6 6', ext: 'M14 5h5v5M19 5l-8 8M18 14v5H5V6h5', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
@@ -1681,7 +1810,7 @@ function Pills({ options, value, onPick, label }) {
 
 function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
   const sp = SHOP_BY_SKU[sku];
-  if (!sp) return html`<div class="wrap page narrow"><a class="back" href="#/">‹ Price list</a><div class="empty" style="margin-top:16px">That product isn't on the price list.</div></div>`;
+  if (!sp) return html`<div class="wrap page narrow"><a class="back" href="#/">Price list</a><div class="empty" style="margin-top:16px">That product isn't on the price list.</div></div>`;
   const map = SKU_PROTOCOL[sku];
   const p = map ? PRODUCT[map[0]] : null;
   const idx = map ? map[1] : 0;
@@ -1694,16 +1823,18 @@ function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
   const bac = sp.sku === 'NA1000' ? '10ml' : (it && it.oral ? '' : '3ml');
   const t = tab || 'use';
   return html`<div class="wrap page narrow">
-    <a class="back" href="#/">‹ Price list</a>
-    <div class="phero" style=${'--tint:' + GOAL_TINT[sp.goal]}>
-      <img src=${GOAL_ICONS[sp.goal]} alt="" />
-      <div class="grow"><div class="row g8 wrapx"><span class="chip">${GOAL_LABELS[sp.goal]}</span>${coa ? html`<a class="chip" style="text-decoration:none;color:var(--ok)" href=${COA_BASE + coa[2]} target="_blank" rel="noopener">${coa[0]} purity ↗</a>` : null}</div>
-        <h1 style="font-size:clamp(28px,7vw,40px);margin-top:8px">${base} <span style="color:var(--n600);font-weight:600">${strength}</span></h1></div>
+    <a class="back" href="#/"><${Icon} name="back" size=${18} /> Price list</a>
+    <div class=${'plid g-' + sp.goal}>
+      <div class="plid-top">
+        <h1>${base}${strength ? html`<span>${strength}</span>` : null}</h1>
+        ${sizes.length > 1 ? html`<nav class="strengths" aria-label="Vial strength">${sizes.map(s => html`<a href=${'#/p/' + s} aria-current=${s === sku ? 'page' : null}>${splitName(SHOP_BY_SKU[s].name)[1] || s}</a>`)}</nav>` : null}
+      </div>
+      <div class="plid-foot"><span class="lock"><img src=${GOAL_ICONS[sp.goal]} alt="" /><span>${GOAL_LABELS[sp.goal]}</span></span>
+        ${coa ? html`<a class="plid-chip" href=${COA_BASE + coa[2]} target="_blank" rel="noopener" aria-label=${coa[0] + ' pure, open the certificate of analysis'}>${coa[0]} pure<${Icon} name="ext" size=${14} /></a>` : null}</div>
     </div>
-    ${sizes.length > 1 ? html`<div class="pills" role="group" aria-label="Vial size" style="margin-top:14px">${sizes.map(s => html`<a class="pill" href=${'#/p/' + s} aria-current=${s === sku ? 'page' : null} aria-pressed=${String(s === sku)} style="text-decoration:none">${splitName(SHOP_BY_SKU[s].name)[1] || s}</a>`)}</div>` : null}
-    <div style="margin-top:14px"><${Tiers} p=${sp} sh=${sh} bump=${bump} /></div>
-    ${INFO[sku] ? html`<p style="margin-top:14px">${INFO[sku]}</p>` : null}
-    ${bac ? html`<div class="okbox" style="margin-top:12px">A ${bac} vial of bacteriostatic water comes free in the box. Nothing extra to buy.</div>` : null}
+    <div style="margin-top:12px"><${Tiers} p=${sp} sh=${sh} bump=${bump} /></div>
+    ${bac ? html`<div class="inbox" style="margin-top:10px"><${Icon} name="drop" size=${20} /><span>Comes with a <b>free ${bac} vial of bac water</b> to mix it. Nothing extra to buy.</span></div>` : null}
+    ${INFO[sku] ? html`<p class="pintro" style="margin-top:16px">${INFO[sku]}</p>` : null}
     ${it ? html`
       <div class="seg full" role="tablist" aria-label="Product information" style="margin-top:20px">
         <button type="button" role="tab" aria-selected=${String(t === 'use')} aria-pressed=${String(t === 'use')} onClick=${() => setTab('use')}>How to use</button>
@@ -1713,7 +1844,7 @@ function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
       <div role="tabpanel" class="stack g16" style="margin-top:16px">
         ${t === 'use' ? html`
           <dl class="facts4" style="margin:0">${facts.map(f => html`<div class="fact"><dt>${f[0]}</dt><dd>${f[1] || '—'}</dd></div>`)}</dl>
-          <div class="stack g8"><div class="lbl">Dose ladder${it.bacOk ? ' · ' + trimNum(it.water, 2) + 'ml bac water' : ''}</div><${Ladder} rows=${it.rows} syringes=${!it.oral} /></div>
+          <div class="stack g8"><h2 style="font-size:19px;letter-spacing:-.02em">Dose by week${it.bacOk ? html` <span class="muted" style="font-weight:500;font-size:14px">mixed with ${trimNum(it.water, 2)}ml bac water</span>` : ''}</h2><${Ladder} rows=${it.rows} syringes=${!it.oral} /></div>
           ${p.note ? html`<div class="note">${p.note}</div>` : null}
           <div class="row g8 wrapx">${st.order.indexOf(p.id) > -1 ? html`<a class="btn soft" href="#/plan"><${Icon} name="check" size=${16} /> In My plan</a>`
             : html`<button type="button" class="btn" onClick=${() => { set(s => ({ order: s.order.concat([p.id]), sizeIdx: Object.assign({}, s.sizeIdx, { [p.id]: idx }) })); flash && flash(p.name + ' added to My plan'); }}><${Icon} name="plus" size=${16} /> Add to My plan</button>`}
@@ -1721,7 +1852,7 @@ function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
         ${t === 'mix' && !it.oral ? html`
           ${it.bacOk ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">How much bac water are you adding?</div>
             <${Pills} label="Bac water" value=${it.bac} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { [p.id]: v }) }))} /></div>` : null}
-          <div class="okbox">${it.vial} vial + ${trimNum(it.water || 0, 2)}ml water = <b>${it.conc}</b></div>
+          <div class="inbox"><${Icon} name="drop" size=${20} /><span>${it.vial} vial + ${trimNum(it.water || 0, 2)}ml water = <b>${it.conc}</b></span></div>
           ${first && first.units !== null ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">First dose: draw to ${String(first.draw).split(' · ')[0]}</div><${Syringe} units=${first.units} /><div class="syr-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div></div>` : null}
           <ol class="mixsteps">${[['Warm up', 'Vial and bac water out of the fridge for 10–15 minutes.'], ['Swab', 'Fresh alcohol swab on both stoppers. Let them dry.'], ['Add the water', 'Draw ' + trimNum(it.water || 2, 2) + 'ml of bac water and run it slowly down the inside wall of the vial.'], ['Roll, never shake', 'Roll gently until clear. Label with the date and refrigerate at 2–8°C.']].map((x, i) => html`<li><span class="n">${i + 1}</span><div><b>${x[0]}</b><p class="small">${x[1]}</p></div></li>`)}</ol>
           <a class="btn outline" href="#/guide/measure">Open the dose calculator</a>` : null}
@@ -1964,7 +2095,7 @@ function Guide({ st, set, chapter }) {
   const go = i => { location.hash = '#/guide/' + CHAPTERS[i].key; };
   useEffect(() => { const el = document.querySelector('.chap-nav [aria-current="step"]'); if (el && el.scrollIntoView) el.scrollIntoView({ inline: 'center', block: 'nearest' }); }, [ci]);
   return html`<div class="wrap page">
-    <div class="page-head"><div class="eyebrow">How to use</div><h1>Get it right the first time</h1></div>
+    <div class="page-head"><h1>Get it right the first time</h1></div>
     <div class="chap-nav" role="tablist" aria-label="Guide chapters">${CHAPTERS.map((c, i) => html`<button type="button" role="tab" aria-selected=${String(i === ci)} aria-current=${i === ci ? 'step' : null} onClick=${() => go(i)}><span class="n">${i + 1}</span>${c.title}</button>`)}</div>
     <div class="progress" aria-hidden="true"><div style=${'width:' + ((ci + 1) / CHAPTERS.length * 100) + '%'}></div></div>
     <div role="tabpanel" aria-label=${ch.title}>
@@ -2078,7 +2209,7 @@ function Builder({ st, set, items, act }) {
   };
   const share = () => { if (navigator.share) navigator.share({ title: 'Your protocol · WPDA', text: shareText, url: link }).catch(() => {}); else copy(); };
   return html`<section class="blk" id="build" aria-labelledby="h-build"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">Build and export</div><h2 id="h-build">Build a protocol in three steps</h2>
+    <div class="sec-head"><h2 id="h-build">Build a protocol in three steps</h2>
       <p class="lead">Pick from the range or add anything that is not on the list, set weekly doses and titrations, then export a client-ready PDF or send a link with a built-in daily tracker.</p></div>
     ${st.shared ? html`<div class="banner"><b style="color:var(--ink);font-size:17px">${st.client ? 'Protocol for ' + st.client : 'A protocol was shared with you'}${st.by ? ' · prepared by ' + st.by : ''}</b>
       <p class="small">Everything below is your plan. Your daily tracker is at the top of the page, and you can export the full PDF guide any time.</p>
@@ -2379,53 +2510,50 @@ function parseRoute() {
 }
 
 function ShopHero() {
-  return html`<section class="shero"><div class="wrap">
-    <div class="shero-grid">
-      <div class="stack g12">
-        <div class="eyebrow">${WHOLESALE ? 'optml wholesale' : 'optml price list'}</div>
-        <h1>Research-grade peptides, properly tested.</h1>
-        <p class="lead">${WHOLESALE ? 'Your confirmed wholesale rates. Add what you need and send it as one order on WhatsApp.' : 'Free bac water, a batch-matched certificate and a step-by-step guide with every vial.'}</p>
-        <div class="scrollx"><span class="chip soft">Free bac water in every box</span><span class="chip soft">98%+ purity</span><span class="chip soft">Free shipping over $200</span></div>
-        <div class="tiny muted"><${ShipCountdown} /></div>
-      </div>
-      <figure class="shero-img"><img src="assets/brand/hero-vials-web.jpg" alt="optml vials with printed labels, batch numbers and QR codes" fetchpriority="high" /></figure>
+  return html`<section class="wrap"><div class="lid hero-lid">
+    <figure class="lid-photo"><img src="assets/brand/hero-vials-web.jpg" alt="Three optml vials with printed labels, lot numbers and QR codes" fetchpriority="high" /></figure>
+    <div class="lid-body">
+      <h1>${WHOLESALE ? 'Wholesale price list' : 'Research\u2011grade peptides, properly tested.'}</h1>
+      ${WHOLESALE ? html`<p class="lid-lead">Your confirmed wholesale rates. Add what you need and send it as one order on WhatsApp.</p>` : null}
+      <ul class="lid-pills"><li><${Icon} name="drop" size=${16} /> Free bac water in every box</li><li class="line">Batch certificate</li><li class="line">Dosing guide</li></ul>
+      <p class="lid-foot"><${ShipCountdown} /></p>
     </div>
   </div></section>`;
 }
 
-function HowItWorks() {
-  const steps = [['Order', 'Tap packs, then send your order on WhatsApp. We confirm and send payment details.'], ['Unbox', 'Your vial arrives with a free vial of bac water to mix it.'], ['Follow your guide', 'Your plan appears under My plan: exact draws, sites and a daily tracker.']];
-  return html`<section class="wrap" aria-label="How it works" style="margin-top:18px"><div class="hiw">${steps.map((x, i) => html`<div class="hiw-step"><span class="n">${i + 1}</span><div><b>${x[0]}</b><p class="tiny muted">${x[1]}</p></div></div>`)}</div></section>`;
-}
-
-function BoxStrip() {
-  return html`<section class="wrap" aria-label="What arrives" style="margin-top:22px"><div class="boxstrip">
-    <figure><img src="assets/brand/box-insert.jpg" alt="Open optml box with a vial of Bacteriostatic Water beside a vial of Wolverine Stack" loading="lazy" /></figure>
-    <div class="stack g8" style="justify-content:center"><div class="lbl">In every box</div><b style="font-size:19px;color:var(--ink);line-height:1.25">Your vial, plus the bac water to mix it. Free.</b>
-      <p class="small muted">Most people expect to buy bacteriostatic water separately. With optml it's already in the box, with a fitted insert and fridge-ready labels.</p></div>
+function AfterOrder() {
+  return html`<section class="wrap" aria-labelledby="h-after"><div class="after">
+    <h2 id="h-after">What happens after you order</h2>
+    <ol class="flow">
+      <li><b>We confirm on WhatsApp</b><span>We check stock and reply with PayID details. Nothing is charged on this page.</span></li>
+      <li><b>Your box ships express</b><span>Every vial arrives with a vial of bac water to mix it, free.</span></li>
+      <li><b>Your guide is ready</b><span>My plan shows what to draw, where to inject and what's due each day.</span></li>
+    </ol>
   </div></section>`;
 }
 
 function Header({ route, count, total, planCount }) {
   const cur = p => (route.page === p || (p === 'shop' && route.page === 'product')) ? 'page' : null;
-  return html`<header class="top screen"><div class="wrap inner">
-    <a href="#/" aria-label="optml price list home" style="justify-self:start;display:flex;align-items:center;gap:10px;text-decoration:none"><img class="logo" src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:22px" /></a>
-    <a class="btn sm plan" href="#/order" aria-label=${'Order, ' + count + ' packs'}>${count ? money(total) : 'Order'} <span class="count">${count}</span></a>
-    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan${planCount ? ' · ' + planCount : ''}</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => { const on = () => setStuck(window.scrollY > 4); on(); window.addEventListener('scroll', on, { passive: true }); return () => window.removeEventListener('scroll', on); }, []);
+  return html`<header class=${'top screen' + (stuck ? ' stuck' : '')}><div class="wrap inner">
+    <a href="#/" aria-label="optml price list home" style="justify-self:start;display:flex;align-items:center;min-height:40px;text-decoration:none"><img class="logo" src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:24px" /></a>
+    <a class=${'btn sm plan' + (count ? '' : ' outline')} href="#/order" aria-label=${count ? 'Your order, ' + count + ' pack' + (count === 1 ? '' : 's') + ', ' + money(total) : 'Your order, empty'}>${count ? html`${money(total)}<span class="count">${count}</span>` : 'Order'}</a>
+    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
   </div></header>`;
 }
 
 function TabBar({ route, count, planCount }) {
   const tabs = [['shop', '#/', 'Shop', 'shop'], ['guide', '#/guide', 'How to use', 'book'], ['plan', '#/plan', 'My plan', 'plan'], ['order', '#/order', 'Order', 'bag']];
   return html`<nav class="tabbar screen" aria-label="Pages">${tabs.map(t => { const on = route.page === t[0] || (t[0] === 'shop' && route.page === 'product');
-    return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><${Icon} name=${t[3]} size=${22} />${t[2]}${t[0] === 'order' && count ? html`<span class="dot">${count}</span>` : t[0] === 'plan' && planCount ? html`<span class="dot soft">${planCount}</span>` : null}</a>`; })}</nav>`;
+    return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
 }
 
 function PlanPage({ st, set, items, onReorder }) {
-  if (!items.length) return html`<div class="wrap page"><div class="page-head"><div class="eyebrow">My plan</div><h1>Your guide lives here</h1></div>
-    <div class="empty" style="text-align:left;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink);font-size:17px">Order something and your personal guide appears here automatically.</b>
-      <p class="small">Exact units to draw for everything you bought, how to mix it, where to inject, a daily tracker and a PDF to keep.</p>
-      <div class="row g8 wrapx"><a class="btn sm" href="#/">Browse the price list</a><a class="btn sm outline" href="#/build">Build a protocol yourself</a></div></div></div>`;
+  if (!items.length) return html`<div class="wrap page narrow"><div class="page-head"><h1>Your guide lives here</h1>
+      <p class="lead">Send an order and this page fills in with what you bought: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
+    <div class="stack g12">
+      <div class="row g8 wrapx"><a class="btn" href="#/">Browse the price list</a><a class="btn outline" href="#/build">Build a protocol yourself</a></div></div></div>`;
   return html`<div class="wrap page narrow">
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
     <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
@@ -2522,7 +2650,7 @@ function App() {
   else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} />`;
   else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
   else if (route.page === 'coa') page = html`<${CoaSection} />`;
-  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} /><${HowItWorks} /><${BoxStrip} />`;
+  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} /><${AfterOrder} />`;
 
   return html`<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
     <main class="screen" id="main">${page}</main>

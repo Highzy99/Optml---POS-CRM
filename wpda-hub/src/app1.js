@@ -174,7 +174,7 @@ function planItems(st) {
 
 function Icon({ name, size = 20 }) {
   const P = {
-    close: 'M6 6l12 12M18 6L6 18', plus: 'M12 5v14M5 12h14', check: 'M5 12.5l4.5 4.5L19 7', arrow: 'M5 12h14M13 6l6 6-6 6',
+    close: 'M6 6l12 12M18 6L6 18', plus: 'M12 5v14M5 12h14', check: 'M5 12.5l4.5 4.5L19 7', arrow: 'M5 12h14M13 6l6 6-6 6', chev: 'M9.5 6.5L15 12l-5.5 5.5',
     search: 'M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-4-4', link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
     print: 'M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M7 14h10v6H7z', trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12',
     back: 'M19 12H5M11 6l-6 6 6 6', ext: 'M14 5h5v5M19 5l-8 8M18 14v5H5V6h5', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
@@ -213,7 +213,7 @@ function Pills({ options, value, onPick, label }) {
 
 function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
   const sp = SHOP_BY_SKU[sku];
-  if (!sp) return html`<div class="wrap page narrow"><a class="back" href="#/">‹ Price list</a><div class="empty" style="margin-top:16px">That product isn't on the price list.</div></div>`;
+  if (!sp) return html`<div class="wrap page narrow"><a class="back" href="#/">Price list</a><div class="empty" style="margin-top:16px">That product isn't on the price list.</div></div>`;
   const map = SKU_PROTOCOL[sku];
   const p = map ? PRODUCT[map[0]] : null;
   const idx = map ? map[1] : 0;
@@ -226,16 +226,18 @@ function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
   const bac = sp.sku === 'NA1000' ? '10ml' : (it && it.oral ? '' : '3ml');
   const t = tab || 'use';
   return html`<div class="wrap page narrow">
-    <a class="back" href="#/">‹ Price list</a>
-    <div class="phero" style=${'--tint:' + GOAL_TINT[sp.goal]}>
-      <img src=${GOAL_ICONS[sp.goal]} alt="" />
-      <div class="grow"><div class="row g8 wrapx"><span class="chip">${GOAL_LABELS[sp.goal]}</span>${coa ? html`<a class="chip" style="text-decoration:none;color:var(--ok)" href=${COA_BASE + coa[2]} target="_blank" rel="noopener">${coa[0]} purity ↗</a>` : null}</div>
-        <h1 style="font-size:clamp(28px,7vw,40px);margin-top:8px">${base} <span style="color:var(--n600);font-weight:600">${strength}</span></h1></div>
+    <a class="back" href="#/"><${Icon} name="back" size=${18} /> Price list</a>
+    <div class=${'plid g-' + sp.goal}>
+      <div class="plid-top">
+        <h1>${base}${strength ? html`<span>${strength}</span>` : null}</h1>
+        ${sizes.length > 1 ? html`<nav class="strengths" aria-label="Vial strength">${sizes.map(s => html`<a href=${'#/p/' + s} aria-current=${s === sku ? 'page' : null}>${splitName(SHOP_BY_SKU[s].name)[1] || s}</a>`)}</nav>` : null}
+      </div>
+      <div class="plid-foot"><span class="lock"><img src=${GOAL_ICONS[sp.goal]} alt="" /><span>${GOAL_LABELS[sp.goal]}</span></span>
+        ${coa ? html`<a class="plid-chip" href=${COA_BASE + coa[2]} target="_blank" rel="noopener" aria-label=${coa[0] + ' pure, open the certificate of analysis'}>${coa[0]} pure<${Icon} name="ext" size=${14} /></a>` : null}</div>
     </div>
-    ${sizes.length > 1 ? html`<div class="pills" role="group" aria-label="Vial size" style="margin-top:14px">${sizes.map(s => html`<a class="pill" href=${'#/p/' + s} aria-current=${s === sku ? 'page' : null} aria-pressed=${String(s === sku)} style="text-decoration:none">${splitName(SHOP_BY_SKU[s].name)[1] || s}</a>`)}</div>` : null}
-    <div style="margin-top:14px"><${Tiers} p=${sp} sh=${sh} bump=${bump} /></div>
-    ${INFO[sku] ? html`<p style="margin-top:14px">${INFO[sku]}</p>` : null}
-    ${bac ? html`<div class="okbox" style="margin-top:12px">A ${bac} vial of bacteriostatic water comes free in the box. Nothing extra to buy.</div>` : null}
+    <div style="margin-top:12px"><${Tiers} p=${sp} sh=${sh} bump=${bump} /></div>
+    ${bac ? html`<div class="inbox" style="margin-top:10px"><${Icon} name="drop" size=${20} /><span>Comes with a <b>free ${bac} vial of bac water</b> to mix it. Nothing extra to buy.</span></div>` : null}
+    ${INFO[sku] ? html`<p class="pintro" style="margin-top:16px">${INFO[sku]}</p>` : null}
     ${it ? html`
       <div class="seg full" role="tablist" aria-label="Product information" style="margin-top:20px">
         <button type="button" role="tab" aria-selected=${String(t === 'use')} aria-pressed=${String(t === 'use')} onClick=${() => setTab('use')}>How to use</button>
@@ -245,7 +247,7 @@ function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
       <div role="tabpanel" class="stack g16" style="margin-top:16px">
         ${t === 'use' ? html`
           <dl class="facts4" style="margin:0">${facts.map(f => html`<div class="fact"><dt>${f[0]}</dt><dd>${f[1] || '—'}</dd></div>`)}</dl>
-          <div class="stack g8"><div class="lbl">Dose ladder${it.bacOk ? ' · ' + trimNum(it.water, 2) + 'ml bac water' : ''}</div><${Ladder} rows=${it.rows} syringes=${!it.oral} /></div>
+          <div class="stack g8"><h2 style="font-size:19px;letter-spacing:-.02em">Dose by week${it.bacOk ? html` <span class="muted" style="font-weight:500;font-size:14px">mixed with ${trimNum(it.water, 2)}ml bac water</span>` : ''}</h2><${Ladder} rows=${it.rows} syringes=${!it.oral} /></div>
           ${p.note ? html`<div class="note">${p.note}</div>` : null}
           <div class="row g8 wrapx">${st.order.indexOf(p.id) > -1 ? html`<a class="btn soft" href="#/plan"><${Icon} name="check" size=${16} /> In My plan</a>`
             : html`<button type="button" class="btn" onClick=${() => { set(s => ({ order: s.order.concat([p.id]), sizeIdx: Object.assign({}, s.sizeIdx, { [p.id]: idx }) })); flash && flash(p.name + ' added to My plan'); }}><${Icon} name="plus" size=${16} /> Add to My plan</button>`}
@@ -253,7 +255,7 @@ function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
         ${t === 'mix' && !it.oral ? html`
           ${it.bacOk ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">How much bac water are you adding?</div>
             <${Pills} label="Bac water" value=${it.bac} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { [p.id]: v }) }))} /></div>` : null}
-          <div class="okbox">${it.vial} vial + ${trimNum(it.water || 0, 2)}ml water = <b>${it.conc}</b></div>
+          <div class="inbox"><${Icon} name="drop" size=${20} /><span>${it.vial} vial + ${trimNum(it.water || 0, 2)}ml water = <b>${it.conc}</b></span></div>
           ${first && first.units !== null ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">First dose: draw to ${String(first.draw).split(' · ')[0]}</div><${Syringe} units=${first.units} /><div class="syr-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div></div>` : null}
           <ol class="mixsteps">${[['Warm up', 'Vial and bac water out of the fridge for 10–15 minutes.'], ['Swab', 'Fresh alcohol swab on both stoppers. Let them dry.'], ['Add the water', 'Draw ' + trimNum(it.water || 2, 2) + 'ml of bac water and run it slowly down the inside wall of the vial.'], ['Roll, never shake', 'Roll gently until clear. Label with the date and refrigerate at 2–8°C.']].map((x, i) => html`<li><span class="n">${i + 1}</span><div><b>${x[0]}</b><p class="small">${x[1]}</p></div></li>`)}</ol>
           <a class="btn outline" href="#/guide/measure">Open the dose calculator</a>` : null}
