@@ -169,7 +169,6 @@ function ProductCard({ g, cur, setPick, sh, onAdd }) {
       <button type="button" class=${'padd' + (inOrder ? ' has' : '')} aria-label=${inOrder ? g.base + ': ' + inOrder + ' in your order. Change packs' : 'Add ' + p.name + ' to your order'} onClick=${() => onAdd(g.key)}>${inOrder ? inOrder : '+'}</button>
     </div>
     <div class="pbody">
-      <span class="gchip"><i></i>${GOAL_LABELS[g.goal]}</span>
       <a class="ptitle" href=${'#/p/' + p.sku}>${g.base}${g.items.length === 1 && cur.strength ? ' ' + cur.strength : ''}</a>
       <span class="psub">${coa ? html`<i class="okdot"></i>${coa[0]} pure` : 'Research peptide'}</span>
       ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}
