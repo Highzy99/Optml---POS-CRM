@@ -1,6 +1,8 @@
-# WPDA Protocol Hub
+# optml price list + WPDA guide
 
-The World Peptide Dosage Association protocol hub: compound catalogue with exact draws, injection-site body map, mixing and injection guide, dose calculator, protocol builder with custom compounds and weekly-mg titrations, PDF export, share links and a daily client tracker.
+The optml price list with the World Peptide Dosage Association guide built in. Customers order on WhatsApp (the message format is the one the CRM's "paste order" parser reads); everything they order becomes their personal guide under My plan: exact draws, mixing, injection sites, a daily tracker and a PDF.
+
+Pages (hash routes): `#/` price list, `#/p/SKU` product (prices, how to use, mix and draw, certificate), `#/order`, `#/guide/mix|measure|inject|sites|store|faq`, `#/plan` (tracker), `#/build` (protocol builder with custom compounds and titrations), `#/coa`. `/wholesale` shows wholesale rates including 10-vial packs. Old share links (`#plan=…`, `#p=…`) still open the shared plan.
 
 Live: https://wpda-protocol-hub.vercel.app (Vercel project `wpda-hub`, root directory `wpda-hub/`).
 
@@ -14,7 +16,9 @@ src/              editable sources
   shell.html      page shell and all CSS
   data.js         compounds, schedules, guide content (from the original WPDA page)
   logic.js        dose maths: titration ladders, unit conversion, share-link encoding
-  app1-5.js       UI: catalogue + sheet, body map + guide, builder, PDF document, tracker + root
+  shopdata.js     price list: SKUs, prices, certificates, shipping, discount codes
+  shop.js         price list, order form and WhatsApp message, certificates
+  app1-5.js       product page, guide + body map, builder, PDF document, tracker + router/root
   build.py        bundles everything into ../index.html
 ```
 

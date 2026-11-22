@@ -3,23 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>WPDA Protocol Hub · dosing, mixing and protocol builder</title>
-<meta name="description" content="Plain-numbers dosing for every compound in the optml range. See exactly what to draw, learn to mix and inject, and build a protocol you can export as a PDF.">
+<title>optml · price list and dosing guide</title>
+<meta name="description" content="Research-grade peptides with free bac water, batch-matched certificates and a step-by-step dosing guide for every vial. Order on WhatsApp in under a minute.">
 <meta name="theme-color" content="#222326">
 <link rel="canonical" href="https://wpda-protocol-hub.vercel.app/">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="World Peptide Dosage Association">
-<meta property="og:title" content="WPDA Protocol Hub · exact doses, mixing and protocol builder">
-<meta property="og:description" content="See exactly what to draw for every compound in the optml range, learn to mix and inject, and build a protocol you can export as a PDF. Free bac water with every vial.">
+<meta property="og:site_name" content="optml">
+<meta property="og:title" content="optml · price list and dosing guide">
+<meta property="og:description" content="Research-grade peptides with free bac water, batch-matched certificates and a step-by-step dosing guide for every vial. Order on WhatsApp in under a minute.">
 <meta property="og:url" content="https://wpda-protocol-hub.vercel.app/">
-<meta property="og:image" content="https://wpda-protocol-hub.vercel.app/og.jpg">
+<meta property="og:image" content="https://wpda-protocol-hub.vercel.app/og.jpg?v=3">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="WPDA Protocol Hub: every protocol in plain numbers">
+<meta property="og:image:alt" content="optml price list: research-grade peptides, properly tested">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="WPDA Protocol Hub · exact doses, mixing and protocol builder">
-<meta name="twitter:description" content="See exactly what to draw for every compound in the optml range, learn to mix and inject, and build a protocol you can export as a PDF. Free bac water with every vial.">
-<meta name="twitter:image" content="https://wpda-protocol-hub.vercel.app/og.jpg">
+<meta name="twitter:title" content="optml · price list and dosing guide">
+<meta name="twitter:description" content="Research-grade peptides with free bac water, batch-matched certificates and a step-by-step dosing guide for every vial. Order on WhatsApp in under a minute.">
+<meta name="twitter:image" content="https://wpda-protocol-hub.vercel.app/og.jpg?v=3">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/brand/icon-192.png">
 <link rel="apple-touch-icon" href="assets/brand/icon-180.png">
 <link rel="preload" href="assets/fonts/onest.woff2" as="font" type="font/woff2" crossorigin>
@@ -38,7 +38,7 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 116px; -webkit-text-size-adjust: 100%; }
 body { margin: 0; font-family: var(--font); font-size: 16px; line-height: 1.55; color: var(--n700); background: var(--white); -webkit-font-smoothing: antialiased; }
-body.has-tray { padding-bottom: 84px; }
+body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
 body.lock { overflow: hidden; }
 a { color: var(--ink); }
 h1, h2, h3, h4 { color: var(--ink); margin: 0; letter-spacing: -.02em; line-height: 1.12; font-weight: 700; text-wrap: balance; }
@@ -106,22 +106,24 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .top .inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; padding-top: 10px; }
 .top .logo { height: 28px; width: auto; display: block; }
 .top .plan { grid-column: 2; grid-row: 1; }
-.top nav { grid-column: 1 / -1; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 8px 20px 8px; margin: 0 -20px; }
+.top .inner { padding-bottom: 10px; }
+.top nav.desk { display: none; }
 .top nav::-webkit-scrollbar { display: none; }
 .top nav a { flex: none; min-height: 36px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: var(--pill); font-size: 14px; font-weight: 500; text-decoration: none; color: var(--n700); }
 .top nav a:hover { background: var(--paper); color: var(--ink); }
 .count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--pill); background: var(--white); color: var(--ink); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 @media (min-width: 860px) {
-  .top .inner { grid-template-columns: auto minmax(0, 1fr) auto; padding-bottom: 10px; }
-  .top nav { grid-column: 2; grid-row: 1; margin: 0; padding: 0 12px; justify-content: center; }
+  .top .inner { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .top nav.desk { display: flex; grid-column: 2; grid-row: 1; gap: 4px; justify-content: center; }
+  .top nav.desk a[aria-current="page"] { background: var(--paper); color: var(--ink); }
   .top .plan { grid-column: 3; }
-  .tray { display: none; }
-  body.has-tray { padding-bottom: 0; }
+  .tabbar { display: none !important; }
+  body { padding-bottom: 0; }
   html { scroll-padding-top: 76px; }
 }
 
 /* Sections */
-section.blk { padding: 56px 0 8px; }
+section.blk { padding: 24px 0 8px; }
 .sec-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
 .sec-head h2 { font-size: clamp(30px, 6vw, 44px); letter-spacing: -.03em; }
 .card { background: var(--white); border: 1px solid var(--n200); border-radius: var(--r-lg); }
@@ -280,6 +282,98 @@ main.screen { overflow-x: clip; }
 /* Footer */
 footer.foot { background: var(--ink); color: rgba(255,255,255,.72); margin-top: 72px; padding: 48px 0 40px; font-size: 14px; }
 footer.foot a { color: var(--white); }
+
+/* ---------- App shell ---------- */
+.wrap.narrow { max-width: 820px; }
+.page { padding-top: 18px; padding-bottom: 28px; min-height: 60vh; }
+.page-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.page-head h1 { font-size: clamp(28px, 7vw, 40px); letter-spacing: -.03em; }
+.back { display: inline-flex; align-items: center; min-height: 36px; font-size: 15px; font-weight: 600; color: var(--ink); text-decoration: none; }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: rgba(255,255,255,.97); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--n200); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+.tabbar a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 54px; font-size: 11px; font-weight: 600; color: var(--n600); text-decoration: none; border-radius: 12px; }
+.tabbar a[aria-current="page"] { color: var(--ink); background: var(--paper); }
+.tabbar .dot { position: absolute; top: 3px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--ink); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
+.tabbar .dot.soft { background: var(--ok); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 70; background: var(--ink); color: #fff; border-radius: 999px; padding: 10px 16px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); max-width: 92vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: fade .15s ease; }
+@media (min-width: 860px) { .toast { bottom: 24px; } }
+.chip.soft { background: var(--paper); }
+/* Shop home */
+.shero { padding: 16px 0 0; }
+.shero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 18px; align-items: center; }
+.shero h1 { font-size: clamp(30px, 8vw, 60px); letter-spacing: -.035em; line-height: 1.02; }
+.shero .lead { font-size: 17px; }
+.shero-img { margin: 0; border-radius: var(--r-xl); overflow: hidden; background: #cfe0f7; aspect-ratio: 16 / 10; }
+.shero-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 640px) { .shero-img { aspect-ratio: 16 / 9; order: -1; } }
+.hiw { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.hiw-step { display: flex; gap: 10px; align-items: flex-start; background: var(--paper); border-radius: var(--r-md); padding: 12px; }
+.hiw-step .n { width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+.hiw-step b { color: var(--ink); font-size: 14px; }
+@media (max-width: 640px) { .hiw { grid-template-columns: 1fr; } .hiw-step { padding: 10px 12px; } }
+.boxstrip { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 14px; background: var(--paper); border-radius: var(--r-xl); padding: 12px; }
+.boxstrip figure { margin: 0; border-radius: var(--r-lg); overflow: hidden; aspect-ratio: 4 / 3; }
+.boxstrip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.boxstrip > div { padding: 6px 8px 10px; }
+.sticky-filters { position: sticky; top: 56px; z-index: 20; background: rgba(255,255,255,.97); padding: 8px 0; margin-top: 6px; }
+@media (min-width: 860px) { .sticky-filters { top: 60px; } }
+.plist { display: flex; flex-direction: column; gap: 10px; }
+@media (min-width: 860px) { .plist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.prow { border: 1px solid var(--n200); border-radius: var(--r-lg); padding: 12px; display: flex; flex-direction: column; gap: 10px; background: linear-gradient(160deg, #fff 55%, color-mix(in srgb, var(--tint) 22%, #fff)); }
+.prow .ptop { display: flex; gap: 12px; align-items: center; text-decoration: none; color: inherit; }
+.prow .ptop img { width: 38px; height: 38px; flex: none; }
+.prow h3 { font-size: 17px; letter-spacing: -.01em; }
+.prow .str, .pcard .str { font-weight: 600; color: var(--n600); }
+.prow .how { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink); background: var(--paper); border-radius: 999px; padding: 6px 10px; }
+.tiers { display: grid; gap: 6px; }
+.tier { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 58px; padding: 8px 4px; border-radius: 12px; border: 1px solid var(--n300); background: #fff; cursor: pointer; color: var(--ink); text-align: center; }
+.tier:hover { border-color: var(--ink); }
+.tier:active { transform: scale(.98); }
+.tier .tl { font-size: 12px; color: var(--n600); font-weight: 500; }
+.tier .tp { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.tier .tw { font-size: 11px; color: var(--n500); }
+.tier .ts { font-size: 11px; color: var(--n600); }
+.tier .badge { position: absolute; top: -8px; right: 6px; font-size: 10px; font-weight: 700; background: var(--ok); color: #fff; border-radius: 999px; padding: 2px 6px; }
+.tier.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.tier.on .tl { color: rgba(255,255,255,.7); }
+.stepper { display: inline-flex; align-items: center; gap: 8px; margin-top: 3px; }
+.stepper button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.5); background: transparent; color: #fff; font-size: 17px; line-height: 1; cursor: pointer; }
+.stepper b { min-width: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+/* Product page */
+.phero { display: flex; gap: 14px; align-items: center; margin-top: 8px; padding: 16px; border-radius: var(--r-lg); background: linear-gradient(150deg, var(--paper) 35%, var(--tint)); }
+.phero img { width: 56px; height: 56px; flex: none; }
+.pills a.pill[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.seg.full { display: flex; width: 100%; } .seg.full button { flex: 1; padding: 0 8px; }
+.mixsteps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.mixsteps li { display: flex; gap: 12px; padding: 12px; border: 1px solid var(--n200); border-radius: var(--r-md); }
+.mixsteps .n { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+.mixsteps b { color: var(--ink); }
+/* Order page */
+.orderbox { background: var(--ink); color: #fff; border-radius: var(--r-xl); padding: clamp(18px, 4vw, 28px); display: flex; flex-direction: column; gap: 18px; }
+.ostep { display: flex; gap: 12px; list-style: none; padding: 0; margin: 0; font-size: 13px; color: rgba(255,255,255,.6); }
+.ostep li { display: flex; align-items: center; gap: 6px; }
+.ostep span { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,.4); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+.ostep li.now { color: #fff; } .ostep li.now span { background: #fff; color: var(--ink); border-color: #fff; }
+.ostep li.done span { background: var(--ok); border-color: var(--ok); color: #fff; }
+.oempty p { color: rgba(255,255,255,.8); margin-bottom: 12px; }
+.olines { display: flex; flex-direction: column; }
+.oline { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.12); }
+.shipbar .bar { height: 6px; border-radius: 6px; background: rgba(255,255,255,.15); overflow: hidden; margin-top: 6px; }
+.shipbar .bar i { display: block; height: 100%; background: var(--ok); border-radius: 6px; }
+.otot { display: flex; flex-direction: column; gap: 6px; }
+.otot > div { display: flex; justify-content: space-between; font-size: 14px; color: rgba(255,255,255,.8); }
+.otot .grand { font-size: 18px; color: #fff; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.15); }
+.linkbtn { background: none; border: 0; color: #fff; text-decoration: underline; font-size: 14px; cursor: pointer; padding: 0; }
+.odetails { display: flex; flex-direction: column; gap: 14px; border-top: 1px solid rgba(255,255,255,.15); padding-top: 18px; }
+.orderbox .field > span { color: #fff; }
+.orderbox .field small { color: #ffb4b0 !important; }
+.seg.dark { background: rgba(255,255,255,.12); } .seg.dark button { color: rgba(255,255,255,.85); } .seg.dark button[aria-pressed="true"] { background: #fff; color: var(--ink); }
+.osent { display: flex; flex-direction: column; gap: 14px; } .osent p { color: rgba(255,255,255,.85); }
+.guidecard { background: #fff; color: var(--n700); border-radius: var(--r-lg); padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.btn.disabled { opacity: .45; pointer-events: none; }
+.coagrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 8px; }
+.coacard { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--n200); border-radius: var(--r-md); text-decoration: none; color: inherit; }
+.coacard img { width: 32px; height: 32px; flex: none; }
+.coacard .pur { font-weight: 700; color: var(--ok); font-variant-numeric: tabular-nums; }
 
 /* ---------- Export document ---------- */
 .doc { display: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #2c2d31; }
@@ -1003,6 +1097,375 @@ function decodePlan(s) {
   return JSON.parse(decodeURIComponent(escape(atob(b64))));
 }
 
+// ---- Price list data (from the OPTML price list, locked 1 Sep 2026 sheet) ----
+const SHOP_PRODUCTS = [
+  { sku:'RE10', name:'Retatrutide 10mg', goal:'weight', prices:{1:149, 3:402, 5:649, 10:799}, was:{1:169, 3:449, 5:679} },
+  { sku:'RE20', name:'Retatrutide 20mg', goal:'weight', prices:{1:239, 3:645, 5:999, 10:1199}, was:{1:279, 3:749, 5:1099} },
+  { sku:'RE30', name:'Retatrutide 30mg', goal:'weight', prices:{1:299, 3:807, 5:1249, 10:1499}, was:{1:329, 3:879, 5:1299} },
+  { sku:'GH50', name:'GHK-Cu 50mg', goal:'glow', prices:{1:59, 3:149, 5:219, 10:389}, was:{1:79, 3:209, 5:309} },
+  { sku:'GH100', name:'GHK-Cu 100mg', goal:'glow', prices:{1:79, 3:209, 5:299, 10:539}, was:{1:109, 3:289, 5:439} },
+  { sku:'ME10', name:'Melanotan II 10mg', goal:'glow', prices:{1:79, 3:209, 5:299, 10:489}, was:{1:99, 3:259, 5:399} },
+  { sku:'WO20', name:'Wolverine Stack 20mg', goal:'restore', prices:{1:129, 3:348, 5:549, 10:739}, was:{1:149, 3:399, 5:599} },
+  { sku:'GL70', name:'Glow Stack 70mg', goal:'glow', prices:{1:149, 3:402, 5:633, 10:889}, was:{1:179, 3:479, 5:709} },
+  { sku:'KL80', name:'Klow Stack 80mg', goal:'glow', prices:{1:179, 3:483, 5:739, 10:989}, was:{1:199, 3:529, 5:789} },
+  { sku:'MO10', name:'MOTS-c 10mg', goal:'energy', prices:{1:69, 3:179, 5:249, 10:389}, was:{1:79, 3:209, 5:319} },
+  { sku:'MO40', name:'MOTS-c 40mg', goal:'energy', prices:{1:209, 3:564, 5:839, 10:1089}, was:{1:219, 3:599, 5:879} },
+  { sku:'TE10', name:'Tesamorelin 10mg', goal:'weight', prices:{1:149, 3:402, 5:649, 10:889}, was:{1:179, 3:479, 5:719} },
+  { sku:'BA50', name:'BPC-157 Arginate', goal:'restore', prices:{1:89, 3:240, 5:369, 10:439} },
+  { sku:'BP10', name:'BPC-157 10mg', goal:'restore', prices:{1:69, 3:179, 5:249, 10:489}, was:{1:99, 3:259, 5:389} },
+  { sku:'CJ10', name:'CJC / Ipamorelin', goal:'growth', prices:{1:129, 3:348, 5:509, 10:689}, was:{1:139, 3:369, 5:549} },
+  { sku:'DS10', name:'DSIP 10mg', goal:'sleep', prices:{1:89, 3:240, 5:399, 10:539}, was:{1:109, 3:289, 5:429} },
+  { sku:'GH10', name:'GHRP-6 10mg', goal:'growth', prices:{1:59, 3:159, 5:259, 10:439}, was:{1:89, 3:239, 5:349} },
+  { sku:'KI10', name:'Kisspeptin 10mg', goal:'vitality', prices:{1:89, 3:240, 5:399, 10:589}, was:{1:119, 3:319, 5:469} },
+  { sku:'KP10', name:'KPV 10mg', goal:'restore', prices:{1:89, 3:239, 5:349, 10:439} },
+  { sku:'NA1000', name:'NAD+ 1000mg', goal:'energy', prices:{1:169, 3:456, 5:749, 10:939}, was:{1:189, 3:509} },
+  { sku:'SK10', name:'Selank 10mg', goal:'edge', prices:{1:79, 3:209, 5:319, 10:439}, was:{1:89, 3:239, 5:359} },
+  { sku:'SL10', name:'SLU-PP-332', goal:'weight', prices:{1:89, 3:219, 5:359, 10:589}, was:{1:119, 3:319, 5:479} },
+  { sku:'SX10', name:'Semax 10mg', goal:'edge', prices:{1:79, 3:209, 5:319, 10:439}, was:{1:89, 3:239, 5:359} },
+  { sku:'TB10', name:'TB-500 10mg', goal:'restore', prices:{1:119, 3:319, 5:479, 10:699} },
+  { sku:'TI10', name:'Tirzepatide 10mg', goal:'weight', prices:{1:119, 3:319, 5:479, 10:589} },
+  { sku:'TI20', name:'Tirzepatide 20mg', goal:'weight', prices:{1:179, 3:479, 5:719, 10:879} },
+  { sku:'TI30', name:'Tirzepatide 30mg', goal:'weight', prices:{1:219, 3:589, 5:879, 10:1089} }
+];
+
+const COA_BASE = 'https://stayoptml.com/wp-content/uploads/optml-coa/';
+const COAS = {
+  RE10:   ['99.60%', '21 May 2026', 'OZ-HPLCMS-SHVJ_Retatrutide-10mg.pdf'],
+  RE20:   ['99.53%', '16 Jul 2026', 'retatrutide-20mg.pdf'],
+  RE30:   ['99.81%', '16 Jul 2026', 'retatrutide-30mg.pdf'],
+  GH50:   ['99.52%', '16 Jul 2026', 'OZ-HPLCMS-OP01_GHK-Cu-50mg.pdf'],
+  GH100:  ['99.71%', '16 Jul 2026', 'OZ-HPLCMS-OP02_GHK-Cu-100mg.pdf'],
+  ME10:   ['99.59%', '16 Jul 2026', 'OZ-HPLCMS-290A_Melanotan-2-10mg.pdf'],
+  WO20:   ['98.71%', '16 Jul 2026', 'OZ-HPLCMS-8790_BPC-157-TB-500.pdf'],
+  GL70:   ['99.52%', '25 Jul 2026', 'OZ-HPLCMS-7911_GLOW-70mg.pdf'],
+  KL80:   ['99.76%', '16 Jul 2026', 'OZ-HPLCMS-0A0A_KLOW-80mg.pdf'],
+  MO10:   ['99.30%', '16 Jul 2026', 'OZ-HPLCMS-01AA_MOTS-C-10mg.pdf'],
+  MO40:   ['99.05%', '16 Jul 2026', 'OZ-HPLCMS-MOT9_MOTS-C-40mg.pdf'],
+  TE10:   ['99.32%', '16 Jul 2026', 'OZ-HPLCMS-OP06_Tesamorelin-10mg.pdf'],
+  BP10:   ['99.58%', '26 Jul 2026', 'OZ-HPLCMS-BP10_BPC-157-10mg.pdf'],
+  CJ10:   ['99.04%', '16 Jul 2026', 'OZ-HPLCMS-29AS_CJC-1295-Ipamorelin.pdf'],
+  DS10:   ['98.43%', '16 Jul 2026', 'OZ-HPLCMS-DS92_DSIP-10mg.pdf'],
+  GH10:   ['99.54%', '16 Jul 2026', 'OZ-HPLCMS-RPGH_GHRP-6-10mg.pdf'],
+  KI10:   ['98.85%', '13 Jul 2026', 'OZ-HPLCMS-OPTA_Kisspeptin-10mg.pdf'],
+  KP10:   ['99.59%', '16 Jul 2026', 'OZ-HPLCMS-02A9_KPV-10mg.pdf'],
+  NA1000: ['98.87%', '25 Jul 2026', 'nad-1000mg.pdf'],
+  SK10:   ['98.97%', '13 Jul 2026', 'OZ-HPLCMS-9OPT_Selank-10mg.pdf'],
+  SX10:   ['98.56%', '16 Jul 2026', 'OZ-HPLCMS-1A09_Semax-10mg.pdf'],
+  TB10:   ['99.27%', '25 Jul 2026', 'OZ-HPLCMS-DGC4_TB-500-10mg.pdf'],
+  TI10:   ['99.49%', '16 Jul 2026', 'tirzepatide-10mg.pdf'],
+  TI20:   ['99.02%', '16 Jul 2026', 'tirzepatide-20mg.pdf']
+};
+const SHOP_STORAGE = 'Lyophilised powder: keep refrigerated at 2–8°C and out of light (a few days at room temperature in transit is fine). Once reconstituted with bacteriostatic water, refrigerate and use within about 28 days.';
+const INFO = {
+  RE10: 'Triple agonist peptide acting on GLP-1, GIP and glucagon receptors — the most studied of the newer weight-management compounds. Dosed weekly.',
+  GH50: 'Copper peptide complex studied for skin remodelling, collagen support and wound repair. Used topically and subcutaneously in research.',
+  ME10: 'Synthetic α-MSH analogue studied for melanogenesis (skin pigmentation).',
+  WO20: 'BPC-157 and TB-500 in one vial — the classic recovery pairing for soft-tissue, tendon and joint research.',
+  GL70: 'GHK-Cu, BPC-157 and TB-500 blended in one vial for skin, hair and tissue-repair research.',
+  KL80: 'The Glow blend plus KPV — GHK-Cu, BPC-157, TB-500 and KPV — adding anti-inflammatory support to the skin and repair stack.',
+  MO10: 'Mitochondrial-derived peptide studied for metabolic regulation, exercise capacity and insulin sensitivity.',
+  TE10: 'GHRH analogue studied for visceral fat reduction and growth-hormone release.',
+  BA50: 'Arginate salt form of BPC-157 with improved stability — the same tendon, gut and tissue-repair research profile.',
+  BP10: 'Body Protection Compound — a gastric pentadecapeptide studied for tendon, ligament, muscle and gut repair.',
+  CJ10: 'CJC-1295 (no DAC) with Ipamorelin — a GHRH/GHRP pairing studied for pulsatile growth-hormone release, recovery and sleep quality.',
+  DS10: 'Delta sleep-inducing peptide, studied for sleep architecture and stress modulation.',
+  GH10: 'Growth-hormone-releasing peptide studied for GH release and appetite stimulation.',
+  KI10: 'Neuropeptide upstream of GnRH, studied for reproductive hormone signalling and libido.',
+  KP10: 'Tripeptide fragment of α-MSH studied for anti-inflammatory activity, particularly in the gut and skin.',
+  NA1000: 'Nicotinamide adenine dinucleotide — a coenzyme central to cellular energy and repair, studied in ageing and metabolic research.',
+  SK10: 'Synthetic tuftsin analogue studied for anxiolytic and nootropic effects without sedation.',
+  SL10: 'ERR agonist studied as an exercise mimetic for endurance and fat oxidation. Typically used pre-workout in research settings.',
+  SX10: 'Heptapeptide nootropic studied for focus, memory and BDNF expression.',
+  TB10: 'Thymosin beta-4 fragment studied for tissue repair, flexibility and reduced inflammation.',
+  TI10: 'Dual GIP/GLP-1 receptor agonist studied for weight and glycaemic research. Dosed weekly.'
+};
+INFO.RE20 = INFO.RE10; INFO.RE30 = INFO.RE10; INFO.GH100 = INFO.GH50; INFO.MO40 = INFO.MO10; INFO.TI20 = INFO.TI10; INFO.TI30 = INFO.TI10;
+const STATES = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
+const NZ_REGIONS = ["Northland","Auckland","Waikato","Bay of Plenty","Gisborne","Hawke's Bay","Taranaki","Manawatū-Whanganui","Wellington","Tasman","Nelson","Marlborough","West Coast","Canterbury","Otago","Southland"];
+const FREE_SHIP_AT = 200;
+const SHIP_FLAT = 15;
+const DEFAULT_CODES = 'OPTML10:10, OPTML20:20, OPTML25:25, OPTML50:50';
+const SAVED_KEYS = ['cart', 'name', 'phone', 'email', 'street', 'suburb', 'region', 'postcode', 'notes', 'code', 'ref', 'sent', 'country', 'nzShip'];
+
+function stateFromPostcode(pc) {
+  const n = parseInt(pc, 10);
+  if (isNaN(n)) return '';
+  if ((n >= 200 && n <= 299) || (n >= 2600 && n <= 2618) || (n >= 2900 && n <= 2920)) return 'ACT';
+  if ((n >= 1000 && n <= 2599) || (n >= 2619 && n <= 2899) || (n >= 2921 && n <= 2999)) return 'NSW';
+  if ((n >= 3000 && n <= 3999) || (n >= 8000 && n <= 8999)) return 'VIC';
+  if ((n >= 4000 && n <= 4999) || (n >= 9000 && n <= 9999)) return 'QLD';
+  if (n >= 5000 && n <= 5999) return 'SA';
+  if (n >= 6000 && n <= 6999) return 'WA';
+  if (n >= 7000 && n <= 7999) return 'TAS';
+  if (n >= 800 && n <= 999) return 'NT';
+  return '';
+}
+function parseCodes(str) {
+  const out = {};
+  String(str || '').split(',').forEach(part => {
+    const m = part.trim().match(/^([A-Za-z0-9]+)\s*:\s*(\$?)(\d+(?:\.\d+)?)\s*%?\s*(?:@\s*(\d+))?$/);
+    if (m) out[m[1].toUpperCase()] = { fixed: m[2] === '$', value: parseFloat(m[3]), min: m[4] ? parseInt(m[4], 10) : 0 };
+  });
+  return out;
+}
+function makeRef() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 5; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return 'OPT-' + s;
+}
+
+
+// ================= Shop: price list, order, certificates =================
+
+const WHOLESALE = /^\/wholesale/i.test(location.pathname) || /[?&]wholesale\b/i.test(location.search);
+const TIERS = WHOLESALE ? [1, 3, 5, 10] : [1, 3, 5];
+const WA_NUMBER = '61468315677';
+const ORDER_EMAIL = 'hello@stayoptml.com';
+const PAYMENT_NOTE = 'Pay by PayID once we confirm your order. Details come by reply.';
+const REPLY_NOTE = 'We reply within 30 minutes, 8am–8pm AEST.';
+const SHOP_KEY = 'optml-shop-' + (WHOLESALE ? 'wholesale' : 'retail') + '-v1';
+const SHOP_SAVED = ['cart', 'name', 'phone', 'email', 'street', 'suburb', 'region', 'postcode', 'notes', 'code', 'ref', 'sent', 'country', 'nzShip', 'lastOrder'];
+const SHOP_BY_SKU = Object.fromEntries(SHOP_PRODUCTS.map(p => [p.sku, p]));
+const money = n => '$' + Math.round(n).toLocaleString('en-AU');
+
+// Price list SKU -> WPDA protocol (and which vial size it is)
+const SKU_PROTOCOL = {
+  RE10: ['reta', 0], RE20: ['reta', 1], RE30: ['reta', 2], TI10: ['tirz', 0], TI20: ['tirz', 1], TI30: ['tirz', 2],
+  TE10: ['tesa', 0], SL10: ['slu', 0], BP10: ['bpc', 0], TB10: ['tb', 0], KP10: ['kpv', 0], WO20: ['wolv', 0], BA50: ['bpcarg', 0],
+  GH50: ['ghk', 0], GH100: ['ghk', 1], ME10: ['mt2', 0], GL70: ['glow', 0], KL80: ['klow', 0], MO10: ['mots', 0], MO40: ['mots', 1],
+  NA1000: ['nad', 0], CJ10: ['cjc', 0], GH10: ['ghrp', 0], SK10: ['selank', 0], SX10: ['semax', 0], KI10: ['kiss', 0], DS10: ['dsip', 0]
+};
+const PROTOCOL_SKUS = {};
+Object.keys(SKU_PROTOCOL).forEach(sku => { const [pid, idx] = SKU_PROTOCOL[sku]; (PROTOCOL_SKUS[pid] = PROTOCOL_SKUS[pid] || [])[idx] = sku; });
+
+function splitName(name) {
+  const m = String(name).match(/^(.*?)\s+(\d[\d.,]*\s*(?:mg|mcg|g|iu)\b.*)$/i);
+  return m ? [m[1], m[2]] : [name, ''];
+}
+
+function defaultShop() {
+  return { cart: {}, name: '', phone: '', email: '', street: '', suburb: '', region: '', postcode: '', notes: '', country: 'AU', nzShip: 'standard',
+    touched: {}, code: '', codeInput: '', codeOpen: false, codeError: '', ref: makeRef(), sent: false, lastOrder: null, q: '', goal: 'all', copied: false, toast: '' };
+}
+function loadShop() {
+  const sh = defaultShop();
+  try { const saved = JSON.parse(localStorage.getItem(SHOP_KEY) || 'null'); if (saved) SHOP_SAVED.forEach(k => { if (saved[k] !== undefined && saved[k] !== null) sh[k] = saved[k]; }); } catch (e) {}
+  return sh;
+}
+
+// Order maths and the WhatsApp message. The message format is the one the OPTML CRM's "paste web order" reads.
+function computeOrder(sh, now) {
+  const items = Object.keys(sh.cart).filter(k => sh.cart[k] > 0 && SHOP_BY_SKU[k.split(':')[0]]).map(key => {
+    const bits = key.split(':'); const p = SHOP_BY_SKU[bits[0]]; const n = parseInt(bits[1], 10); const qty = sh.cart[key];
+    return { key, p, n, qty, amount: (p.prices[n] || 0) * qty, pack: n === 1 ? 'single vial' : n + '-vial pack' };
+  }).filter(it => it.p.prices[it.n] && (WHOLESALE || it.n !== 10));
+  const subtotal = items.reduce((s, it) => s + it.amount, 0);
+  const packCount = items.reduce((s, it) => s + it.qty, 0);
+  const codes = parseCodes(DEFAULT_CODES);
+  const rule = sh.code && codes[sh.code] ? codes[sh.code] : null;
+  let discount = 0, codeNote = '', codeActive = false;
+  if (rule) {
+    if (subtotal > 0 && subtotal >= rule.min) { discount = rule.fixed ? Math.min(rule.value, subtotal) : Math.round(subtotal * rule.value / 100); codeActive = true; codeNote = sh.code + ' applied: ' + (rule.fixed ? money(rule.value) : rule.value + '%') + ' off'; }
+    else codeNote = sh.code + ' works on orders over ' + money(rule.min) + '. Add ' + money(rule.min - subtotal) + ' more.';
+  }
+  const afterDiscount = Math.max(0, subtotal - discount);
+  const nz = sh.country === 'NZ', nzExp = sh.nzShip === 'express';
+  const shipFee = nz ? (nzExp ? 25 : 20) : SHIP_FLAT;
+  const shipName = nz ? (nzExp ? 'NZ express shipping' : 'NZ standard shipping') : 'Express shipping';
+  const freeShip = !nz && afterDiscount >= FREE_SHIP_AT;
+  const shipping = items.length && !freeShip ? shipFee : 0;
+  const total = afterDiscount + shipping;
+  const remaining = Math.max(0, FREE_SHIP_AT - afterDiscount);
+  const digits = sh.phone.replace(/\D/g, ''); const emailTrim = sh.email.trim();
+  const ok = {
+    name: sh.name.trim().length >= 2, phone: digits.length >= 8 && digits.length <= 13, email: !emailTrim || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim),
+    street: sh.street.trim().length >= 4, suburb: sh.suburb.trim().length >= 2, region: (nz ? NZ_REGIONS : STATES).indexOf(sh.region) >= 0, postcode: /^\d{4}$/.test(sh.postcode.trim())
+  };
+  const msgs = { name: 'Enter your full name', phone: nz ? 'Enter a mobile number, e.g. 021 123 4567' : 'Enter a mobile number, e.g. 0412 345 678', email: "That email doesn't look right",
+    street: 'Enter your street address', suburb: 'Enter your suburb', region: nz ? 'Choose a region' : 'Choose a state', postcode: 'Enter a 4-digit postcode' };
+  const names = { name: 'name', phone: 'mobile', email: 'email', street: 'street address', suburb: nz ? 'suburb / town' : 'suburb', region: nz ? 'region' : 'state', postcode: 'postcode' };
+  const err = {}; Object.keys(ok).forEach(k => { err[k] = sh.touched[k] && !ok[k] ? msgs[k] : ''; });
+  const pcState = nz ? '' : stateFromPostcode(sh.postcode.trim());
+  const regionWarn = ok.postcode && ok.region && pcState && pcState !== sh.region ? 'Postcode ' + sh.postcode.trim() + ' is usually in ' + pcState + '. Double-check the state.' : '';
+  const missing = Object.keys(ok).filter(k => !ok[k]).map(k => names[k]);
+  const detailsOk = missing.length === 0 && items.length > 0;
+  // message
+  const when = new Date(now);
+  const stamp = when.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + when.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+  const addr = [sh.street.trim(), [sh.suburb.trim(), sh.region, sh.postcode.trim()].filter(Boolean).join(' '), nz ? 'New Zealand' : 'Australia'].filter(Boolean);
+  const W = 26; const FENCE = String.fromCharCode(96, 96, 96);
+  const row = (label, value) => { const gap = W - label.length - value.length; return gap >= 1 ? label + ' '.repeat(gap) + value : label + '\n' + ' '.repeat(Math.max(0, W - value.length)) + value; };
+  const mono = items.map(it => it.qty + '× ' + it.p.name + '\n' + row('   ' + it.pack, money(it.amount)))
+    .concat(['-'.repeat(W), row('Subtotal', money(subtotal))])
+    .concat(discount ? [row('Discount · ' + sh.code, '-' + money(discount))] : [])
+    .concat([row(nz ? (nzExp ? 'NZ express' : 'NZ standard') : 'Express shipping', freeShip ? 'Free' : money(shipFee)), row('TOTAL', money(total) + ' AUD')])
+    .join('\n');
+  const lines = ['*optml*', '*' + (WHOLESALE ? 'WHOLESALE ORDER ' : 'ORDER ') + sh.ref + '*', stamp, '', FENCE + mono + FENCE, '', '*Bill to*', sh.name.trim(), sh.phone.trim()]
+    .concat(emailTrim ? [emailTrim] : []).concat(['', '*Ship to*']).concat(addr)
+    .concat(sh.notes.trim() ? ['Notes: ' + sh.notes.trim()] : [])
+    .concat(['', '*Payment*', 'PayID — details sent on confirmation', 'Status: awaiting confirmation', '', '_Sent from the optml price list_']);
+  const waText = lines.join('\n');
+  const plainText = waText.replace(new RegExp('[*_' + String.fromCharCode(96) + ']', 'g'), '');
+  return { items, subtotal, packCount, discount, codeNote, codeActive, rule, afterDiscount, nz, nzExp, shipFee, shipName, freeShip, shipping, total, remaining,
+    ok, err, regionWarn, missing, detailsOk, waText, plainText,
+    orderHref: 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(waText),
+    emailHref: 'mailto:' + ORDER_EMAIL + '?subject=' + encodeURIComponent('optml order ' + sh.ref) + '&body=' + encodeURIComponent(plainText) };
+}
+
+function tierInfo(p, n, qty) {
+  const save = n > 1 ? Math.round((1 - p.prices[n] / (p.prices[1] * n)) * 100) : 0;
+  const saveAmt = n > 1 ? p.prices[1] * n - p.prices[n] : 0;
+  const wasN = (p.was && p.was[n]) || 0;
+  const onSale = wasN > p.prices[n];
+  return { n, qty, price: money(p.prices[n]), was: onSale ? money(wasN) : '', label: n === 1 ? '1 vial' : n + ' vials',
+    sub: n > 1 ? money(Math.round(p.prices[n] / n)) + ' / vial' : 'Single vial',
+    badge: onSale ? '−' + Math.round((1 - p.prices[n] / wasN) * 100) + '%' : (save >= 5 ? 'Save ' + save + '%' : '') };
+}
+
+function ShipCountdown() {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const cutoff = new Date(now); cutoff.setHours(14, 0, 0, 0);
+  const ms = cutoff - now;
+  if (ms <= 0) return html`<span>Same-day dispatch before 2pm. Orders now ship next business day.</span>`;
+  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+  return html`<span>Same-day dispatch: order within <b style="font-variant-numeric:tabular-nums">${(h ? h + 'h ' : '') + m + 'm' + (h ? '' : ' ' + s + 's')}</b></span>`;
+}
+
+function Tiers({ p, sh, bump, compact }) {
+  return html`<div class="tiers" style=${'grid-template-columns:repeat(' + TIERS.length + ',minmax(0,1fr))'}>${TIERS.filter(n => p.prices[n]).map(n => {
+    const key = p.sku + ':' + n; const t = tierInfo(p, n, sh.cart[key] || 0);
+    return t.qty ? html`<div class="tier on" role="group" aria-label=${t.label + ' of ' + p.name + ', ' + t.qty + ' in order'}>
+        <span class="tl">${t.label}</span><span class="tp">${t.price}</span>
+        <span class="stepper"><button type="button" aria-label=${'Remove one ' + t.label + ' of ' + p.name} onClick=${() => bump(key, -1)}>−</button><b>${t.qty}</b><button type="button" aria-label=${'Add another ' + t.label + ' of ' + p.name} onClick=${() => bump(key, 1)}>+</button></span>
+      </div>`
+      : html`<button type="button" class="tier" aria-label=${'Add ' + t.label + ' of ' + p.name + ', ' + t.price} onClick=${() => bump(key, 1)}>
+        ${t.badge ? html`<span class="badge">${t.badge}</span>` : null}
+        <span class="tl">${t.label}</span><span class="tp">${t.price}</span>${t.was ? html`<s class="tw">${t.was}</s>` : null}${compact ? null : html`<span class="ts">${t.sub}</span>`}
+      </button>`;
+  })}</div>`;
+}
+
+function ShopSection({ sh, setSh, bump }) {
+  const q = sh.q.trim().toLowerCase();
+  const list = SHOP_PRODUCTS.filter(p => (sh.goal === 'all' || p.goal === sh.goal) && (!q || (p.name + ' ' + p.sku + ' ' + (INFO[p.sku] || '')).toLowerCase().includes(q)));
+  return html`<section id="shop" aria-labelledby="h-shop" style="padding-top:8px"><div class="wrap">
+    <h2 id="h-shop" class="sr">${WHOLESALE ? 'Wholesale price list' : 'Price list'}</h2>
+    <label class="field" style="max-width:460px;margin-top:18px"><span class="sr">Search the price list</span><input class="input" type="search" placeholder="Search compounds" value=${sh.q} onInput=${e => setSh({ q: e.target.value })} /></label>
+    <div class="sticky-filters">
+      <div class="scrollx" role="group" aria-label="Filter by goal">
+        <button type="button" class="pill" aria-pressed=${String(sh.goal === 'all')} onClick=${() => setSh({ goal: 'all' })}>All</button>
+        ${GOALS.map(g => html`<button type="button" class="pill" aria-pressed=${String(sh.goal === g)} onClick=${() => setSh({ goal: sh.goal === g ? 'all' : g })}><img src=${GOAL_ICONS[g]} alt="" />${GOAL_LABELS[g]}</button>`)}
+      </div>
+    </div>
+    <div class="plist" style="margin-top:14px">
+      ${list.map(p => { const [base, strength] = splitName(p.name); const coa = COAS[p.sku];
+        return html`<article class="prow" style=${'--tint:' + GOAL_TINT[p.goal]}>
+          <a class="ptop" href=${'#/p/' + p.sku} aria-label=${p.name + ': prices, how to use and certificate'}>
+            <img src=${GOAL_ICONS[p.goal]} alt="" />
+            <div class="grow"><h3>${base} ${strength ? html`<span class="str">${strength}</span>` : null}</h3>
+              <div class="tiny muted">${GOAL_LABELS[p.goal]}${coa ? ' · ' + coa[0] + ' purity' : ''}</div></div>
+            <span class="how">How to use <${Icon} name="arrow" size=${14} /></span>
+          </a>
+          <${Tiers} p=${p} sh=${sh} bump=${bump} compact />
+        </article>`; })}
+    </div>
+    ${list.length === 0 ? html`<div class="empty" style="margin-top:12px">Nothing matches that search.</div>` : null}
+    <p class="tiny muted" style="margin-top:14px">Prices in AUD${WHOLESALE ? ' · 10-vial rates are wholesale only' : ''}. Bac water included with every vial. Free express shipping in Australia over $200, New Zealand from $20.</p>
+  </div></section>`;
+}
+
+function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
+  const field = k => e => { const v = e.target.value; setSh(prev => { const next = { [k]: v, sent: false }; if (k === 'postcode' && prev.country !== 'NZ' && /^\d{4}$/.test(v) && !prev.region) { const s = stateFromPostcode(v); if (s) next.region = s; } return next; }); };
+  const blur = k => () => setSh(prev => ({ touched: Object.assign({}, prev.touched, { [k]: true }) }));
+  const stage = sh.sent && o.items.length ? 4 : !o.items.length ? 1 : o.detailsOk ? 3 : 2;
+  const applyCode = () => { const c = sh.codeInput.trim().toUpperCase(); if (!c) return; const codes = parseCodes(DEFAULT_CODES); if (codes[c]) setSh({ code: c, codeError: '', codeOpen: false, codeInput: '' }); else setSh({ codeError: "That code isn't valid. Check the spelling and try again." }); };
+  const copy = () => { const done = () => { setSh({ copied: true }); setTimeout(() => setSh({ copied: false }), 2000); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(o.plainText).then(done, done); else done(); };
+  const send = () => { onSent(o.items); };
+  const lastItems = sh.lastOrder && sh.lastOrder.cart ? Object.keys(sh.lastOrder.cart).map(k => { const b = k.split(':'); const p = SHOP_BY_SKU[b[0]]; const n = parseInt(b[1], 10); return p && p.prices[n] ? { key: k, qty: sh.lastOrder.cart[k], p, n } : null; }).filter(Boolean) : [];
+  const inp = (k, label, extra = {}) => html`<label class="field"><span>${label}</span><input class="input" style=${o.err[k] ? 'border-color:var(--bad)' : ''} value=${sh[k]} onInput=${field(k)} onBlur=${blur(k)} aria-invalid=${o.err[k] ? 'true' : 'false'} ...${extra} />${o.err[k] ? html`<small style="color:var(--bad)">${o.err[k]}</small>` : null}</label>`;
+  return html`<div class="wrap page narrow" id="order">
+    <div class="orderbox">
+      <div class="row g12 wrapx" style="justify-content:space-between"><div><div class="lbl" style="color:rgba(255,255,255,.6)">${WHOLESALE ? 'Wholesale order' : 'Your order'} · ${sh.ref}</div><h2 id="h-order" style="color:#fff;font-size:clamp(26px,5vw,34px);margin-top:4px">${stage === 4 ? 'Order sent' : 'Your order'}</h2></div>
+        <ol class="ostep" aria-label="Order progress">${['Build', 'Details', 'Send'].map((l, i) => html`<li class=${i + 1 < stage ? 'done' : i + 1 === stage ? 'now' : ''}><span>${i + 1 < stage ? '✓' : i + 1}</span>${l}</li>`)}</ol></div>
+
+      ${!o.items.length && !sh.sent ? html`<div class="oempty"><p>Tap any price in the list to add a pack. Tap again for more, minus to take one off.</p>
+        ${lastItems.length ? html`<button type="button" class="btn on-dark sm" onClick=${() => { const c = {}; lastItems.forEach(it => { c[it.key] = it.qty; }); setSh({ cart: c, sent: false }); }}>Order again: ${lastItems.slice(0, 2).map(it => it.qty + '× ' + it.p.name).join(', ')}${lastItems.length > 2 ? ' + more' : ''}</button>` : html`<a class="btn on-dark sm" href="#/">Browse the price list</a>`}</div>` : null}
+
+      ${o.items.length ? html`<div class="olines">${o.items.map(it => html`<div class="oline"><div class="grow"><b>${it.p.name}</b><div class="tiny" style="color:rgba(255,255,255,.65)">${it.pack}</div></div>
+          <span class="stepper dark"><button type="button" aria-label=${'One less ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, -1)}>−</button><b>${it.qty}</b><button type="button" aria-label=${'One more ' + it.p.name + ' ' + it.pack} onClick=${() => bump(it.key, 1)}>+</button></span>
+          <b style="width:72px;text-align:right">${money(it.amount)}</b></div>`)}</div>
+        ${!o.nz ? html`<div class="shipbar"><div class="tiny">${o.freeShip ? 'Free express shipping unlocked' : 'Add ' + money(o.remaining) + ' more for free express shipping'}</div><div class="bar"><i style=${'width:' + Math.min(100, Math.round(o.afterDiscount / FREE_SHIP_AT * 100)) + '%'}></i></div></div>` : null}
+        <div class="otot">
+          <div><span>Subtotal (AUD)</span><b>${money(o.subtotal)}</b></div>
+          ${o.discount ? html`<div><span>Discount · ${sh.code}</span><b>−${money(o.discount)}</b></div>` : null}
+          <div><span>${o.shipName}</span><b>${o.freeShip ? 'Free' : money(o.shipFee)}</b></div>
+          <div class="grand"><span>Total</span><b>${money(o.total)} AUD</b></div>
+        </div>
+        <div>${sh.code ? html`<div class="row g8 wrapx tiny"><span>${o.codeNote}</span><button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ code: '', codeOpen: false, codeError: '' })}>Remove code</button></div>`
+          : sh.codeOpen ? html`<div class="row g8"><label class="grow"><span class="sr">Discount code</span><input class="input" placeholder="Discount code" value=${sh.codeInput} onInput=${e => setSh({ codeInput: e.target.value.toUpperCase(), codeError: '' })} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } }} /></label><button type="button" class="btn on-dark sm" onClick=${applyCode}>Apply</button></div>${sh.codeError ? html`<div class="tiny" style="color:#ffb4b0;margin-top:6px">${sh.codeError}</div>` : null}`
+          : html`<button type="button" class="linkbtn" onClick=${() => setSh({ codeOpen: true, codeError: '' })}>Have a discount code?</button>`}</div>
+      ` : null}
+
+      ${o.items.length && !sh.sent ? html`<div class="odetails">
+        <div class="row g12 wrapx" style="justify-content:space-between"><h3 style="color:#fff;font-size:20px">Your details</h3>
+          <div class="seg dark" role="group" aria-label="Shipping country"><button type="button" aria-pressed=${String(!o.nz)} onClick=${() => setSh(p => p.country === 'NZ' ? { country: 'AU', region: '' } : {})}>Australia</button><button type="button" aria-pressed=${String(o.nz)} onClick=${() => setSh(p => p.country !== 'NZ' ? { country: 'NZ', region: '' } : {})}>New Zealand</button></div></div>
+        <div class="fgrid light">
+          ${inp('name', 'Full name', { autocomplete: 'name' })}
+          ${inp('phone', 'Mobile', { autocomplete: 'tel', inputmode: 'tel' })}
+          ${inp('email', 'Email (optional)', { autocomplete: 'email', inputmode: 'email' })}
+        </div>
+        <div class="fgrid light">
+          ${inp('street', 'Street address', { autocomplete: 'street-address' })}
+          ${inp('suburb', o.nz ? 'Suburb / town' : 'Suburb', { autocomplete: 'address-level2' })}
+          <label class="field"><span>${o.nz ? 'Region' : 'State'}</span><select class="select" style=${o.err.region ? 'border-color:var(--bad)' : ''} value=${sh.region} onChange=${field('region')} onBlur=${blur('region')}><option value="">Choose…</option>${(o.nz ? NZ_REGIONS : STATES).map(r => html`<option value=${r}>${r}</option>`)}</select>${o.err.region ? html`<small style="color:var(--bad)">${o.err.region}</small>` : null}</label>
+          ${inp('postcode', 'Postcode', { autocomplete: 'postal-code', inputmode: 'numeric' })}
+        </div>
+        ${o.regionWarn ? html`<div class="warn">${o.regionWarn}</div>` : null}
+        ${o.nz ? html`<div class="seg dark" role="group" aria-label="NZ shipping"><button type="button" aria-pressed=${String(!o.nzExp)} onClick=${() => setSh({ nzShip: 'standard' })}>Standard · $20</button><button type="button" aria-pressed=${String(o.nzExp)} onClick=${() => setSh({ nzShip: 'express' })}>Express · $25</button></div>` : null}
+        <label class="field"><span>Delivery notes (optional)</span><textarea class="textarea" value=${sh.notes} onInput=${field('notes')}></textarea></label>
+        <div class="stack g8">
+          ${o.detailsOk ? html`<a class="btn on-dark block" style="min-height:52px;font-size:16px" href=${o.orderHref} target="_blank" rel="noopener" onClick=${send}>Send order on WhatsApp</a>`
+            : html`<button type="button" class="btn on-dark block" style="min-height:52px;font-size:16px" disabled>Send order on WhatsApp</button><div class="tiny" style="color:rgba(255,255,255,.75)">Still needed: ${o.missing.join(', ')}</div>`}
+          <div class="row g8 wrapx"><a class=${'btn sm on-dark-outline' + (o.detailsOk ? '' : ' disabled')} href=${o.detailsOk ? o.emailHref : null} aria-disabled=${String(!o.detailsOk)} onClick=${o.detailsOk ? send : null}>Email instead</a><button type="button" class="btn sm on-dark-outline" onClick=${copy}>${sh.copied ? 'Copied' : 'Copy order'}</button></div>
+          <p class="tiny" style="color:rgba(255,255,255,.7)">Opens WhatsApp with your order filled in. Nothing is charged here: ${PAYMENT_NOTE} ${REPLY_NOTE}</p>
+        </div>
+      </div>` : null}
+
+      ${sh.sent && o.items.length ? html`<div class="osent">
+        <p>Your order is in WhatsApp. We confirm stock and send payment details by reply. ${REPLY_NOTE}</p>
+        <div class="row g8 wrapx"><a class="btn sm on-dark-outline" href=${o.orderHref} target="_blank" rel="noopener">Didn't open? Resend on WhatsApp</a>
+          <button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ cart: {}, sent: false, code: '', codeInput: '', ref: makeRef() })}>Start a new order</button></div>
+        ${planReady ? html`<div class="guidecard"><div class="lbl">Your how-to guide is ready</div><b style="font-size:19px;color:var(--ink)">Everything you ordered, step by step</b>
+          <p class="small">Exact units to draw for each compound, how to mix it with the bac water in the box, where to inject, and a daily tracker. Save it as a PDF to keep.</p>
+          <div class="row g8 wrapx"><a class="btn sm" href="#/plan">Open my tracker</a><button type="button" class="btn sm outline" onClick=${() => window.print()}>Save my guide as PDF</button></div></div>` : null}
+      </div>` : null}
+    </div>
+  </div>`;
+}
+
+function CartBar({ sh, o }) {
+  if (!o.items.length) return null;
+  return html`<div class="tray screen" role="region" aria-label="Your order"><span>${o.packCount} pack${o.packCount === 1 ? '' : 's'} · ${money(o.total)} AUD${sh.sent ? ' · sent' : ''}</span>
+    ${o.detailsOk && !sh.sent ? html`<a class="btn sm on-dark" href="#/order">Review and send</a>` : html`<a class="btn sm on-dark" href="#/order">View order</a>`}</div>`;
+}
+
+function CoaSection({ goal }) {
+  const [all, setAll] = useState(false);
+  const withCoa = SHOP_PRODUCTS.filter(p => COAS[p.sku]);
+  const shown = all ? withCoa : withCoa.slice(0, 8);
+  const purities = withCoa.map(p => parseFloat(COAS[p.sku][0]));
+  const pending = SHOP_PRODUCTS.filter(p => !COAS[p.sku]).map(p => p.name);
+  return html`<div class="wrap page" id="coa">
+    <div class="page-head"><div class="eyebrow">Certificates of analysis</div><h1>Every batch, independently tested.</h1>
+      <p class="lead">${withCoa.length} compounds with batch certificates, purity ${Math.min.apply(null, purities).toFixed(2)}–${Math.max.apply(null, purities).toFixed(2)}%. Identity confirmed by HPLC-MS. Tap one to open the PDF.</p></div>
+    <div class="coagrid">${shown.map(p => html`<a class="coacard" href=${COA_BASE + COAS[p.sku][2]} target="_blank" rel="noopener"><img src=${GOAL_ICONS[p.goal]} alt="" /><div class="grow"><b>${p.name}</b><div class="tiny muted">Tested ${COAS[p.sku][1]}</div></div><span class="pur">${COAS[p.sku][0]}</span></a>`)}</div>
+    <div class="row g8 wrapx" style="margin-top:12px"><button type="button" class="btn sm outline" onClick=${() => setAll(!all)}>${all ? 'Show fewer' : 'Show all ' + withCoa.length + ' certificates'}</button>
+      ${pending.length ? html`<a class="btn sm ghost" href=${'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent('Hi, could you please send the latest COA' + (pending.length > 1 ? 's' : '') + ' for ' + pending.join(', ') + '?')} target="_blank" rel="noopener">Request: ${pending.join(', ')}</a>` : null}</div>
+  </div>`;
+}
+
 // ================= App: shared helpers, state, catalogue, compound sheet =================
 const { html, render, useState, useEffect, useRef } = htmPreact;
 
@@ -1183,7 +1646,8 @@ function Icon({ name, size = 20 }) {
     search: 'M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-4-4', link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
     print: 'M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M7 14h10v6H7z', trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12',
     back: 'M19 12H5M11 6l-6 6 6 6', ext: 'M14 5h5v5M19 5l-8 8M18 14v5H5V6h5', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
-    body: 'M12 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM8 9h8l-1 6h-2l-1 6-1-6H9z', drop: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z'
+    body: 'M12 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM8 9h8l-1 6h-2l-1 6-1-6H9z', drop: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z',
+    shop: 'M4 7h16l-1.5 12a2 2 0 0 1-2 1.8H7.5a2 2 0 0 1-2-1.8zM9 7V6a3 3 0 0 1 6 0v1', book: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M8 7h7', plan: 'M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM9 14l2 2 4-4', bag: 'M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L20 8H6M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM17 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z'
   };
   return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d=${P[name]} /></svg>`;
 }
@@ -1213,134 +1677,62 @@ function Pills({ options, value, onPick, label }) {
   return html`<div class="pills" role="group" aria-label=${label}>${options.map(o => html`<button type="button" class="pill" aria-pressed=${String(o.v === value)} onClick=${() => onPick(o.v)}>${o.label}</button>`)}</div>`;
 }
 
-// ---------- Catalogue ----------
+// ---------- Product page: buy at the top, how-to below in tabs ----------
 
-function Catalogue({ st, set, add }) {
-  const q = st.query.trim().toLowerCase();
-  const list = PRODUCTS.filter(p => (st.goal === 'all' || p.goal === st.goal) && (!q || (p.name + ' ' + p.sub + ' ' + p.desc + ' ' + p.goal).toLowerCase().includes(q)));
-  return html`<section class="blk" id="compounds" aria-labelledby="h-compounds"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">The range</div><h2 id="h-compounds">Find your compound</h2>
-      <p class="lead">Every card shows the starting dose and exactly what to draw. Open one for the full ladder, mixing volume and timing.</p></div>
-    <div class="stack g12">
-      <label class="field" style="max-width:460px"><span class="sr">Search compounds</span>
-        <input class="input" type="search" placeholder="Search compounds, goals or blends" value=${st.query} onInput=${e => set({ query: e.target.value })} /></label>
-      <div class="scrollx" role="group" aria-label="Filter by goal">
-        <button type="button" class="pill" aria-pressed=${String(st.goal === 'all')} onClick=${() => set({ goal: 'all' })}>All</button>
-        ${GOALS.map(g => html`<button type="button" class="pill" aria-pressed=${String(st.goal === g)} onClick=${() => set({ goal: st.goal === g ? 'all' : g })}><img src=${GOAL_ICONS[g]} alt="" />${GOAL_LABELS[g]}</button>`)}
+function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
+  const sp = SHOP_BY_SKU[sku];
+  if (!sp) return html`<div class="wrap page narrow"><a class="back" href="#/">‹ Price list</a><div class="empty" style="margin-top:16px">That product isn't on the price list.</div></div>`;
+  const map = SKU_PROTOCOL[sku];
+  const p = map ? PRODUCT[map[0]] : null;
+  const idx = map ? map[1] : 0;
+  const it = p ? listedItem(p, Object.assign({}, st, { mode: {}, sizeIdx: Object.assign({}, st.sizeIdx, { [p.id]: idx }) })) : null;
+  const [base, strength] = splitName(sp.name);
+  const coa = COAS[sku];
+  const sizes = p && PROTOCOL_SKUS[p.id] ? PROTOCOL_SKUS[p.id].filter(Boolean) : [];
+  const first = it ? it.rows[0] : null;
+  const facts = it ? [['How often', it.freqText], ['When', it.timing || it.whenLabel], ['Site', it.site], ['Duration', it.duration]] : [];
+  const bac = sp.sku === 'NA1000' ? '10ml' : (it && it.oral ? '' : '3ml');
+  const t = tab || 'use';
+  return html`<div class="wrap page narrow">
+    <a class="back" href="#/">‹ Price list</a>
+    <div class="phero" style=${'--tint:' + GOAL_TINT[sp.goal]}>
+      <img src=${GOAL_ICONS[sp.goal]} alt="" />
+      <div class="grow"><div class="row g8 wrapx"><span class="chip">${GOAL_LABELS[sp.goal]}</span>${coa ? html`<a class="chip" style="text-decoration:none;color:var(--ok)" href=${COA_BASE + coa[2]} target="_blank" rel="noopener">${coa[0]} purity ↗</a>` : null}</div>
+        <h1 style="font-size:clamp(28px,7vw,40px);margin-top:8px">${base} <span style="color:var(--n600);font-weight:600">${strength}</span></h1></div>
+    </div>
+    ${sizes.length > 1 ? html`<div class="pills" role="group" aria-label="Vial size" style="margin-top:14px">${sizes.map(s => html`<a class="pill" href=${'#/p/' + s} aria-current=${s === sku ? 'page' : null} aria-pressed=${String(s === sku)} style="text-decoration:none">${splitName(SHOP_BY_SKU[s].name)[1] || s}</a>`)}</div>` : null}
+    <div style="margin-top:14px"><${Tiers} p=${sp} sh=${sh} bump=${bump} /></div>
+    ${INFO[sku] ? html`<p style="margin-top:14px">${INFO[sku]}</p>` : null}
+    ${bac ? html`<div class="okbox" style="margin-top:12px">A ${bac} vial of bacteriostatic water comes free in the box. Nothing extra to buy.</div>` : null}
+    ${it ? html`
+      <div class="seg full" role="tablist" aria-label="Product information" style="margin-top:20px">
+        <button type="button" role="tab" aria-selected=${String(t === 'use')} aria-pressed=${String(t === 'use')} onClick=${() => setTab('use')}>How to use</button>
+        ${!it.oral ? html`<button type="button" role="tab" aria-selected=${String(t === 'mix')} aria-pressed=${String(t === 'mix')} onClick=${() => setTab('mix')}>Mix and draw</button>` : null}
+        <button type="button" role="tab" aria-selected=${String(t === 'about')} aria-pressed=${String(t === 'about')} onClick=${() => setTab('about')}>About</button>
       </div>
-      <div class="tiny muted">${list.length === PRODUCTS.length ? PRODUCTS.length + ' compounds in the optml range' : list.length + ' of ' + PRODUCTS.length + ' compounds'}</div>
-    </div>
-    <div class="cgrid" style="margin-top:16px">
-      ${list.map(p => { const it = listedItem(p, Object.assign({}, st, { mode: {} })); const w1 = it.week(1); const added = st.order.indexOf(p.id) > -1;
-        return html`<article class="ccard" style=${'--tint:' + GOAL_TINT[p.goal]}>
-          <div class="stage"><img src=${GOAL_ICONS[p.goal]} alt="" /><div class="grow"><div class="row g8 wrapx"><span class="chip">${GOAL_LABELS[p.goal]}</span>${p.badge ? html`<span class="chip dark">${p.badge}</span>` : null}</div></div></div>
-          <div class="body">
-            <div><h3>${p.name}</h3><div class="small muted">${p.sub}</div></div>
-            <div class="startline"><span class="muted">Starts</span><b>${w1.dose}</b><span class="muted">·</span><b>${it.oral ? w1.draw : 'draw ' + String(w1.draw).split(' · ')[0]}</b></div>
-            <div class="acts">
-              <button type="button" class="btn sm" onClick=${() => set({ sheet: p.id })}>View protocol</button>
-              <button type="button" class=${'btn sm ' + (added ? 'soft' : 'outline')} aria-pressed=${String(added)} onClick=${() => add(p.id)}>${added ? html`<${Icon} name="check" size=${16} /> In plan` : html`<${Icon} name="plus" size=${16} /> Add`}</button>
-            </div>
-          </div></article>`; })}
-    </div>
-    ${list.length === 0 ? html`<div class="empty" style="margin-top:12px">Nothing matches that search. Try a goal or a shorter name, or add it as a custom compound in the builder.</div>` : null}
-    <div class="feature">
-      <div class="row g8 wrapx"><span class="chip">${STACK.badge}</span></div>
-      <h3>${STACK.name}</h3>
-      <div style="color:rgba(255,255,255,.66)">${STACK.sub}</div>
-      <p style="max-width:62ch">${STACK.desc}</p>
-      <dl class="facts" style="margin:0">${STACK.specs.map(s => html`<div><dt>${s[0]}</dt><dd>${s[1]}</dd></div>`)}</dl>
-      <div class="row g8 wrapx"><button type="button" class="btn on-dark" onClick=${() => set({ sheet: 'stack' })}>View full protocol</button>
-        <button type="button" class="btn on-dark-outline" onClick=${() => add('stack')}>Add all four to my plan</button></div>
-    </div>
-  </div></section>`;
-}
-
-// ---------- Compound sheet ----------
-
-function useSheetBehaviour(open, close) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    document.body.classList.add('lock');
-    const prev = document.activeElement;
-    setTimeout(() => ref.current && ref.current.focus(), 30);
-    const onKey = e => { if (e.key === 'Escape') close(); };
-    window.addEventListener('keydown', onKey);
-    return () => { document.body.classList.remove('lock'); window.removeEventListener('keydown', onKey); prev && prev.focus && prev.focus(); };
-  }, [open]);
-  return ref;
-}
-
-function Sheet({ st, set, add, goSite }) {
-  const id = st.sheet;
-  const close = () => set({ sheet: null });
-  const ref = useSheetBehaviour(!!id, close);
-  if (!id) return null;
-  const isStack = id === 'stack';
-  const p = PRODUCT[id];
-  return html`<div class="scrim" onClick=${e => { if (e.target === e.currentTarget) close(); }}>
-    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-      <div class="shead"><button type="button" class="iconbtn sm" ref=${ref} aria-label="Close" onClick=${close}><${Icon} name="close" size=${18} /></button>
-        <strong id="sheet-title" class="grow" style="color:var(--ink);font-size:17px">${isStack ? STACK.name : p.name}</strong>
-        ${!isStack && st.order.indexOf(id) > -1 ? html`<span class="chip" style="background:var(--paper)">In your plan</span>` : null}</div>
-      ${isStack ? html`<${StackBody} st=${st} set=${set} add=${add} />` : html`<${CompoundBody} p=${p} st=${st} set=${set} add=${add} goSite=${goSite} />`}
-    </div></div>`;
-}
-
-function CompoundBody({ p, st, set, add, goSite }) {
-  const it = listedItem(p, Object.assign({}, st, { mode: {} }));
-  const added = st.order.indexOf(p.id) > -1;
-  const facts = [['How often', it.freqText], ['When', it.timing || it.whenLabel], ['Site', it.site], ['Duration', it.duration]];
-  const others = it.specs.filter(s => ['Frequency', 'Timing', 'Site', 'Duration', 'Reconstitution'].indexOf(s[0]) === -1);
-  const first = it.rows[0];
-  return html`<div class="sbody">
-    <div class="stage" style=${'--tint:' + GOAL_TINT[p.goal]}><img src=${GOAL_ICONS[p.goal]} alt="" />
-      <div class="stack g6"><div class="row g8 wrapx"><span class="chip">${GOAL_LABELS[p.goal]}</span>${p.badge ? html`<span class="chip dark">${p.badge}</span>` : null}</div>
-      <div class="small" style="color:var(--n700)">${p.sub}</div></div></div>
-    <p>${p.desc}</p>
-    <dl class="facts4" style="margin:0">${facts.map(f => html`<div class="fact"><dt>${f[0]}</dt><dd>${f[1] || '—'}</dd></div>`)}</dl>
-    ${others.length ? html`<div class="row g8 wrapx">${others.map(s => html`<span class="tiny" style="background:var(--paper);border-radius:999px;padding:6px 12px"><b style="color:var(--ink)">${s[0]}:</b> ${s[1]}</span>`)}</div>` : null}
-    ${!it.oral ? html`<div class="setup">
-      <div class="lbl">Your setup</div>
-      ${p.sizes ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">Vial size</div>
-        <${Pills} label="Vial size" value=${it.sizeIdx} options=${p.sizes.map((s, i) => ({ v: i, label: s }))} onPick=${i => set(s => ({ sizeIdx: Object.assign({}, s.sizeIdx, { [p.id]: i }) }))} /></div>` : null}
-      ${it.bacOk ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">Bac water added</div>
-        <${Pills} label="Bac water" value=${it.bac} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { [p.id]: v }) }))} /></div>` : null}
-      <div class="okbox">${it.vial} vial + ${trimNum(it.water || 0, 2)}ml water = <b>${it.conc}</b></div>
-      <div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">Your first dose: draw to ${String(first.draw).split(' · ')[0]}</div>
-        <${Syringe} units=${first.units} /><div class="syr-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div></div>
-    </div>` : null}
-    <div class="stack g10"><div class="lbl">Dose ladder</div><${Ladder} rows=${it.rows} syringes=${!it.oral} /></div>
-    ${!it.oral ? html`<div class="panel" style="padding:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:16px;align-items:center">
-      <${BoxArt} goal=${p.goal} name=${p.name} compact />
-      <div class="stack g8"><div class="lbl">What arrives</div><h3 style="font-size:19px">${p.name} with free bac water</h3>
-        <p class="small">Your vial ships in an optml presentation box with its own vial of bacteriostatic water, so you can mix it the day it arrives. Nothing extra to buy.</p></div></div>` : null}
-    ${p.stacks && p.stacks.length ? html`<div class="stack g8"><div class="lbl">Commonly stacked with</div><div class="row g8 wrapx">${p.stacks.map(s => html`<span class="tiny" style="background:var(--paper);border-radius:999px;padding:6px 12px;color:var(--ink);font-weight:500">${s}</span>`)}</div></div>` : null}
-    ${p.note ? html`<div class="note">${p.note}</div>` : null}
-    <div class="row g8 wrapx">
-      <button type="button" class=${'btn ' + (added ? 'soft' : '')} onClick=${() => add(p.id)}>${added ? 'Remove from my plan' : html`<${Icon} name="plus" size=${16} /> Add to my plan`}</button>
-      ${!it.oral ? html`<button type="button" class="btn outline" onClick=${() => goSite(/thigh/i.test(it.site) ? 'thigh' : 'abdomen')}><${Icon} name="body" size=${16} /> Where to inject</button>` : null}
-      ${p.url ? html`<a class="btn ghost" href=${p.url} target="_blank" rel="noopener">Buy at optml <${Icon} name="ext" size=${16} /></a>` : null}
-    </div>
-    <p class="tiny muted">${DISCLAIMER}</p>
-  </div>`;
-}
-
-function StackBody({ st, set, add }) {
-  const w = st.bac.stack || BAC_BASE;
-  const phases = STACK.phases.map(ph => Object.assign({ title: ph.title }, scaleTable(ph, w, '')));
-  return html`<div class="sbody">
-    <p>${STACK.desc}</p>
-    <dl class="facts4" style="margin:0">${STACK.specs.map(s => html`<div class="fact"><dt>${s[0]}</dt><dd>${scaleSpec(s[0], s[1], w)}</dd></div>`)}</dl>
-    <div class="setup"><div class="lbl">Bac water added to each vial</div>
-      <${Pills} label="Bac water" value=${w} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { stack: v }) }))} /></div>
-    ${phases.map(ph => html`<div class="stack g8"><h3 style="font-size:17px">${ph.title}</h3>
-      <div class="tblwrap"><table class="tbl"><thead><tr>${ph.headers.map(h => html`<th scope="col">${h}</th>`)}</tr></thead>
-      <tbody>${ph.rows.map(r => html`<tr>${r.map(c => html`<td>${c}</td>`)}</tr>`)}</tbody></table></div></div>`)}
-    <div class="stack g8"><div class="lbl">Daily schedule</div>${STACK.schedule.map(s => html`<div class="note"><b style="color:var(--ink)">${s.when}</b> · ${s.what}</div>`)}</div>
-    <div class="note">${STACK.note}</div>
-    <div><button type="button" class="btn" onClick=${() => { add('stack'); set({ sheet: null }); }}>Add all four to my plan</button></div>
+      <div role="tabpanel" class="stack g16" style="margin-top:16px">
+        ${t === 'use' ? html`
+          <dl class="facts4" style="margin:0">${facts.map(f => html`<div class="fact"><dt>${f[0]}</dt><dd>${f[1] || '—'}</dd></div>`)}</dl>
+          <div class="stack g8"><div class="lbl">Dose ladder${it.bacOk ? ' · ' + trimNum(it.water, 2) + 'ml bac water' : ''}</div><${Ladder} rows=${it.rows} syringes=${!it.oral} /></div>
+          ${p.note ? html`<div class="note">${p.note}</div>` : null}
+          <div class="row g8 wrapx">${st.order.indexOf(p.id) > -1 ? html`<a class="btn soft" href="#/plan"><${Icon} name="check" size=${16} /> In My plan</a>`
+            : html`<button type="button" class="btn" onClick=${() => { set(s => ({ order: s.order.concat([p.id]), sizeIdx: Object.assign({}, s.sizeIdx, { [p.id]: idx }) })); flash && flash(p.name + ' added to My plan'); }}><${Icon} name="plus" size=${16} /> Add to My plan</button>`}
+            ${!it.oral ? html`<a class="btn outline" href="#/guide/sites"><${Icon} name="body" size=${16} /> Where to inject</a>` : null}</div>` : null}
+        ${t === 'mix' && !it.oral ? html`
+          ${it.bacOk ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">How much bac water are you adding?</div>
+            <${Pills} label="Bac water" value=${it.bac} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { [p.id]: v }) }))} /></div>` : null}
+          <div class="okbox">${it.vial} vial + ${trimNum(it.water || 0, 2)}ml water = <b>${it.conc}</b></div>
+          ${first && first.units !== null ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">First dose: draw to ${String(first.draw).split(' · ')[0]}</div><${Syringe} units=${first.units} /><div class="syr-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div></div>` : null}
+          <ol class="mixsteps">${[['Warm up', 'Vial and bac water out of the fridge for 10–15 minutes.'], ['Swab', 'Fresh alcohol swab on both stoppers. Let them dry.'], ['Add the water', 'Draw ' + trimNum(it.water || 2, 2) + 'ml of bac water and run it slowly down the inside wall of the vial.'], ['Roll, never shake', 'Roll gently until clear. Label with the date and refrigerate at 2–8°C.']].map((x, i) => html`<li><span class="n">${i + 1}</span><div><b>${x[0]}</b><p class="small">${x[1]}</p></div></li>`)}</ol>
+          <a class="btn outline" href="#/guide/measure">Open the dose calculator</a>` : null}
+        ${t === 'about' ? html`
+          <p>${p.desc}</p>
+          <div class="row g8 wrapx">${it.specs.filter(s => ['Frequency', 'Timing', 'Site', 'Duration'].indexOf(s[0]) === -1).map(s => html`<span class="tiny" style="background:var(--paper);border-radius:999px;padding:6px 12px"><b style="color:var(--ink)">${s[0]}:</b> ${s[1]}</span>`)}</div>
+          ${p.stacks && p.stacks.length ? html`<div class="stack g8"><div class="lbl">Commonly stacked with</div><div class="row g8 wrapx">${p.stacks.map(x => html`<span class="tiny" style="background:var(--paper);border-radius:999px;padding:6px 12px;color:var(--ink);font-weight:500">${x}</span>`)}</div></div>` : null}
+          <div class="note"><b style="color:var(--ink)">Storage:</b> ${SHOP_STORAGE}</div>
+          ${coa ? html`<a class="btn outline" href=${COA_BASE + coa[2]} target="_blank" rel="noopener">Certificate of analysis · ${coa[0]} · tested ${coa[1]}</a>` : null}
+          <p class="tiny muted">${DISCLAIMER}</p>` : null}
+      </div>` : null}
   </div>`;
 }
 
@@ -1420,19 +1812,17 @@ const ZONES = {
   ]
 };
 
-function BodyMap({ st, set }) {
+function BodyMap({ st, set, bare }) {
   const sel = st.site;
   const zones = ZONES[st.view];
   const info = SITE_INFO[sel];
   const pick = id => set({ site: id });
   const ordinal = id => SITE_ORDER.indexOf(id) + 1;
-  return html`<section class="blk" id="sites" aria-labelledby="h-sites"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">Injection sites</div><h2 id="h-sites">Where it goes</h2>
-      <p class="lead">Tap a highlighted area to see the angle, the needle and what to avoid. Almost every compound here is subcutaneous: the abdomen first, everything else for rotation.</p></div>
+  const body = html`
     <div class="panel" style="padding:clamp(16px,4vw,28px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:24px;align-items:start">
       <div class="stack g12" style="align-items:center">
         <div class="seg" role="group" aria-label="Body view"><button type="button" aria-pressed=${String(st.view === 'front')} onClick=${() => set({ view: 'front', site: st.view === 'front' ? sel : 'abdomen' })}>Front</button><button type="button" aria-pressed=${String(st.view === 'back')} onClick=${() => set({ view: 'back', site: st.view === 'back' ? sel : 'arm' })}>Back</button></div>
-        <svg viewBox="0 0 240 520" style="width:min(280px, 58vw);height:auto;display:block" role="group" aria-label=${'Body map, ' + st.view + ' view'}>
+        <svg viewBox="0 0 240 520" style="width:min(260px, 52vw);height:auto;display:block" role="group" aria-label=${'Body map, ' + st.view + ' view'}>
           <${Figure} back=${st.view === 'back'} />
           ${zones.map(z => { const on = z.id === sel; const info2 = SITE_INFO[z.id];
             return html`<g role="button" tabindex="0" aria-pressed=${String(on)} aria-label=${info2.name + ', ' + info2.route} style="cursor:pointer;outline:none"
@@ -1471,17 +1861,20 @@ function BodyMap({ st, set }) {
         <circle cx="110" cy="110" r="22" fill="none" stroke="#c8433f" stroke-width="1.5" stroke-dasharray="3 3" /><circle cx="110" cy="110" r="6" fill="#e0e2e6" />
         ${[[110, 44], [157, 63], [176, 110], [157, 157], [110, 176], [63, 157], [44, 110], [63, 63]].map((c, i) => html`<circle cx=${c[0]} cy=${c[1]} r="16" fill="#222326" /><text x=${c[0]} y=${c[1] + 5} text-anchor="middle" style="font:600 14px Onest,sans-serif;fill:#fff">${i + 1}</text>`)}
       </svg>
-    </div>
-  </div></section>`;
+    </div>`;
+  if (bare) return body;
+  return html`<section class="blk" id="sites"><div class="wrap">${body}</div></section>`;
 }
 
 // ---------- Guide ----------
 
 const CHAPTERS = [
-  { key: 'mix', title: 'Mix', h: 'Reconstitute a vial', p: 'Follow these in order and you cannot go wrong. The whole thing takes under five minutes.' },
-  { key: 'measure', title: 'Measure', h: 'Read the syringe, then do the maths', p: 'One unit on an insulin syringe is 0.01ml. The calculator turns any vial and dose into units.' },
-  { key: 'inject', title: 'Inject', h: 'Inject cleanly and calmly', p: 'Nearly every compound here is subcutaneous: into the fat just under the skin, not the muscle.' },
-  { key: 'store', title: 'Store', h: 'Store it and dispose of sharps', p: 'Heat, light and freeze-thaw cycles are what degrade peptides. Sharps never go in the bin.' }
+  { key: 'mix', title: 'Mix', h: 'Mix a vial', p: 'Under five minutes, using the bac water that comes in the box.' },
+  { key: 'measure', title: 'Measure', h: 'Read the syringe and calculate a dose', p: 'One unit on an insulin syringe is 0.01ml. The calculator turns any vial and dose into units.' },
+  { key: 'inject', title: 'Inject', h: 'Inject cleanly and calmly', p: 'Nearly every compound here goes just under the skin (subcutaneous), not into muscle.' },
+  { key: 'sites', title: 'Sites', h: 'Where to inject', p: 'Tap a highlighted area for the angle, the needle and what to avoid.' },
+  { key: 'store', title: 'Store', h: 'Storage and sharps', p: 'Heat, light and freeze-thaw cycles degrade peptides. Sharps never go in the bin.' },
+  { key: 'faq', title: 'FAQ', h: 'Supplies and common questions', p: 'What you need on hand, and the questions people ask most.' }
 ];
 
 function Calculator({ st, set }) {
@@ -1565,71 +1958,40 @@ function TCards({ items }) {
   return html`<div class="tcards">${items.map(c => html`<div class="tcard"><h4>${c.title}</h4><p class="small">${c.body}</p>${c.meta ? html`<div class="meta">${c.meta}</div>` : null}</div>`)}</div>`;
 }
 
-function Guide({ st, set }) {
-  const ch = CHAPTERS[st.chapter] || CHAPTERS[0];
-  const go = i => { set({ chapter: i }); const el = document.getElementById('guide'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
-  return html`<section class="blk" id="guide" aria-labelledby="h-guide"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">Start here</div><h2 id="h-guide">Get it right the first time</h2>
-      <p class="lead">Four short chapters. Read them once before your first injection and keep the PDF handy after that.</p></div>
-    <div class="chap-nav" role="tablist" aria-label="Guide chapters">${CHAPTERS.map((c, i) => html`<button type="button" role="tab" aria-selected=${String(i === st.chapter)} aria-current=${i === st.chapter ? 'step' : null} onClick=${() => set({ chapter: i })}><span class="n">${i + 1}</span>${c.title}</button>`)}</div>
-    <div class="progress" aria-hidden="true"><div style=${'width:' + ((st.chapter + 1) / CHAPTERS.length * 100) + '%'}></div></div>
+function Guide({ st, set, chapter }) {
+  const ci = Math.max(0, CHAPTERS.findIndex(c => c.key === chapter));
+  const ch = CHAPTERS[ci];
+  const go = i => { location.hash = '#/guide/' + CHAPTERS[i].key; };
+  useEffect(() => { const el = document.querySelector('.chap-nav [aria-current="step"]'); if (el && el.scrollIntoView) el.scrollIntoView({ inline: 'center', block: 'nearest' }); }, [ci]);
+  return html`<div class="wrap page">
+    <div class="page-head"><div class="eyebrow">How to use</div><h1>Get it right the first time</h1></div>
+    <div class="chap-nav" role="tablist" aria-label="Guide chapters">${CHAPTERS.map((c, i) => html`<button type="button" role="tab" aria-selected=${String(i === ci)} aria-current=${i === ci ? 'step' : null} onClick=${() => go(i)}><span class="n">${i + 1}</span>${c.title}</button>`)}</div>
+    <div class="progress" aria-hidden="true"><div style=${'width:' + ((ci + 1) / CHAPTERS.length * 100) + '%'}></div></div>
     <div role="tabpanel" aria-label=${ch.title}>
       <h3 style="font-size:clamp(24px,5vw,30px)">${ch.h}</h3><p class="muted" style="margin:6px 0 16px;max-width:62ch">${ch.p}</p>
       ${ch.key === 'mix' ? html`<div class="steps">${STEPS.map(s => html`<div class="stepc"><span class="n">${s.n}</span><div><h4>${s.title}</h4><p class="small">${s.body}</p><div class="tip">${s.tip}</div></div></div>`)}</div><${GlassVisual} />` : null}
       ${ch.key === 'measure' ? html`<${SyringeReading} /><${Calculator} st=${st} set=${set} />` : null}
-      ${ch.key === 'inject' ? html`<${AngleVisual} /><${TCards} items=${TABS.technique} /><${NeedleVisual} /><${TCards} items=${TABS.types} />
-        <div class="note" style="margin-top:12px">Not sure where to inject? <a href="#sites" style="font-weight:600">Open the body map</a> to see every site, the angle and what to avoid.</div>` : null}
+      ${ch.key === 'inject' ? html`<${AngleVisual} /><${TCards} items=${TABS.technique} /><${NeedleVisual} /><${TCards} items=${TABS.types} />` : null}
+      ${ch.key === 'sites' ? html`<${BodyMap} st=${st} set=${set} bare />` : null}
       ${ch.key === 'store' ? html`<${TCards} items=${STORAGE} />` : null}
+      ${ch.key === 'faq' ? html`<${SuppliesFaq} bare />` : null}
     </div>
     <div class="chap-foot">
-      <button type="button" class="btn outline" disabled=${st.chapter === 0} onClick=${() => go(st.chapter - 1)}><${Icon} name="back" size=${16} /> Back</button>
-      ${st.chapter < CHAPTERS.length - 1 ? html`<button type="button" class="btn" onClick=${() => go(st.chapter + 1)}>Next: ${CHAPTERS[st.chapter + 1].title} <${Icon} name="arrow" size=${16} /></button>`
-        : html`<a class="btn" href="#build">Build a protocol <${Icon} name="arrow" size=${16} /></a>`}
+      <button type="button" class="btn outline" disabled=${ci === 0} onClick=${() => go(ci - 1)}><${Icon} name="back" size=${16} /> Back</button>
+      ${ci < CHAPTERS.length - 1 ? html`<button type="button" class="btn" onClick=${() => go(ci + 1)}>Next: ${CHAPTERS[ci + 1].title} <${Icon} name="arrow" size=${16} /></button>`
+        : html`<a class="btn" href="#/">Back to the price list</a>`}
     </div>
-  </div></section>`;
+  </div>`;
 }
 
-function SuppliesFaq() {
-  return html`<section class="blk" id="faq" aria-labelledby="h-faq"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">Supplies and questions</div><h2 id="h-faq">What you need, and what people ask</h2></div>
+function SuppliesFaq({ bare }) {
+  return html`<div>
     <div class="tcards" style="margin-top:0">${SUPPLIES.map(s => html`<div class="tcard"><div class="lbl">${s.spec}</div><h4>${s.title}</h4><p class="small">${s.body}</p>${s.href ? html`<a class="small" style="font-weight:600;margin-top:auto" href=${s.href} target="_blank" rel="noopener">${s.linkLabel}</a>` : null}</div>`)}</div>
     <div style="margin-top:28px;border-top:1px solid var(--n200)">${FAQS.map(f => html`<details class="faq"><summary>${f.q}</summary><p>${f.a}</p></details>`)}</div>
-  </div></section>`;
+  </div>`;
 }
 
 // ================= Builder: plan details, compound editors, titration, sharing =================
-
-const BOX_COLOR = { restore: '#5560d4', weight: '#ff8787', glow: '#ffc3d6', energy: '#ff7848', growth: '#92e8a6', edge: '#febffc', vitality: '#f0ea6a', sleep: '#d0b3ff', custom: '#cfd2d7' };
-const BOX_INK = { restore: '#ffffff', energy: '#222326' };
-
-// Vector "what arrives" box, coloured by goal: the compound vial plus a free bac water vial.
-function BoxArt({ goal, name, compact }) {
-  const c = BOX_COLOR[goal] || BOX_COLOR.custom;
-  const ink = BOX_INK[goal] || '#222326';
-  const vial = (x, label1, label2, frosted) => html`<g>
-    <rect x=${x + 6} y="150" width="36" height="12" rx="3" fill="#c9ccd2" /><rect x=${x + 9} y="160" width="30" height="10" fill="#e1e3e7" />
-    <path d=${`M${x} 176 Q${x} 168 ${x + 8} 168 L${x + 40} 168 Q${x + 48} 168 ${x + 48} 176 L${x + 48} 252 Q${x + 48} 260 ${x + 40} 260 L${x + 8} 260 Q${x} 260 ${x} 252 Z`} fill=${frosted ? '#f1f3f6' : '#e9eef3'} stroke="#c9ccd2" stroke-width="1.2" />
-    <rect x=${x + 3} y="190" width="42" height="52" rx="3" fill="#ffffff" />
-    <text x=${x + 7} y="205" style="font:700 10px Onest,sans-serif;fill:#222326">optml</text>
-    <text x=${x + 6} y="218" style="font:600 5.2px Onest,sans-serif;fill:#3f4147">${label1}</text>
-    <text x=${x + 6} y="226" style="font:600 5.2px Onest,sans-serif;fill:#3f4147">${label2}</text>
-  </g>`;
-  const short = String(name || 'Your compound');
-  const l1 = short.length > 13 ? short.slice(0, 13) : short;
-  const l2 = short.length > 13 ? short.slice(13, 26) : '';
-  return html`<svg viewBox="0 0 320 290" style=${'width:100%;max-width:' + (compact ? 240 : 320) + 'px;height:auto;display:block'} role="img" aria-label=${'Presentation box with a vial of ' + short + ' and a free vial of bacteriostatic water'}>
-    <defs><linearGradient id=${'lid-' + goal} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color=${c} /><stop offset="1" stop-color=${c} stop-opacity=".82" /></linearGradient></defs>
-    <rect x="22" y="8" width="276" height="118" rx="10" fill=${'url(#lid-' + goal + ')'} />
-    <text x="40" y="40" style=${'font:700 22px Onest,sans-serif;letter-spacing:-.02em;fill:' + ink}>optml</text>
-    <text x="282" y="38" text-anchor="end" style=${'font:600 10px Onest,sans-serif;fill:' + ink}>stayoptml.com</text>
-    <rect x="40" y="86" width=${(GOAL_LABELS[goal] || 'custom').length * 7 + 22} height="22" rx="11" fill="#ffffff" opacity=".92" />
-    <text x="51" y="101" style="font:600 11px Onest,sans-serif;fill:#222326">${(GOAL_LABELS[goal] || 'custom').toLowerCase()}</text>
-    <rect x="14" y="122" width="292" height="160" rx="10" fill=${c} />
-    <rect x="30" y="136" width="260" height="132" rx="6" fill="#f6f7f9" />
-    ${vial(88, 'Bacteriostatic', 'Water', false)}
-    ${vial(184, l1, l2, true)}
-  </svg>`;
-}
 
 function TitrationEditor({ m, onChange }) {
   const L = computeLadder(m);
@@ -1720,7 +2082,7 @@ function Builder({ st, set, items, act }) {
       <p class="lead">Pick from the range or add anything that is not on the list, set weekly doses and titrations, then export a client-ready PDF or send a link with a built-in daily tracker.</p></div>
     ${st.shared ? html`<div class="banner"><b style="color:var(--ink);font-size:17px">${st.client ? 'Protocol for ' + st.client : 'A protocol was shared with you'}${st.by ? ' · prepared by ' + st.by : ''}</b>
       <p class="small">Everything below is your plan. Your daily tracker is at the top of the page, and you can export the full PDF guide any time.</p>
-      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Export PDF</button><a class="btn sm outline" href="#today">Open my tracker</a>
+      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Export PDF</button><a class="btn sm outline" href="#/plan">Open my tracker</a>
       ${act.hasPrev ? html`<button type="button" class="btn sm ghost" onClick=${act.restorePrev}>Restore my previous draft</button>` : null}</div></div>` : null}
 
     <div class="bstep"><span class="n">1</span><div class="stack g12"><div><h3>Who it is for</h3><p class="small muted">Appears on the cover of the PDF and in the shared link.</p></div>
@@ -1735,7 +2097,7 @@ function Builder({ st, set, items, act }) {
     <div class="bstep"><span class="n">2</span><div class="stack g16"><div><h3>Compounds and doses</h3><p class="small muted">Tap to add from the range. Switch any compound to your own titration, or add one that is not on the list.</p></div>
       <div class="picker" role="group" aria-label="Add compounds from the range">${PRODUCTS.map(p => { const on = st.order.indexOf(p.id) > -1; return html`<button type="button" class="pill" aria-pressed=${String(on)} onClick=${() => act.add(p.id)}><img src=${GOAL_ICONS[p.goal]} alt="" />${p.name}</button>`; })}</div>
       <div class="row g8 wrapx"><button type="button" class="btn outline" onClick=${act.addCustom}><${Icon} name="plus" size=${16} /> Add a compound not on the list</button>
-        <button type="button" class="btn ghost" onClick=${() => act.add('stack')}>Add the recomp stack</button></div>
+        <button type="button" class="btn ghost" onClick=${() => act.add('stack')}>Add the metabolic recomp stack</button></div>
       ${items.length ? html`<div class="stack g10">${items.map(it => html`<${ItemEditor} key=${it.key} it=${it} st=${st} set=${set} act=${act} />`)}</div>`
         : html`<div class="empty">Nothing in the plan yet. Tap a compound above, add one from the catalogue, or add a custom compound.</div>`}
     </div></div>
@@ -1924,7 +2286,7 @@ function Ring({ done, total }) {
   </div>`;
 }
 
-function Tracker({ st, set, items }) {
+function Tracker({ st, set, items, onReorder }) {
   const [tr, setTr] = useState(() => loadTrack(st.planId));
   const [dayOff, setDayOff] = useState(0);
   useEffect(() => { setTr(loadTrack(st.planId)); }, [st.planId]);
@@ -1932,12 +2294,12 @@ function Tracker({ st, set, items }) {
   const start = parseDay(st.start);
   const t0 = today0();
   if (!start) {
-    return html`<section class="blk" id="today" aria-labelledby="h-today"><div class="wrap"><div class="banner">
-      <div class="eyebrow">Your protocol</div><h2 id="h-today" style="font-size:28px">Ready when you are</h2>
+    return html`<div><div class="banner">
+      <div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h2 id="h-today" style="font-size:28px">Ready when you are</h2>
       <p class="small">Set a start date and this becomes a daily tracker: what to take today, what to draw, where to inject next and when to reorder.</p>
       <div class="row g8 wrapx"><button type="button" class="btn" onClick=${() => set({ start: isoDay(t0) })}>Start today</button>
         <label class="row g8"><span class="small" style="font-weight:600;color:var(--ink)">or pick a date</span><input class="input" style="width:auto" type="date" value=${st.start} onInput=${e => set({ start: e.target.value })} /></label></div>
-    </div></div></section>`;
+    </div></div>`;
   }
   const day = addDays(t0, dayOff);
   const dk = isoDay(day);
@@ -1970,9 +2332,9 @@ function Tracker({ st, set, items }) {
     const age = daysBetween(parseDay(mixedOn), t0);
     return { it, vialAmt, used, left, age, pct: vialAmt > 0 ? Math.max(0, Math.min(1, 1 - used / vialAmt)) : 0, low: (left !== null && left <= 3) || age > 28 };
   });
-  return html`<section class="blk" id="today" aria-labelledby="h-today"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">${st.client ? st.client + "'s protocol" : 'Your protocol'}</div><h2 id="h-today">${di < 0 ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h2>
-      <p class="lead">${di < 0 ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before and check your supplies.' : 'Week ' + wk + ' · day ' + (di + 1) + '. Tick each dose as you take it. Your next site is suggested for you.'}</p></div>
+  return html`<div>
+    <div class="page-head"><div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h1 id="h-today">${di < 0 ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h1>
+      <p class="muted">${di < 0 ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before.' : 'Week ' + wk + ' · day ' + (di + 1) + '. Tick each dose as you take it.'}</p></div>
     <div class="banner" style="gap:16px">
       <div class="row g16"><${Ring} done=${done} total=${doses.length} />
         <div class="grow">${next ? html`<div class="lbl">Up next</div><div style="font-size:21px;font-weight:700;color:var(--ink);line-height:1.2">${next.it.name}</div><div class="small">${next.slot} · ${next.w.dose}${next.units !== null ? ' · draw ' + String(next.w.draw).split(' · ')[0] : ''}</div>${!next.it.oral ? html`<div class="tiny muted" style="margin-top:2px">Inject at: <b style="color:var(--ink)">${suggested}</b></div>` : null}`
@@ -1999,98 +2361,123 @@ function Tracker({ st, set, items }) {
         <div class="tiny muted">Mixed ${s.age <= 0 ? 'today' : s.age + ' day' + (s.age === 1 ? '' : 's') + ' ago'} · use within 4 weeks of mixing</div>
         ${s.low ? html`<div class="warn tiny">${s.age > 28 ? 'This vial has been mixed for over four weeks. Start a fresh one.' : 'Running low. Reorder now so you do not miss a dose.'}</div>` : null}
         <div class="row g8 wrapx"><button type="button" class="btn sm outline" onClick=${() => saveTr(Object.assign({}, tr, { mixed: Object.assign({}, tr.mixed, { [s.it.key]: dk }) }))}>I mixed a new vial</button>
-          ${s.it.p && s.it.p.url ? html`<a class="btn sm soft" href=${s.it.p.url} target="_blank" rel="noopener">Reorder</a>` : html`<a class="btn sm soft" href=${SHOP_URL} target="_blank" rel="noopener">Shop</a>`}</div>
+          ${s.it.p && PROTOCOL_SKUS[s.it.p.id] ? html`<button type="button" class="btn sm soft" onClick=${() => onReorder(PROTOCOL_SKUS[s.it.p.id][s.it.sizeIdx || 0] || PROTOCOL_SKUS[s.it.p.id].filter(Boolean)[0])}>Reorder</button>` : null}</div>
       </div>`)}</div>` : null}
     <label class="field" style="margin-top:20px"><span>How do you feel? (energy, sleep, appetite, side effects)</span><textarea class="textarea" placeholder="Saved on this device with the day's doses." value=${(tr.notes || {})[dk] || ''} onInput=${e => saveTr(Object.assign({}, tr, { notes: Object.assign({}, tr.notes, { [dk]: e.target.value }) }))}></textarea></label>
-  </div></section>`;
+  </div>`;
 }
 
-function Hero({ items }) {
-  return html`<section class="hero"><div class="wrap">
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:clamp(20px,4vw,40px);align-items:center">
-      <div class="stack g16">
-        <div class="eyebrow">World Peptide Dosage Association</div>
-        <h1>Every protocol, in plain numbers.</h1>
-        <p class="lead">Exact units to draw for every compound in the optml range, how to mix and inject, and a builder that turns any plan into a client-ready PDF with a daily tracker.</p>
+
+// ---------- Routing ----------
+function parseRoute() {
+  const h = location.hash || '';
+  if (h.startsWith('#/p/')) { const parts = h.slice(4).split('/'); return { page: 'product', sku: decodeURIComponent(parts[0]).toUpperCase(), tab: parts[1] || '' }; }
+  if (h.startsWith('#/guide')) return { page: 'guide', chapter: h.split('/')[2] || 'mix' };
+  const m = h.match(/^#\/(order|plan|build|coa)$/);
+  if (m) return { page: m[1] };
+  return { page: 'shop' };
+}
+
+function ShopHero() {
+  return html`<section class="shero"><div class="wrap">
+    <div class="shero-grid">
+      <div class="stack g12">
+        <div class="eyebrow">${WHOLESALE ? 'optml wholesale' : 'optml price list'}</div>
+        <h1>Research-grade peptides, properly tested.</h1>
+        <p class="lead">${WHOLESALE ? 'Your confirmed wholesale rates. Add what you need and send it as one order on WhatsApp.' : 'Free bac water, a batch-matched certificate and a step-by-step guide with every vial.'}</p>
+        <div class="scrollx"><span class="chip soft">Free bac water in every box</span><span class="chip soft">98%+ purity</span><span class="chip soft">Free shipping over $200</span></div>
+        <div class="tiny muted"><${ShipCountdown} /></div>
       </div>
-      <figure style="margin:0;position:relative;border-radius:var(--r-xl);overflow:hidden;background:#cfe0f7;aspect-ratio:1400/1128">
-        <img src="assets/brand/hero-vials-web.jpg" alt="Three optml vials, each with a printed label, batch number and QR code" style="width:100%;height:100%;object-fit:cover;display:block" fetchpriority="high" />
-        <figcaption style="position:absolute;left:14px;bottom:14px;right:14px;display:flex;gap:8px;flex-wrap:wrap"><span class="chip" style="background:rgba(255,255,255,.9)">Free bac water with every vial</span><span class="chip" style="background:rgba(255,255,255,.9)">Batch-numbered</span></figcaption>
-      </figure>
+      <figure class="shero-img"><img src="assets/brand/hero-vials-web.jpg" alt="optml vials with printed labels, batch numbers and QR codes" fetchpriority="high" /></figure>
     </div>
-    <nav class="paths" aria-label="Where to start">
-      ${items.length ? html`<a class="path" href="#today" style="background:var(--wash)"><span class="num">★</span><div><h3>Your protocol today</h3><p class="small">What to take, what to draw and where to inject next.</p><span class="go">Open my tracker →</span></div></a>` : null}
-      <a class="path" href="#guide"><span class="num">1</span><div><h3>New to this?</h3><p class="small">Mix, measure, inject and store. Four short chapters, five minutes.</p><span class="go">Start the guide →</span></div></a>
-      <a class="path" href="#compounds"><span class="num">2</span><div><h3>Know what you're running?</h3><p class="small">Find your compound and see exactly what to draw each week.</p><span class="go">Find a compound →</span></div></a>
-      <a class="path" href="#build"><span class="num">3</span><div><h3>Building a plan?</h3><p class="small">Pick compounds or add your own, set titrations, export a PDF.</p><span class="go">Open the builder →</span></div></a>
-    </nav>
-    <div class="disclaimer"><span style="width:8px;height:8px;border-radius:50%;background:var(--ink);flex:none;margin-top:7px"></span><p>${DISCLAIMER}</p></div>
   </div></section>`;
 }
 
-function BoxSection() {
-  const points = [
-    ['Free bacteriostatic water', 'Every vial ships with its own bac water, so there is nothing extra to source. Most people expect to buy it separately.'],
-    ['A presentation box, not a zip bag', 'Each order arrives in a magnetic optml box with a fitted insert that holds the vial and the water upright.'],
-    ['Labelled for the fridge', 'Every label carries the compound, storage instructions (2–8°C, protect from light) and a batch number.'],
-    ['Made to work with this guide', 'Mix with the water in the box, then use the cards here for exact units and the tracker for every dose.']
-  ];
-  return html`<section class="blk" id="box" aria-labelledby="h-box"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">In every box</div><h2 id="h-box">What arrives at your door</h2>
-      <p class="lead">Your compound and the bacteriostatic water to mix it, together in one box. No hunting for bac water, no guesswork.</p></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;align-items:stretch">
-      <figure style="margin:0;border-radius:var(--r-xl);overflow:hidden;background:#1d1b1c;position:relative"><img src="assets/brand/box-closed.jpg" alt="Closed optml presentation box in blue with the restore goal badge and the words Recovery and Regenerative Research" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" /></figure>
-      <figure style="margin:0;border-radius:var(--r-xl);overflow:hidden;background:#eef0f6;position:relative"><img src="assets/brand/box-insert.jpg" alt="Open box showing a vial of optml Bacteriostatic Water beside a vial of Wolverine Stack in a white insert" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" />
-        <figcaption style="position:absolute;left:14px;top:14px"><span class="chip dark">Bac water included free</span></figcaption></figure>
-    </div>
-    <div class="tcards" style="grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))">${points.map((p, i) => html`<div class="tcard"><span class="n" style="width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${i + 1}</span><h4>${p[0]}</h4><p class="small">${p[1]}</p></div>`)}</div>
+function HowItWorks() {
+  const steps = [['Order', 'Tap packs, then send your order on WhatsApp. We confirm and send payment details.'], ['Unbox', 'Your vial arrives with a free vial of bac water to mix it.'], ['Follow your guide', 'Your plan appears under My plan: exact draws, sites and a daily tracker.']];
+  return html`<section class="wrap" aria-label="How it works" style="margin-top:18px"><div class="hiw">${steps.map((x, i) => html`<div class="hiw-step"><span class="n">${i + 1}</span><div><b>${x[0]}</b><p class="tiny muted">${x[1]}</p></div></div>`)}</div></section>`;
+}
+
+function BoxStrip() {
+  return html`<section class="wrap" aria-label="What arrives" style="margin-top:22px"><div class="boxstrip">
+    <figure><img src="assets/brand/box-insert.jpg" alt="Open optml box with a vial of Bacteriostatic Water beside a vial of Wolverine Stack" loading="lazy" /></figure>
+    <div class="stack g8" style="justify-content:center"><div class="lbl">In every box</div><b style="font-size:19px;color:var(--ink);line-height:1.25">Your vial, plus the bac water to mix it. Free.</b>
+      <p class="small muted">Most people expect to buy bacteriostatic water separately. With optml it's already in the box, with a fitted insert and fridge-ready labels.</p></div>
   </div></section>`;
 }
 
-function Header({ items }) {
+function Header({ route, count, total, planCount }) {
+  const cur = p => (route.page === p || (p === 'shop' && route.page === 'product')) ? 'page' : null;
   return html`<header class="top screen"><div class="wrap inner">
-    <a href="#" aria-label="WPDA protocol hub, back to top" style="justify-self:start"><img class="logo" src="assets/brand/wordmark-dark.svg" alt="World Peptide Dosage Association" /></a>
-    <a class="btn sm plan" href="#build" aria-label=${'My plan, ' + items.length + ' compounds'}>My plan <span class="count">${items.length}</span></a>
-    <nav aria-label="Sections">${items.length ? html`<a href="#today">Today</a>` : null}<a href="#compounds">Compounds</a><a href="#sites">Injection sites</a><a href="#guide">Guide</a><a href="#box">In the box</a><a href="#faq">FAQ</a><a href="#build">Build and export</a></nav>
+    <a href="#/" aria-label="optml price list home" style="justify-self:start;display:flex;align-items:center;gap:10px;text-decoration:none"><img class="logo" src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:22px" /></a>
+    <a class="btn sm plan" href="#/order" aria-label=${'Order, ' + count + ' packs'}>${count ? money(total) : 'Order'} <span class="count">${count}</span></a>
+    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan${planCount ? ' · ' + planCount : ''}</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
   </div></header>`;
 }
 
+function TabBar({ route, count, planCount }) {
+  const tabs = [['shop', '#/', 'Shop', 'shop'], ['guide', '#/guide', 'How to use', 'book'], ['plan', '#/plan', 'My plan', 'plan'], ['order', '#/order', 'Order', 'bag']];
+  return html`<nav class="tabbar screen" aria-label="Pages">${tabs.map(t => { const on = route.page === t[0] || (t[0] === 'shop' && route.page === 'product');
+    return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><${Icon} name=${t[3]} size=${22} />${t[2]}${t[0] === 'order' && count ? html`<span class="dot">${count}</span>` : t[0] === 'plan' && planCount ? html`<span class="dot soft">${planCount}</span>` : null}</a>`; })}</nav>`;
+}
+
+function PlanPage({ st, set, items, onReorder }) {
+  if (!items.length) return html`<div class="wrap page"><div class="page-head"><div class="eyebrow">My plan</div><h1>Your guide lives here</h1></div>
+    <div class="empty" style="text-align:left;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink);font-size:17px">Order something and your personal guide appears here automatically.</b>
+      <p class="small">Exact units to draw for everything you bought, how to mix it, where to inject, a daily tracker and a PDF to keep.</p>
+      <div class="row g8 wrapx"><a class="btn sm" href="#/">Browse the price list</a><a class="btn sm outline" href="#/build">Build a protocol yourself</a></div></div></div>`;
+  return html`<div class="wrap page narrow">
+    <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
+    <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
+      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button><a class="btn sm outline" href="#/build">Edit plan</a><a class="btn sm ghost" href="#/guide">How to use</a></div></div>
+  </div>`;
+}
+
 function Footer() {
-  return html`<footer class="foot screen"><div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:32px">
-    <div class="stack g16"><img src="assets/brand/wordmark-light.svg" alt="World Peptide Dosage Association" style="height:32px;width:auto;align-self:flex-start" /><p>Independent dosage and handling reference for research peptides. Not affiliated with any regulatory body.</p></div>
-    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Support</div><a href=${'mailto:' + CONTACT}>${CONTACT}</a><a href="https://stayoptml.com/" target="_blank" rel="noopener">stayoptml.com</a></div>
-    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">On this page</div><a href="#compounds">Compounds</a><a href="#sites">Injection sites</a><a href="#guide">Guide</a><a href="#build">Build and export</a></div>
-    <p class="tiny" style="grid-column:1/-1;border-top:1px solid rgba(255,255,255,.14);padding-top:20px;color:rgba(255,255,255,.6)">${DISCLAIMER} All compounds referenced are supplied for research use.</p>
+  return html`<footer class="foot screen"><div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:28px">
+    <div class="stack g12"><img src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:22px;width:auto;align-self:flex-start;filter:invert(1)" /><p>Research-grade peptides with free bac water and a batch-matched certificate. Guides by the World Peptide Dosage Association.</p></div>
+    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Contact</div><a href=${'https://wa.me/' + WA_NUMBER} target="_blank" rel="noopener">WhatsApp</a><a href=${'mailto:' + CONTACT}>${CONTACT}</a></div>
+    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Pages</div><a href="#/">Price list</a><a href="#/guide">How to use</a><a href="#/coa">Certificates</a><a href="#/build">Build a protocol</a></div>
+    <p class="tiny" style="grid-column:1/-1;border-top:1px solid rgba(255,255,255,.14);padding-top:18px;color:rgba(255,255,255,.6)">Supplied for laboratory research use. ${DISCLAIMER}</p>
   </div></footer>`;
 }
 
 function App() {
   const [st, setSt] = useState(loadState);
   const set = patch => setSt(s => Object.assign({}, s, typeof patch === 'function' ? patch(s) : patch));
+  const [sh, setShRaw] = useState(loadShop);
+  const setSh = patch => setShRaw(s => Object.assign({}, s, typeof patch === 'function' ? patch(s) : patch));
+  const [route, setRoute] = useState(parseRoute);
+  const [ptab, setPtab] = useState('use');
+  const [toast, setToast] = useState('');
   const items = planItems(st);
+  const o = computeOrder(sh, Date.now());
   const [hasPrev, setHasPrev] = useState(() => { try { return !!localStorage.getItem('wpda-hub-prev'); } catch (e) { return false; } });
 
   useEffect(() => {
+    const on = () => { setRoute(parseRoute()); setPtab('use'); window.scrollTo({ top: 0, behavior: 'instant' }); };
+    window.addEventListener('hashchange', on);
     if (st.shared) {
       try {
         const raw = localStorage.getItem(STORE_KEY);
         if (raw) { const prev = JSON.parse(raw); if (prev.planId && prev.planId !== st.planId && prev.order && prev.order.length) { localStorage.setItem('wpda-hub-prev', raw); setHasPrev(true); } }
-        history.replaceState(null, '', location.pathname + location.search);
       } catch (e) {}
-      setTimeout(() => { const el = document.getElementById('today') || document.getElementById('build'); if (el) el.scrollIntoView({ block: 'start' }); }, 120);
+      location.replace('#/plan');
     }
+    return () => window.removeEventListener('hashchange', on);
   }, []);
-  useEffect(() => {
-    try { const o = {}; PERSIST.forEach(k => { o[k] = st[k]; }); localStorage.setItem(STORE_KEY, JSON.stringify(o)); } catch (e) {}
-  }, PERSIST.map(k => st[k]));
-  useEffect(() => { document.body.classList.toggle('has-tray', items.length > 0); }, [items.length]);
-  useEffect(() => { const h = () => set({ sheet: null }); window.addEventListener('beforeprint', h); return () => window.removeEventListener('beforeprint', h); }, []);
+  useEffect(() => { try { const x = {}; PERSIST.forEach(k => { x[k] = st[k]; }); localStorage.setItem(STORE_KEY, JSON.stringify(x)); } catch (e) {} }, PERSIST.map(k => st[k]));
+  useEffect(() => { try { const x = {}; SHOP_SAVED.forEach(k => { x[k] = sh[k]; }); localStorage.setItem(SHOP_KEY, JSON.stringify(x)); } catch (e) {} }, SHOP_SAVED.map(k => sh[k]));
 
+  const flash = m => { setToast(m); clearTimeout(window.__tt); window.__tt = setTimeout(() => setToast(''), 1800); };
+  const bump = (key, d) => {
+    setSh(s => { const cart = Object.assign({}, s.cart); cart[key] = (cart[key] || 0) + d; if (cart[key] <= 0) delete cart[key]; return { cart, sent: false }; });
+    if (d > 0) { const b = key.split(':'); const p = SHOP_BY_SKU[b[0]]; if (p) flash('Added ' + p.name + ' · ' + (b[1] === '1' ? '1 vial' : b[1] + ' vials')); }
+  };
   const act = {
     add: id => set(s => {
       if (id === 'stack') {
-        const ids = ['reta', 'tesa', 'mots', 'klow'];
-        const w = s.bac.stack || BAC_BASE;
+        const ids = ['reta', 'tesa', 'mots', 'klow']; const w = s.bac.stack || BAC_BASE;
         return { order: s.order.concat(ids.filter(x => s.order.indexOf(x) === -1)), sizeIdx: Object.assign({}, s.sizeIdx, { reta: 1 }), bac: Object.assign({}, s.bac, { reta: w, tesa: w, mots: w, klow: w }) };
       }
       return s.order.indexOf(id) > -1 ? { order: s.order.filter(x => x !== id) } : { order: s.order.concat([id]) };
@@ -2115,23 +2502,34 @@ function App() {
     hasPrev: hasPrev && st.shared,
     restorePrev: () => { try { const prev = JSON.parse(localStorage.getItem('wpda-hub-prev')); localStorage.removeItem('wpda-hub-prev'); setHasPrev(false); set(Object.assign({}, prev, { shared: false })); } catch (e) {} }
   };
-  const goSite = key => { set({ sheet: null, site: key, view: 'front' }); setTimeout(() => { const el = document.getElementById('sites'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); };
+  // After an order is sent: build "My plan" from exactly what was ordered.
+  const onSent = orderItems => {
+    setSh(s => ({ sent: true, lastOrder: { cart: s.cart, ref: s.ref, at: Date.now() } }));
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 30);
+    set(s => {
+      const order = s.order.slice(); const sizeIdx = Object.assign({}, s.sizeIdx);
+      orderItems.forEach(it => { const m = SKU_PROTOCOL[it.p.sku]; if (!m) return; if (order.indexOf(m[0]) === -1) order.push(m[0]); sizeIdx[m[0]] = m[1]; });
+      return { order, sizeIdx, client: s.client || sh.name.trim() };
+    });
+  };
+  const reorder = sku => { if (!sku) return; bump(sku + ':1', 1); location.hash = '#/order'; };
+  const planReady = o.items.some(it => SKU_PROTOCOL[it.p.sku]);
 
-  return html`<${Header} items=${items} />
-    <main class="screen" id="main">
-      <${Hero} items=${items} />
-      ${items.length ? html`<${Tracker} st=${st} set=${set} items=${items} />` : null}
-      <${Catalogue} st=${st} set=${set} add=${act.add} />
-      <${BoxSection} />
-      <${BodyMap} st=${st} set=${set} />
-      <${Guide} st=${st} set=${set} />
-      <${SuppliesFaq} />
-      <${Builder} st=${st} set=${set} items=${items} act=${act} />
-    </main>
-    <${Doc} st=${st} items=${items} />
+  let page;
+  if (route.page === 'product') page = html`<${ProductPage} sku=${route.sku} st=${st} set=${set} sh=${sh} bump=${bump} tab=${ptab} setTab=${setPtab} flash=${flash} />`;
+  else if (route.page === 'order') page = html`<${OrderSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} onSent=${onSent} planReady=${planReady} />`;
+  else if (route.page === 'guide') page = html`<${Guide} st=${st} set=${set} chapter=${route.chapter} />`;
+  else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} />`;
+  else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
+  else if (route.page === 'coa') page = html`<${CoaSection} />`;
+  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} /><${HowItWorks} /><${BoxStrip} />`;
+
+  return html`<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
+    <main class="screen" id="main">${page}</main>
+    <${Doc} st=${Object.assign({}, st, { preview: st.preview && route.page === 'build' })} items=${items} />
     <${Footer} />
-    <${Sheet} st=${st} set=${set} add=${act.add} goSite=${goSite} />
-    ${items.length ? html`<div class="tray screen" role="region" aria-label="Your plan"><span>${items.length} in your plan · ${items.map(i => i.name).join(', ')}</span><a class="btn sm on-dark" href="#build">Build and export</a></div>` : null}`;
+    <${TabBar} route=${route} count=${o.packCount} planCount=${items.length} />
+    ${toast ? html`<div class="toast screen" role="status">${toast}</div>` : null}`;
 }
 
 render(html`<${App} />`, document.getElementById('app'));

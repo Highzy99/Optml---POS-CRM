@@ -29,7 +29,7 @@ function Ring({ done, total }) {
   </div>`;
 }
 
-function Tracker({ st, set, items }) {
+function Tracker({ st, set, items, onReorder }) {
   const [tr, setTr] = useState(() => loadTrack(st.planId));
   const [dayOff, setDayOff] = useState(0);
   useEffect(() => { setTr(loadTrack(st.planId)); }, [st.planId]);
@@ -37,12 +37,12 @@ function Tracker({ st, set, items }) {
   const start = parseDay(st.start);
   const t0 = today0();
   if (!start) {
-    return html`<section class="blk" id="today" aria-labelledby="h-today"><div class="wrap"><div class="banner">
-      <div class="eyebrow">Your protocol</div><h2 id="h-today" style="font-size:28px">Ready when you are</h2>
+    return html`<div><div class="banner">
+      <div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h2 id="h-today" style="font-size:28px">Ready when you are</h2>
       <p class="small">Set a start date and this becomes a daily tracker: what to take today, what to draw, where to inject next and when to reorder.</p>
       <div class="row g8 wrapx"><button type="button" class="btn" onClick=${() => set({ start: isoDay(t0) })}>Start today</button>
         <label class="row g8"><span class="small" style="font-weight:600;color:var(--ink)">or pick a date</span><input class="input" style="width:auto" type="date" value=${st.start} onInput=${e => set({ start: e.target.value })} /></label></div>
-    </div></div></section>`;
+    </div></div>`;
   }
   const day = addDays(t0, dayOff);
   const dk = isoDay(day);
@@ -75,9 +75,9 @@ function Tracker({ st, set, items }) {
     const age = daysBetween(parseDay(mixedOn), t0);
     return { it, vialAmt, used, left, age, pct: vialAmt > 0 ? Math.max(0, Math.min(1, 1 - used / vialAmt)) : 0, low: (left !== null && left <= 3) || age > 28 };
   });
-  return html`<section class="blk" id="today" aria-labelledby="h-today"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">${st.client ? st.client + "'s protocol" : 'Your protocol'}</div><h2 id="h-today">${di < 0 ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h2>
-      <p class="lead">${di < 0 ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before and check your supplies.' : 'Week ' + wk + ' · day ' + (di + 1) + '. Tick each dose as you take it. Your next site is suggested for you.'}</p></div>
+  return html`<div>
+    <div class="page-head"><div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h1 id="h-today">${di < 0 ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h1>
+      <p class="muted">${di < 0 ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before.' : 'Week ' + wk + ' · day ' + (di + 1) + '. Tick each dose as you take it.'}</p></div>
     <div class="banner" style="gap:16px">
       <div class="row g16"><${Ring} done=${done} total=${doses.length} />
         <div class="grow">${next ? html`<div class="lbl">Up next</div><div style="font-size:21px;font-weight:700;color:var(--ink);line-height:1.2">${next.it.name}</div><div class="small">${next.slot} · ${next.w.dose}${next.units !== null ? ' · draw ' + String(next.w.draw).split(' · ')[0] : ''}</div>${!next.it.oral ? html`<div class="tiny muted" style="margin-top:2px">Inject at: <b style="color:var(--ink)">${suggested}</b></div>` : null}`
@@ -104,98 +104,123 @@ function Tracker({ st, set, items }) {
         <div class="tiny muted">Mixed ${s.age <= 0 ? 'today' : s.age + ' day' + (s.age === 1 ? '' : 's') + ' ago'} · use within 4 weeks of mixing</div>
         ${s.low ? html`<div class="warn tiny">${s.age > 28 ? 'This vial has been mixed for over four weeks. Start a fresh one.' : 'Running low. Reorder now so you do not miss a dose.'}</div>` : null}
         <div class="row g8 wrapx"><button type="button" class="btn sm outline" onClick=${() => saveTr(Object.assign({}, tr, { mixed: Object.assign({}, tr.mixed, { [s.it.key]: dk }) }))}>I mixed a new vial</button>
-          ${s.it.p && s.it.p.url ? html`<a class="btn sm soft" href=${s.it.p.url} target="_blank" rel="noopener">Reorder</a>` : html`<a class="btn sm soft" href=${SHOP_URL} target="_blank" rel="noopener">Shop</a>`}</div>
+          ${s.it.p && PROTOCOL_SKUS[s.it.p.id] ? html`<button type="button" class="btn sm soft" onClick=${() => onReorder(PROTOCOL_SKUS[s.it.p.id][s.it.sizeIdx || 0] || PROTOCOL_SKUS[s.it.p.id].filter(Boolean)[0])}>Reorder</button>` : null}</div>
       </div>`)}</div>` : null}
     <label class="field" style="margin-top:20px"><span>How do you feel? (energy, sleep, appetite, side effects)</span><textarea class="textarea" placeholder="Saved on this device with the day's doses." value=${(tr.notes || {})[dk] || ''} onInput=${e => saveTr(Object.assign({}, tr, { notes: Object.assign({}, tr.notes, { [dk]: e.target.value }) }))}></textarea></label>
-  </div></section>`;
+  </div>`;
 }
 
-function Hero({ items }) {
-  return html`<section class="hero"><div class="wrap">
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:clamp(20px,4vw,40px);align-items:center">
-      <div class="stack g16">
-        <div class="eyebrow">World Peptide Dosage Association</div>
-        <h1>Every protocol, in plain numbers.</h1>
-        <p class="lead">Exact units to draw for every compound in the optml range, how to mix and inject, and a builder that turns any plan into a client-ready PDF with a daily tracker.</p>
+
+// ---------- Routing ----------
+function parseRoute() {
+  const h = location.hash || '';
+  if (h.startsWith('#/p/')) { const parts = h.slice(4).split('/'); return { page: 'product', sku: decodeURIComponent(parts[0]).toUpperCase(), tab: parts[1] || '' }; }
+  if (h.startsWith('#/guide')) return { page: 'guide', chapter: h.split('/')[2] || 'mix' };
+  const m = h.match(/^#\/(order|plan|build|coa)$/);
+  if (m) return { page: m[1] };
+  return { page: 'shop' };
+}
+
+function ShopHero() {
+  return html`<section class="shero"><div class="wrap">
+    <div class="shero-grid">
+      <div class="stack g12">
+        <div class="eyebrow">${WHOLESALE ? 'optml wholesale' : 'optml price list'}</div>
+        <h1>Research-grade peptides, properly tested.</h1>
+        <p class="lead">${WHOLESALE ? 'Your confirmed wholesale rates. Add what you need and send it as one order on WhatsApp.' : 'Free bac water, a batch-matched certificate and a step-by-step guide with every vial.'}</p>
+        <div class="scrollx"><span class="chip soft">Free bac water in every box</span><span class="chip soft">98%+ purity</span><span class="chip soft">Free shipping over $200</span></div>
+        <div class="tiny muted"><${ShipCountdown} /></div>
       </div>
-      <figure style="margin:0;position:relative;border-radius:var(--r-xl);overflow:hidden;background:#cfe0f7;aspect-ratio:1400/1128">
-        <img src="assets/brand/hero-vials-web.jpg" alt="Three optml vials, each with a printed label, batch number and QR code" style="width:100%;height:100%;object-fit:cover;display:block" fetchpriority="high" />
-        <figcaption style="position:absolute;left:14px;bottom:14px;right:14px;display:flex;gap:8px;flex-wrap:wrap"><span class="chip" style="background:rgba(255,255,255,.9)">Free bac water with every vial</span><span class="chip" style="background:rgba(255,255,255,.9)">Batch-numbered</span></figcaption>
-      </figure>
+      <figure class="shero-img"><img src="assets/brand/hero-vials-web.jpg" alt="optml vials with printed labels, batch numbers and QR codes" fetchpriority="high" /></figure>
     </div>
-    <nav class="paths" aria-label="Where to start">
-      ${items.length ? html`<a class="path" href="#today" style="background:var(--wash)"><span class="num">★</span><div><h3>Your protocol today</h3><p class="small">What to take, what to draw and where to inject next.</p><span class="go">Open my tracker →</span></div></a>` : null}
-      <a class="path" href="#guide"><span class="num">1</span><div><h3>New to this?</h3><p class="small">Mix, measure, inject and store. Four short chapters, five minutes.</p><span class="go">Start the guide →</span></div></a>
-      <a class="path" href="#compounds"><span class="num">2</span><div><h3>Know what you're running?</h3><p class="small">Find your compound and see exactly what to draw each week.</p><span class="go">Find a compound →</span></div></a>
-      <a class="path" href="#build"><span class="num">3</span><div><h3>Building a plan?</h3><p class="small">Pick compounds or add your own, set titrations, export a PDF.</p><span class="go">Open the builder →</span></div></a>
-    </nav>
-    <div class="disclaimer"><span style="width:8px;height:8px;border-radius:50%;background:var(--ink);flex:none;margin-top:7px"></span><p>${DISCLAIMER}</p></div>
   </div></section>`;
 }
 
-function BoxSection() {
-  const points = [
-    ['Free bacteriostatic water', 'Every vial ships with its own bac water, so there is nothing extra to source. Most people expect to buy it separately.'],
-    ['A presentation box, not a zip bag', 'Each order arrives in a magnetic optml box with a fitted insert that holds the vial and the water upright.'],
-    ['Labelled for the fridge', 'Every label carries the compound, storage instructions (2–8°C, protect from light) and a batch number.'],
-    ['Made to work with this guide', 'Mix with the water in the box, then use the cards here for exact units and the tracker for every dose.']
-  ];
-  return html`<section class="blk" id="box" aria-labelledby="h-box"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">In every box</div><h2 id="h-box">What arrives at your door</h2>
-      <p class="lead">Your compound and the bacteriostatic water to mix it, together in one box. No hunting for bac water, no guesswork.</p></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;align-items:stretch">
-      <figure style="margin:0;border-radius:var(--r-xl);overflow:hidden;background:#1d1b1c;position:relative"><img src="assets/brand/box-closed.jpg" alt="Closed optml presentation box in blue with the restore goal badge and the words Recovery and Regenerative Research" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" /></figure>
-      <figure style="margin:0;border-radius:var(--r-xl);overflow:hidden;background:#eef0f6;position:relative"><img src="assets/brand/box-insert.jpg" alt="Open box showing a vial of optml Bacteriostatic Water beside a vial of Wolverine Stack in a white insert" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" />
-        <figcaption style="position:absolute;left:14px;top:14px"><span class="chip dark">Bac water included free</span></figcaption></figure>
-    </div>
-    <div class="tcards" style="grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))">${points.map((p, i) => html`<div class="tcard"><span class="n" style="width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${i + 1}</span><h4>${p[0]}</h4><p class="small">${p[1]}</p></div>`)}</div>
+function HowItWorks() {
+  const steps = [['Order', 'Tap packs, then send your order on WhatsApp. We confirm and send payment details.'], ['Unbox', 'Your vial arrives with a free vial of bac water to mix it.'], ['Follow your guide', 'Your plan appears under My plan: exact draws, sites and a daily tracker.']];
+  return html`<section class="wrap" aria-label="How it works" style="margin-top:18px"><div class="hiw">${steps.map((x, i) => html`<div class="hiw-step"><span class="n">${i + 1}</span><div><b>${x[0]}</b><p class="tiny muted">${x[1]}</p></div></div>`)}</div></section>`;
+}
+
+function BoxStrip() {
+  return html`<section class="wrap" aria-label="What arrives" style="margin-top:22px"><div class="boxstrip">
+    <figure><img src="assets/brand/box-insert.jpg" alt="Open optml box with a vial of Bacteriostatic Water beside a vial of Wolverine Stack" loading="lazy" /></figure>
+    <div class="stack g8" style="justify-content:center"><div class="lbl">In every box</div><b style="font-size:19px;color:var(--ink);line-height:1.25">Your vial, plus the bac water to mix it. Free.</b>
+      <p class="small muted">Most people expect to buy bacteriostatic water separately. With optml it's already in the box, with a fitted insert and fridge-ready labels.</p></div>
   </div></section>`;
 }
 
-function Header({ items }) {
+function Header({ route, count, total, planCount }) {
+  const cur = p => (route.page === p || (p === 'shop' && route.page === 'product')) ? 'page' : null;
   return html`<header class="top screen"><div class="wrap inner">
-    <a href="#" aria-label="WPDA protocol hub, back to top" style="justify-self:start"><img class="logo" src="assets/brand/wordmark-dark.svg" alt="World Peptide Dosage Association" /></a>
-    <a class="btn sm plan" href="#build" aria-label=${'My plan, ' + items.length + ' compounds'}>My plan <span class="count">${items.length}</span></a>
-    <nav aria-label="Sections">${items.length ? html`<a href="#today">Today</a>` : null}<a href="#compounds">Compounds</a><a href="#sites">Injection sites</a><a href="#guide">Guide</a><a href="#box">In the box</a><a href="#faq">FAQ</a><a href="#build">Build and export</a></nav>
+    <a href="#/" aria-label="optml price list home" style="justify-self:start;display:flex;align-items:center;gap:10px;text-decoration:none"><img class="logo" src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:22px" /></a>
+    <a class="btn sm plan" href="#/order" aria-label=${'Order, ' + count + ' packs'}>${count ? money(total) : 'Order'} <span class="count">${count}</span></a>
+    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan${planCount ? ' · ' + planCount : ''}</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
   </div></header>`;
 }
 
+function TabBar({ route, count, planCount }) {
+  const tabs = [['shop', '#/', 'Shop', 'shop'], ['guide', '#/guide', 'How to use', 'book'], ['plan', '#/plan', 'My plan', 'plan'], ['order', '#/order', 'Order', 'bag']];
+  return html`<nav class="tabbar screen" aria-label="Pages">${tabs.map(t => { const on = route.page === t[0] || (t[0] === 'shop' && route.page === 'product');
+    return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><${Icon} name=${t[3]} size=${22} />${t[2]}${t[0] === 'order' && count ? html`<span class="dot">${count}</span>` : t[0] === 'plan' && planCount ? html`<span class="dot soft">${planCount}</span>` : null}</a>`; })}</nav>`;
+}
+
+function PlanPage({ st, set, items, onReorder }) {
+  if (!items.length) return html`<div class="wrap page"><div class="page-head"><div class="eyebrow">My plan</div><h1>Your guide lives here</h1></div>
+    <div class="empty" style="text-align:left;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink);font-size:17px">Order something and your personal guide appears here automatically.</b>
+      <p class="small">Exact units to draw for everything you bought, how to mix it, where to inject, a daily tracker and a PDF to keep.</p>
+      <div class="row g8 wrapx"><a class="btn sm" href="#/">Browse the price list</a><a class="btn sm outline" href="#/build">Build a protocol yourself</a></div></div></div>`;
+  return html`<div class="wrap page narrow">
+    <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
+    <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
+      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button><a class="btn sm outline" href="#/build">Edit plan</a><a class="btn sm ghost" href="#/guide">How to use</a></div></div>
+  </div>`;
+}
+
 function Footer() {
-  return html`<footer class="foot screen"><div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:32px">
-    <div class="stack g16"><img src="assets/brand/wordmark-light.svg" alt="World Peptide Dosage Association" style="height:32px;width:auto;align-self:flex-start" /><p>Independent dosage and handling reference for research peptides. Not affiliated with any regulatory body.</p></div>
-    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Support</div><a href=${'mailto:' + CONTACT}>${CONTACT}</a><a href="https://stayoptml.com/" target="_blank" rel="noopener">stayoptml.com</a></div>
-    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">On this page</div><a href="#compounds">Compounds</a><a href="#sites">Injection sites</a><a href="#guide">Guide</a><a href="#build">Build and export</a></div>
-    <p class="tiny" style="grid-column:1/-1;border-top:1px solid rgba(255,255,255,.14);padding-top:20px;color:rgba(255,255,255,.6)">${DISCLAIMER} All compounds referenced are supplied for research use.</p>
+  return html`<footer class="foot screen"><div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:28px">
+    <div class="stack g12"><img src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:22px;width:auto;align-self:flex-start;filter:invert(1)" /><p>Research-grade peptides with free bac water and a batch-matched certificate. Guides by the World Peptide Dosage Association.</p></div>
+    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Contact</div><a href=${'https://wa.me/' + WA_NUMBER} target="_blank" rel="noopener">WhatsApp</a><a href=${'mailto:' + CONTACT}>${CONTACT}</a></div>
+    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Pages</div><a href="#/">Price list</a><a href="#/guide">How to use</a><a href="#/coa">Certificates</a><a href="#/build">Build a protocol</a></div>
+    <p class="tiny" style="grid-column:1/-1;border-top:1px solid rgba(255,255,255,.14);padding-top:18px;color:rgba(255,255,255,.6)">Supplied for laboratory research use. ${DISCLAIMER}</p>
   </div></footer>`;
 }
 
 function App() {
   const [st, setSt] = useState(loadState);
   const set = patch => setSt(s => Object.assign({}, s, typeof patch === 'function' ? patch(s) : patch));
+  const [sh, setShRaw] = useState(loadShop);
+  const setSh = patch => setShRaw(s => Object.assign({}, s, typeof patch === 'function' ? patch(s) : patch));
+  const [route, setRoute] = useState(parseRoute);
+  const [ptab, setPtab] = useState('use');
+  const [toast, setToast] = useState('');
   const items = planItems(st);
+  const o = computeOrder(sh, Date.now());
   const [hasPrev, setHasPrev] = useState(() => { try { return !!localStorage.getItem('wpda-hub-prev'); } catch (e) { return false; } });
 
   useEffect(() => {
+    const on = () => { setRoute(parseRoute()); setPtab('use'); window.scrollTo({ top: 0, behavior: 'instant' }); };
+    window.addEventListener('hashchange', on);
     if (st.shared) {
       try {
         const raw = localStorage.getItem(STORE_KEY);
         if (raw) { const prev = JSON.parse(raw); if (prev.planId && prev.planId !== st.planId && prev.order && prev.order.length) { localStorage.setItem('wpda-hub-prev', raw); setHasPrev(true); } }
-        history.replaceState(null, '', location.pathname + location.search);
       } catch (e) {}
-      setTimeout(() => { const el = document.getElementById('today') || document.getElementById('build'); if (el) el.scrollIntoView({ block: 'start' }); }, 120);
+      location.replace('#/plan');
     }
+    return () => window.removeEventListener('hashchange', on);
   }, []);
-  useEffect(() => {
-    try { const o = {}; PERSIST.forEach(k => { o[k] = st[k]; }); localStorage.setItem(STORE_KEY, JSON.stringify(o)); } catch (e) {}
-  }, PERSIST.map(k => st[k]));
-  useEffect(() => { document.body.classList.toggle('has-tray', items.length > 0); }, [items.length]);
-  useEffect(() => { const h = () => set({ sheet: null }); window.addEventListener('beforeprint', h); return () => window.removeEventListener('beforeprint', h); }, []);
+  useEffect(() => { try { const x = {}; PERSIST.forEach(k => { x[k] = st[k]; }); localStorage.setItem(STORE_KEY, JSON.stringify(x)); } catch (e) {} }, PERSIST.map(k => st[k]));
+  useEffect(() => { try { const x = {}; SHOP_SAVED.forEach(k => { x[k] = sh[k]; }); localStorage.setItem(SHOP_KEY, JSON.stringify(x)); } catch (e) {} }, SHOP_SAVED.map(k => sh[k]));
 
+  const flash = m => { setToast(m); clearTimeout(window.__tt); window.__tt = setTimeout(() => setToast(''), 1800); };
+  const bump = (key, d) => {
+    setSh(s => { const cart = Object.assign({}, s.cart); cart[key] = (cart[key] || 0) + d; if (cart[key] <= 0) delete cart[key]; return { cart, sent: false }; });
+    if (d > 0) { const b = key.split(':'); const p = SHOP_BY_SKU[b[0]]; if (p) flash('Added ' + p.name + ' · ' + (b[1] === '1' ? '1 vial' : b[1] + ' vials')); }
+  };
   const act = {
     add: id => set(s => {
       if (id === 'stack') {
-        const ids = ['reta', 'tesa', 'mots', 'klow'];
-        const w = s.bac.stack || BAC_BASE;
+        const ids = ['reta', 'tesa', 'mots', 'klow']; const w = s.bac.stack || BAC_BASE;
         return { order: s.order.concat(ids.filter(x => s.order.indexOf(x) === -1)), sizeIdx: Object.assign({}, s.sizeIdx, { reta: 1 }), bac: Object.assign({}, s.bac, { reta: w, tesa: w, mots: w, klow: w }) };
       }
       return s.order.indexOf(id) > -1 ? { order: s.order.filter(x => x !== id) } : { order: s.order.concat([id]) };
@@ -220,23 +245,34 @@ function App() {
     hasPrev: hasPrev && st.shared,
     restorePrev: () => { try { const prev = JSON.parse(localStorage.getItem('wpda-hub-prev')); localStorage.removeItem('wpda-hub-prev'); setHasPrev(false); set(Object.assign({}, prev, { shared: false })); } catch (e) {} }
   };
-  const goSite = key => { set({ sheet: null, site: key, view: 'front' }); setTimeout(() => { const el = document.getElementById('sites'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); };
+  // After an order is sent: build "My plan" from exactly what was ordered.
+  const onSent = orderItems => {
+    setSh(s => ({ sent: true, lastOrder: { cart: s.cart, ref: s.ref, at: Date.now() } }));
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 30);
+    set(s => {
+      const order = s.order.slice(); const sizeIdx = Object.assign({}, s.sizeIdx);
+      orderItems.forEach(it => { const m = SKU_PROTOCOL[it.p.sku]; if (!m) return; if (order.indexOf(m[0]) === -1) order.push(m[0]); sizeIdx[m[0]] = m[1]; });
+      return { order, sizeIdx, client: s.client || sh.name.trim() };
+    });
+  };
+  const reorder = sku => { if (!sku) return; bump(sku + ':1', 1); location.hash = '#/order'; };
+  const planReady = o.items.some(it => SKU_PROTOCOL[it.p.sku]);
 
-  return html`<${Header} items=${items} />
-    <main class="screen" id="main">
-      <${Hero} items=${items} />
-      ${items.length ? html`<${Tracker} st=${st} set=${set} items=${items} />` : null}
-      <${Catalogue} st=${st} set=${set} add=${act.add} />
-      <${BoxSection} />
-      <${BodyMap} st=${st} set=${set} />
-      <${Guide} st=${st} set=${set} />
-      <${SuppliesFaq} />
-      <${Builder} st=${st} set=${set} items=${items} act=${act} />
-    </main>
-    <${Doc} st=${st} items=${items} />
+  let page;
+  if (route.page === 'product') page = html`<${ProductPage} sku=${route.sku} st=${st} set=${set} sh=${sh} bump=${bump} tab=${ptab} setTab=${setPtab} flash=${flash} />`;
+  else if (route.page === 'order') page = html`<${OrderSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} onSent=${onSent} planReady=${planReady} />`;
+  else if (route.page === 'guide') page = html`<${Guide} st=${st} set=${set} chapter=${route.chapter} />`;
+  else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} />`;
+  else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
+  else if (route.page === 'coa') page = html`<${CoaSection} />`;
+  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} /><${HowItWorks} /><${BoxStrip} />`;
+
+  return html`<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
+    <main class="screen" id="main">${page}</main>
+    <${Doc} st=${Object.assign({}, st, { preview: st.preview && route.page === 'build' })} items=${items} />
     <${Footer} />
-    <${Sheet} st=${st} set=${set} add=${act.add} goSite=${goSite} />
-    ${items.length ? html`<div class="tray screen" role="region" aria-label="Your plan"><span>${items.length} in your plan · ${items.map(i => i.name).join(', ')}</span><a class="btn sm on-dark" href="#build">Build and export</a></div>` : null}`;
+    <${TabBar} route=${route} count=${o.packCount} planCount=${items.length} />
+    ${toast ? html`<div class="toast screen" role="status">${toast}</div>` : null}`;
 }
 
 render(html`<${App} />`, document.getElementById('app'));

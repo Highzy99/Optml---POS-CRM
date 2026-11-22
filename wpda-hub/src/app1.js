@@ -178,7 +178,8 @@ function Icon({ name, size = 20 }) {
     search: 'M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-4-4', link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
     print: 'M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M7 14h10v6H7z', trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12',
     back: 'M19 12H5M11 6l-6 6 6 6', ext: 'M14 5h5v5M19 5l-8 8M18 14v5H5V6h5', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
-    body: 'M12 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM8 9h8l-1 6h-2l-1 6-1-6H9z', drop: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z'
+    body: 'M12 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM8 9h8l-1 6h-2l-1 6-1-6H9z', drop: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z',
+    shop: 'M4 7h16l-1.5 12a2 2 0 0 1-2 1.8H7.5a2 2 0 0 1-2-1.8zM9 7V6a3 3 0 0 1 6 0v1', book: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M8 7h7', plan: 'M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM9 14l2 2 4-4', bag: 'M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L20 8H6M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM17 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z'
   };
   return html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d=${P[name]} /></svg>`;
 }
@@ -208,133 +209,61 @@ function Pills({ options, value, onPick, label }) {
   return html`<div class="pills" role="group" aria-label=${label}>${options.map(o => html`<button type="button" class="pill" aria-pressed=${String(o.v === value)} onClick=${() => onPick(o.v)}>${o.label}</button>`)}</div>`;
 }
 
-// ---------- Catalogue ----------
+// ---------- Product page: buy at the top, how-to below in tabs ----------
 
-function Catalogue({ st, set, add }) {
-  const q = st.query.trim().toLowerCase();
-  const list = PRODUCTS.filter(p => (st.goal === 'all' || p.goal === st.goal) && (!q || (p.name + ' ' + p.sub + ' ' + p.desc + ' ' + p.goal).toLowerCase().includes(q)));
-  return html`<section class="blk" id="compounds" aria-labelledby="h-compounds"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">The range</div><h2 id="h-compounds">Find your compound</h2>
-      <p class="lead">Every card shows the starting dose and exactly what to draw. Open one for the full ladder, mixing volume and timing.</p></div>
-    <div class="stack g12">
-      <label class="field" style="max-width:460px"><span class="sr">Search compounds</span>
-        <input class="input" type="search" placeholder="Search compounds, goals or blends" value=${st.query} onInput=${e => set({ query: e.target.value })} /></label>
-      <div class="scrollx" role="group" aria-label="Filter by goal">
-        <button type="button" class="pill" aria-pressed=${String(st.goal === 'all')} onClick=${() => set({ goal: 'all' })}>All</button>
-        ${GOALS.map(g => html`<button type="button" class="pill" aria-pressed=${String(st.goal === g)} onClick=${() => set({ goal: st.goal === g ? 'all' : g })}><img src=${GOAL_ICONS[g]} alt="" />${GOAL_LABELS[g]}</button>`)}
+function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
+  const sp = SHOP_BY_SKU[sku];
+  if (!sp) return html`<div class="wrap page narrow"><a class="back" href="#/">‹ Price list</a><div class="empty" style="margin-top:16px">That product isn't on the price list.</div></div>`;
+  const map = SKU_PROTOCOL[sku];
+  const p = map ? PRODUCT[map[0]] : null;
+  const idx = map ? map[1] : 0;
+  const it = p ? listedItem(p, Object.assign({}, st, { mode: {}, sizeIdx: Object.assign({}, st.sizeIdx, { [p.id]: idx }) })) : null;
+  const [base, strength] = splitName(sp.name);
+  const coa = COAS[sku];
+  const sizes = p && PROTOCOL_SKUS[p.id] ? PROTOCOL_SKUS[p.id].filter(Boolean) : [];
+  const first = it ? it.rows[0] : null;
+  const facts = it ? [['How often', it.freqText], ['When', it.timing || it.whenLabel], ['Site', it.site], ['Duration', it.duration]] : [];
+  const bac = sp.sku === 'NA1000' ? '10ml' : (it && it.oral ? '' : '3ml');
+  const t = tab || 'use';
+  return html`<div class="wrap page narrow">
+    <a class="back" href="#/">‹ Price list</a>
+    <div class="phero" style=${'--tint:' + GOAL_TINT[sp.goal]}>
+      <img src=${GOAL_ICONS[sp.goal]} alt="" />
+      <div class="grow"><div class="row g8 wrapx"><span class="chip">${GOAL_LABELS[sp.goal]}</span>${coa ? html`<a class="chip" style="text-decoration:none;color:var(--ok)" href=${COA_BASE + coa[2]} target="_blank" rel="noopener">${coa[0]} purity ↗</a>` : null}</div>
+        <h1 style="font-size:clamp(28px,7vw,40px);margin-top:8px">${base} <span style="color:var(--n600);font-weight:600">${strength}</span></h1></div>
+    </div>
+    ${sizes.length > 1 ? html`<div class="pills" role="group" aria-label="Vial size" style="margin-top:14px">${sizes.map(s => html`<a class="pill" href=${'#/p/' + s} aria-current=${s === sku ? 'page' : null} aria-pressed=${String(s === sku)} style="text-decoration:none">${splitName(SHOP_BY_SKU[s].name)[1] || s}</a>`)}</div>` : null}
+    <div style="margin-top:14px"><${Tiers} p=${sp} sh=${sh} bump=${bump} /></div>
+    ${INFO[sku] ? html`<p style="margin-top:14px">${INFO[sku]}</p>` : null}
+    ${bac ? html`<div class="okbox" style="margin-top:12px">A ${bac} vial of bacteriostatic water comes free in the box. Nothing extra to buy.</div>` : null}
+    ${it ? html`
+      <div class="seg full" role="tablist" aria-label="Product information" style="margin-top:20px">
+        <button type="button" role="tab" aria-selected=${String(t === 'use')} aria-pressed=${String(t === 'use')} onClick=${() => setTab('use')}>How to use</button>
+        ${!it.oral ? html`<button type="button" role="tab" aria-selected=${String(t === 'mix')} aria-pressed=${String(t === 'mix')} onClick=${() => setTab('mix')}>Mix and draw</button>` : null}
+        <button type="button" role="tab" aria-selected=${String(t === 'about')} aria-pressed=${String(t === 'about')} onClick=${() => setTab('about')}>About</button>
       </div>
-      <div class="tiny muted">${list.length === PRODUCTS.length ? PRODUCTS.length + ' compounds in the optml range' : list.length + ' of ' + PRODUCTS.length + ' compounds'}</div>
-    </div>
-    <div class="cgrid" style="margin-top:16px">
-      ${list.map(p => { const it = listedItem(p, Object.assign({}, st, { mode: {} })); const w1 = it.week(1); const added = st.order.indexOf(p.id) > -1;
-        return html`<article class="ccard" style=${'--tint:' + GOAL_TINT[p.goal]}>
-          <div class="stage"><img src=${GOAL_ICONS[p.goal]} alt="" /><div class="grow"><div class="row g8 wrapx"><span class="chip">${GOAL_LABELS[p.goal]}</span>${p.badge ? html`<span class="chip dark">${p.badge}</span>` : null}</div></div></div>
-          <div class="body">
-            <div><h3>${p.name}</h3><div class="small muted">${p.sub}</div></div>
-            <div class="startline"><span class="muted">Starts</span><b>${w1.dose}</b><span class="muted">·</span><b>${it.oral ? w1.draw : 'draw ' + String(w1.draw).split(' · ')[0]}</b></div>
-            <div class="acts">
-              <button type="button" class="btn sm" onClick=${() => set({ sheet: p.id })}>View protocol</button>
-              <button type="button" class=${'btn sm ' + (added ? 'soft' : 'outline')} aria-pressed=${String(added)} onClick=${() => add(p.id)}>${added ? html`<${Icon} name="check" size=${16} /> In plan` : html`<${Icon} name="plus" size=${16} /> Add`}</button>
-            </div>
-          </div></article>`; })}
-    </div>
-    ${list.length === 0 ? html`<div class="empty" style="margin-top:12px">Nothing matches that search. Try a goal or a shorter name, or add it as a custom compound in the builder.</div>` : null}
-    <div class="feature">
-      <div class="row g8 wrapx"><span class="chip">${STACK.badge}</span></div>
-      <h3>${STACK.name}</h3>
-      <div style="color:rgba(255,255,255,.66)">${STACK.sub}</div>
-      <p style="max-width:62ch">${STACK.desc}</p>
-      <dl class="facts" style="margin:0">${STACK.specs.map(s => html`<div><dt>${s[0]}</dt><dd>${s[1]}</dd></div>`)}</dl>
-      <div class="row g8 wrapx"><button type="button" class="btn on-dark" onClick=${() => set({ sheet: 'stack' })}>View full protocol</button>
-        <button type="button" class="btn on-dark-outline" onClick=${() => add('stack')}>Add all four to my plan</button></div>
-    </div>
-  </div></section>`;
-}
-
-// ---------- Compound sheet ----------
-
-function useSheetBehaviour(open, close) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    document.body.classList.add('lock');
-    const prev = document.activeElement;
-    setTimeout(() => ref.current && ref.current.focus(), 30);
-    const onKey = e => { if (e.key === 'Escape') close(); };
-    window.addEventListener('keydown', onKey);
-    return () => { document.body.classList.remove('lock'); window.removeEventListener('keydown', onKey); prev && prev.focus && prev.focus(); };
-  }, [open]);
-  return ref;
-}
-
-function Sheet({ st, set, add, goSite }) {
-  const id = st.sheet;
-  const close = () => set({ sheet: null });
-  const ref = useSheetBehaviour(!!id, close);
-  if (!id) return null;
-  const isStack = id === 'stack';
-  const p = PRODUCT[id];
-  return html`<div class="scrim" onClick=${e => { if (e.target === e.currentTarget) close(); }}>
-    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-      <div class="shead"><button type="button" class="iconbtn sm" ref=${ref} aria-label="Close" onClick=${close}><${Icon} name="close" size=${18} /></button>
-        <strong id="sheet-title" class="grow" style="color:var(--ink);font-size:17px">${isStack ? STACK.name : p.name}</strong>
-        ${!isStack && st.order.indexOf(id) > -1 ? html`<span class="chip" style="background:var(--paper)">In your plan</span>` : null}</div>
-      ${isStack ? html`<${StackBody} st=${st} set=${set} add=${add} />` : html`<${CompoundBody} p=${p} st=${st} set=${set} add=${add} goSite=${goSite} />`}
-    </div></div>`;
-}
-
-function CompoundBody({ p, st, set, add, goSite }) {
-  const it = listedItem(p, Object.assign({}, st, { mode: {} }));
-  const added = st.order.indexOf(p.id) > -1;
-  const facts = [['How often', it.freqText], ['When', it.timing || it.whenLabel], ['Site', it.site], ['Duration', it.duration]];
-  const others = it.specs.filter(s => ['Frequency', 'Timing', 'Site', 'Duration', 'Reconstitution'].indexOf(s[0]) === -1);
-  const first = it.rows[0];
-  return html`<div class="sbody">
-    <div class="stage" style=${'--tint:' + GOAL_TINT[p.goal]}><img src=${GOAL_ICONS[p.goal]} alt="" />
-      <div class="stack g6"><div class="row g8 wrapx"><span class="chip">${GOAL_LABELS[p.goal]}</span>${p.badge ? html`<span class="chip dark">${p.badge}</span>` : null}</div>
-      <div class="small" style="color:var(--n700)">${p.sub}</div></div></div>
-    <p>${p.desc}</p>
-    <dl class="facts4" style="margin:0">${facts.map(f => html`<div class="fact"><dt>${f[0]}</dt><dd>${f[1] || '—'}</dd></div>`)}</dl>
-    ${others.length ? html`<div class="row g8 wrapx">${others.map(s => html`<span class="tiny" style="background:var(--paper);border-radius:999px;padding:6px 12px"><b style="color:var(--ink)">${s[0]}:</b> ${s[1]}</span>`)}</div>` : null}
-    ${!it.oral ? html`<div class="setup">
-      <div class="lbl">Your setup</div>
-      ${p.sizes ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">Vial size</div>
-        <${Pills} label="Vial size" value=${it.sizeIdx} options=${p.sizes.map((s, i) => ({ v: i, label: s }))} onPick=${i => set(s => ({ sizeIdx: Object.assign({}, s.sizeIdx, { [p.id]: i }) }))} /></div>` : null}
-      ${it.bacOk ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">Bac water added</div>
-        <${Pills} label="Bac water" value=${it.bac} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { [p.id]: v }) }))} /></div>` : null}
-      <div class="okbox">${it.vial} vial + ${trimNum(it.water || 0, 2)}ml water = <b>${it.conc}</b></div>
-      <div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">Your first dose: draw to ${String(first.draw).split(' · ')[0]}</div>
-        <${Syringe} units=${first.units} /><div class="syr-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div></div>
-    </div>` : null}
-    <div class="stack g10"><div class="lbl">Dose ladder</div><${Ladder} rows=${it.rows} syringes=${!it.oral} /></div>
-    ${!it.oral ? html`<div class="panel" style="padding:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:16px;align-items:center">
-      <${BoxArt} goal=${p.goal} name=${p.name} compact />
-      <div class="stack g8"><div class="lbl">What arrives</div><h3 style="font-size:19px">${p.name} with free bac water</h3>
-        <p class="small">Your vial ships in an optml presentation box with its own vial of bacteriostatic water, so you can mix it the day it arrives. Nothing extra to buy.</p></div></div>` : null}
-    ${p.stacks && p.stacks.length ? html`<div class="stack g8"><div class="lbl">Commonly stacked with</div><div class="row g8 wrapx">${p.stacks.map(s => html`<span class="tiny" style="background:var(--paper);border-radius:999px;padding:6px 12px;color:var(--ink);font-weight:500">${s}</span>`)}</div></div>` : null}
-    ${p.note ? html`<div class="note">${p.note}</div>` : null}
-    <div class="row g8 wrapx">
-      <button type="button" class=${'btn ' + (added ? 'soft' : '')} onClick=${() => add(p.id)}>${added ? 'Remove from my plan' : html`<${Icon} name="plus" size=${16} /> Add to my plan`}</button>
-      ${!it.oral ? html`<button type="button" class="btn outline" onClick=${() => goSite(/thigh/i.test(it.site) ? 'thigh' : 'abdomen')}><${Icon} name="body" size=${16} /> Where to inject</button>` : null}
-      ${p.url ? html`<a class="btn ghost" href=${p.url} target="_blank" rel="noopener">Buy at optml <${Icon} name="ext" size=${16} /></a>` : null}
-    </div>
-    <p class="tiny muted">${DISCLAIMER}</p>
-  </div>`;
-}
-
-function StackBody({ st, set, add }) {
-  const w = st.bac.stack || BAC_BASE;
-  const phases = STACK.phases.map(ph => Object.assign({ title: ph.title }, scaleTable(ph, w, '')));
-  return html`<div class="sbody">
-    <p>${STACK.desc}</p>
-    <dl class="facts4" style="margin:0">${STACK.specs.map(s => html`<div class="fact"><dt>${s[0]}</dt><dd>${scaleSpec(s[0], s[1], w)}</dd></div>`)}</dl>
-    <div class="setup"><div class="lbl">Bac water added to each vial</div>
-      <${Pills} label="Bac water" value=${w} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { stack: v }) }))} /></div>
-    ${phases.map(ph => html`<div class="stack g8"><h3 style="font-size:17px">${ph.title}</h3>
-      <div class="tblwrap"><table class="tbl"><thead><tr>${ph.headers.map(h => html`<th scope="col">${h}</th>`)}</tr></thead>
-      <tbody>${ph.rows.map(r => html`<tr>${r.map(c => html`<td>${c}</td>`)}</tr>`)}</tbody></table></div></div>`)}
-    <div class="stack g8"><div class="lbl">Daily schedule</div>${STACK.schedule.map(s => html`<div class="note"><b style="color:var(--ink)">${s.when}</b> · ${s.what}</div>`)}</div>
-    <div class="note">${STACK.note}</div>
-    <div><button type="button" class="btn" onClick=${() => { add('stack'); set({ sheet: null }); }}>Add all four to my plan</button></div>
+      <div role="tabpanel" class="stack g16" style="margin-top:16px">
+        ${t === 'use' ? html`
+          <dl class="facts4" style="margin:0">${facts.map(f => html`<div class="fact"><dt>${f[0]}</dt><dd>${f[1] || '—'}</dd></div>`)}</dl>
+          <div class="stack g8"><div class="lbl">Dose ladder${it.bacOk ? ' · ' + trimNum(it.water, 2) + 'ml bac water' : ''}</div><${Ladder} rows=${it.rows} syringes=${!it.oral} /></div>
+          ${p.note ? html`<div class="note">${p.note}</div>` : null}
+          <div class="row g8 wrapx">${st.order.indexOf(p.id) > -1 ? html`<a class="btn soft" href="#/plan"><${Icon} name="check" size=${16} /> In My plan</a>`
+            : html`<button type="button" class="btn" onClick=${() => { set(s => ({ order: s.order.concat([p.id]), sizeIdx: Object.assign({}, s.sizeIdx, { [p.id]: idx }) })); flash && flash(p.name + ' added to My plan'); }}><${Icon} name="plus" size=${16} /> Add to My plan</button>`}
+            ${!it.oral ? html`<a class="btn outline" href="#/guide/sites"><${Icon} name="body" size=${16} /> Where to inject</a>` : null}</div>` : null}
+        ${t === 'mix' && !it.oral ? html`
+          ${it.bacOk ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">How much bac water are you adding?</div>
+            <${Pills} label="Bac water" value=${it.bac} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { [p.id]: v }) }))} /></div>` : null}
+          <div class="okbox">${it.vial} vial + ${trimNum(it.water || 0, 2)}ml water = <b>${it.conc}</b></div>
+          ${first && first.units !== null ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">First dose: draw to ${String(first.draw).split(' · ')[0]}</div><${Syringe} units=${first.units} /><div class="syr-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div></div>` : null}
+          <ol class="mixsteps">${[['Warm up', 'Vial and bac water out of the fridge for 10–15 minutes.'], ['Swab', 'Fresh alcohol swab on both stoppers. Let them dry.'], ['Add the water', 'Draw ' + trimNum(it.water || 2, 2) + 'ml of bac water and run it slowly down the inside wall of the vial.'], ['Roll, never shake', 'Roll gently until clear. Label with the date and refrigerate at 2–8°C.']].map((x, i) => html`<li><span class="n">${i + 1}</span><div><b>${x[0]}</b><p class="small">${x[1]}</p></div></li>`)}</ol>
+          <a class="btn outline" href="#/guide/measure">Open the dose calculator</a>` : null}
+        ${t === 'about' ? html`
+          <p>${p.desc}</p>
+          <div class="row g8 wrapx">${it.specs.filter(s => ['Frequency', 'Timing', 'Site', 'Duration'].indexOf(s[0]) === -1).map(s => html`<span class="tiny" style="background:var(--paper);border-radius:999px;padding:6px 12px"><b style="color:var(--ink)">${s[0]}:</b> ${s[1]}</span>`)}</div>
+          ${p.stacks && p.stacks.length ? html`<div class="stack g8"><div class="lbl">Commonly stacked with</div><div class="row g8 wrapx">${p.stacks.map(x => html`<span class="tiny" style="background:var(--paper);border-radius:999px;padding:6px 12px;color:var(--ink);font-weight:500">${x}</span>`)}</div></div>` : null}
+          <div class="note"><b style="color:var(--ink)">Storage:</b> ${SHOP_STORAGE}</div>
+          ${coa ? html`<a class="btn outline" href=${COA_BASE + coa[2]} target="_blank" rel="noopener">Certificate of analysis · ${coa[0]} · tested ${coa[1]}</a>` : null}
+          <p class="tiny muted">${DISCLAIMER}</p>` : null}
+      </div>` : null}
   </div>`;
 }

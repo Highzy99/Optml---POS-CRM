@@ -74,19 +74,17 @@ const ZONES = {
   ]
 };
 
-function BodyMap({ st, set }) {
+function BodyMap({ st, set, bare }) {
   const sel = st.site;
   const zones = ZONES[st.view];
   const info = SITE_INFO[sel];
   const pick = id => set({ site: id });
   const ordinal = id => SITE_ORDER.indexOf(id) + 1;
-  return html`<section class="blk" id="sites" aria-labelledby="h-sites"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">Injection sites</div><h2 id="h-sites">Where it goes</h2>
-      <p class="lead">Tap a highlighted area to see the angle, the needle and what to avoid. Almost every compound here is subcutaneous: the abdomen first, everything else for rotation.</p></div>
+  const body = html`
     <div class="panel" style="padding:clamp(16px,4vw,28px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:24px;align-items:start">
       <div class="stack g12" style="align-items:center">
         <div class="seg" role="group" aria-label="Body view"><button type="button" aria-pressed=${String(st.view === 'front')} onClick=${() => set({ view: 'front', site: st.view === 'front' ? sel : 'abdomen' })}>Front</button><button type="button" aria-pressed=${String(st.view === 'back')} onClick=${() => set({ view: 'back', site: st.view === 'back' ? sel : 'arm' })}>Back</button></div>
-        <svg viewBox="0 0 240 520" style="width:min(280px, 58vw);height:auto;display:block" role="group" aria-label=${'Body map, ' + st.view + ' view'}>
+        <svg viewBox="0 0 240 520" style="width:min(260px, 52vw);height:auto;display:block" role="group" aria-label=${'Body map, ' + st.view + ' view'}>
           <${Figure} back=${st.view === 'back'} />
           ${zones.map(z => { const on = z.id === sel; const info2 = SITE_INFO[z.id];
             return html`<g role="button" tabindex="0" aria-pressed=${String(on)} aria-label=${info2.name + ', ' + info2.route} style="cursor:pointer;outline:none"
@@ -125,17 +123,20 @@ function BodyMap({ st, set }) {
         <circle cx="110" cy="110" r="22" fill="none" stroke="#c8433f" stroke-width="1.5" stroke-dasharray="3 3" /><circle cx="110" cy="110" r="6" fill="#e0e2e6" />
         ${[[110, 44], [157, 63], [176, 110], [157, 157], [110, 176], [63, 157], [44, 110], [63, 63]].map((c, i) => html`<circle cx=${c[0]} cy=${c[1]} r="16" fill="#222326" /><text x=${c[0]} y=${c[1] + 5} text-anchor="middle" style="font:600 14px Onest,sans-serif;fill:#fff">${i + 1}</text>`)}
       </svg>
-    </div>
-  </div></section>`;
+    </div>`;
+  if (bare) return body;
+  return html`<section class="blk" id="sites"><div class="wrap">${body}</div></section>`;
 }
 
 // ---------- Guide ----------
 
 const CHAPTERS = [
-  { key: 'mix', title: 'Mix', h: 'Reconstitute a vial', p: 'Follow these in order and you cannot go wrong. The whole thing takes under five minutes.' },
-  { key: 'measure', title: 'Measure', h: 'Read the syringe, then do the maths', p: 'One unit on an insulin syringe is 0.01ml. The calculator turns any vial and dose into units.' },
-  { key: 'inject', title: 'Inject', h: 'Inject cleanly and calmly', p: 'Nearly every compound here is subcutaneous: into the fat just under the skin, not the muscle.' },
-  { key: 'store', title: 'Store', h: 'Store it and dispose of sharps', p: 'Heat, light and freeze-thaw cycles are what degrade peptides. Sharps never go in the bin.' }
+  { key: 'mix', title: 'Mix', h: 'Mix a vial', p: 'Under five minutes, using the bac water that comes in the box.' },
+  { key: 'measure', title: 'Measure', h: 'Read the syringe and calculate a dose', p: 'One unit on an insulin syringe is 0.01ml. The calculator turns any vial and dose into units.' },
+  { key: 'inject', title: 'Inject', h: 'Inject cleanly and calmly', p: 'Nearly every compound here goes just under the skin (subcutaneous), not into muscle.' },
+  { key: 'sites', title: 'Sites', h: 'Where to inject', p: 'Tap a highlighted area for the angle, the needle and what to avoid.' },
+  { key: 'store', title: 'Store', h: 'Storage and sharps', p: 'Heat, light and freeze-thaw cycles degrade peptides. Sharps never go in the bin.' },
+  { key: 'faq', title: 'FAQ', h: 'Supplies and common questions', p: 'What you need on hand, and the questions people ask most.' }
 ];
 
 function Calculator({ st, set }) {
@@ -219,34 +220,35 @@ function TCards({ items }) {
   return html`<div class="tcards">${items.map(c => html`<div class="tcard"><h4>${c.title}</h4><p class="small">${c.body}</p>${c.meta ? html`<div class="meta">${c.meta}</div>` : null}</div>`)}</div>`;
 }
 
-function Guide({ st, set }) {
-  const ch = CHAPTERS[st.chapter] || CHAPTERS[0];
-  const go = i => { set({ chapter: i }); const el = document.getElementById('guide'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
-  return html`<section class="blk" id="guide" aria-labelledby="h-guide"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">Start here</div><h2 id="h-guide">Get it right the first time</h2>
-      <p class="lead">Four short chapters. Read them once before your first injection and keep the PDF handy after that.</p></div>
-    <div class="chap-nav" role="tablist" aria-label="Guide chapters">${CHAPTERS.map((c, i) => html`<button type="button" role="tab" aria-selected=${String(i === st.chapter)} aria-current=${i === st.chapter ? 'step' : null} onClick=${() => set({ chapter: i })}><span class="n">${i + 1}</span>${c.title}</button>`)}</div>
-    <div class="progress" aria-hidden="true"><div style=${'width:' + ((st.chapter + 1) / CHAPTERS.length * 100) + '%'}></div></div>
+function Guide({ st, set, chapter }) {
+  const ci = Math.max(0, CHAPTERS.findIndex(c => c.key === chapter));
+  const ch = CHAPTERS[ci];
+  const go = i => { location.hash = '#/guide/' + CHAPTERS[i].key; };
+  useEffect(() => { const el = document.querySelector('.chap-nav [aria-current="step"]'); if (el && el.scrollIntoView) el.scrollIntoView({ inline: 'center', block: 'nearest' }); }, [ci]);
+  return html`<div class="wrap page">
+    <div class="page-head"><div class="eyebrow">How to use</div><h1>Get it right the first time</h1></div>
+    <div class="chap-nav" role="tablist" aria-label="Guide chapters">${CHAPTERS.map((c, i) => html`<button type="button" role="tab" aria-selected=${String(i === ci)} aria-current=${i === ci ? 'step' : null} onClick=${() => go(i)}><span class="n">${i + 1}</span>${c.title}</button>`)}</div>
+    <div class="progress" aria-hidden="true"><div style=${'width:' + ((ci + 1) / CHAPTERS.length * 100) + '%'}></div></div>
     <div role="tabpanel" aria-label=${ch.title}>
       <h3 style="font-size:clamp(24px,5vw,30px)">${ch.h}</h3><p class="muted" style="margin:6px 0 16px;max-width:62ch">${ch.p}</p>
       ${ch.key === 'mix' ? html`<div class="steps">${STEPS.map(s => html`<div class="stepc"><span class="n">${s.n}</span><div><h4>${s.title}</h4><p class="small">${s.body}</p><div class="tip">${s.tip}</div></div></div>`)}</div><${GlassVisual} />` : null}
       ${ch.key === 'measure' ? html`<${SyringeReading} /><${Calculator} st=${st} set=${set} />` : null}
-      ${ch.key === 'inject' ? html`<${AngleVisual} /><${TCards} items=${TABS.technique} /><${NeedleVisual} /><${TCards} items=${TABS.types} />
-        <div class="note" style="margin-top:12px">Not sure where to inject? <a href="#sites" style="font-weight:600">Open the body map</a> to see every site, the angle and what to avoid.</div>` : null}
+      ${ch.key === 'inject' ? html`<${AngleVisual} /><${TCards} items=${TABS.technique} /><${NeedleVisual} /><${TCards} items=${TABS.types} />` : null}
+      ${ch.key === 'sites' ? html`<${BodyMap} st=${st} set=${set} bare />` : null}
       ${ch.key === 'store' ? html`<${TCards} items=${STORAGE} />` : null}
+      ${ch.key === 'faq' ? html`<${SuppliesFaq} bare />` : null}
     </div>
     <div class="chap-foot">
-      <button type="button" class="btn outline" disabled=${st.chapter === 0} onClick=${() => go(st.chapter - 1)}><${Icon} name="back" size=${16} /> Back</button>
-      ${st.chapter < CHAPTERS.length - 1 ? html`<button type="button" class="btn" onClick=${() => go(st.chapter + 1)}>Next: ${CHAPTERS[st.chapter + 1].title} <${Icon} name="arrow" size=${16} /></button>`
-        : html`<a class="btn" href="#build">Build a protocol <${Icon} name="arrow" size=${16} /></a>`}
+      <button type="button" class="btn outline" disabled=${ci === 0} onClick=${() => go(ci - 1)}><${Icon} name="back" size=${16} /> Back</button>
+      ${ci < CHAPTERS.length - 1 ? html`<button type="button" class="btn" onClick=${() => go(ci + 1)}>Next: ${CHAPTERS[ci + 1].title} <${Icon} name="arrow" size=${16} /></button>`
+        : html`<a class="btn" href="#/">Back to the price list</a>`}
     </div>
-  </div></section>`;
+  </div>`;
 }
 
-function SuppliesFaq() {
-  return html`<section class="blk" id="faq" aria-labelledby="h-faq"><div class="wrap">
-    <div class="sec-head"><div class="eyebrow">Supplies and questions</div><h2 id="h-faq">What you need, and what people ask</h2></div>
+function SuppliesFaq({ bare }) {
+  return html`<div>
     <div class="tcards" style="margin-top:0">${SUPPLIES.map(s => html`<div class="tcard"><div class="lbl">${s.spec}</div><h4>${s.title}</h4><p class="small">${s.body}</p>${s.href ? html`<a class="small" style="font-weight:600;margin-top:auto" href=${s.href} target="_blank" rel="noopener">${s.linkLabel}</a>` : null}</div>`)}</div>
     <div style="margin-top:28px;border-top:1px solid var(--n200)">${FAQS.map(f => html`<details class="faq"><summary>${f.q}</summary><p>${f.a}</p></details>`)}</div>
-  </div></section>`;
+  </div>`;
 }

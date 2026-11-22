@@ -1,37 +1,5 @@
 // ================= Builder: plan details, compound editors, titration, sharing =================
 
-const BOX_COLOR = { restore: '#5560d4', weight: '#ff8787', glow: '#ffc3d6', energy: '#ff7848', growth: '#92e8a6', edge: '#febffc', vitality: '#f0ea6a', sleep: '#d0b3ff', custom: '#cfd2d7' };
-const BOX_INK = { restore: '#ffffff', energy: '#222326' };
-
-// Vector "what arrives" box, coloured by goal: the compound vial plus a free bac water vial.
-function BoxArt({ goal, name, compact }) {
-  const c = BOX_COLOR[goal] || BOX_COLOR.custom;
-  const ink = BOX_INK[goal] || '#222326';
-  const vial = (x, label1, label2, frosted) => html`<g>
-    <rect x=${x + 6} y="150" width="36" height="12" rx="3" fill="#c9ccd2" /><rect x=${x + 9} y="160" width="30" height="10" fill="#e1e3e7" />
-    <path d=${`M${x} 176 Q${x} 168 ${x + 8} 168 L${x + 40} 168 Q${x + 48} 168 ${x + 48} 176 L${x + 48} 252 Q${x + 48} 260 ${x + 40} 260 L${x + 8} 260 Q${x} 260 ${x} 252 Z`} fill=${frosted ? '#f1f3f6' : '#e9eef3'} stroke="#c9ccd2" stroke-width="1.2" />
-    <rect x=${x + 3} y="190" width="42" height="52" rx="3" fill="#ffffff" />
-    <text x=${x + 7} y="205" style="font:700 10px Onest,sans-serif;fill:#222326">optml</text>
-    <text x=${x + 6} y="218" style="font:600 5.2px Onest,sans-serif;fill:#3f4147">${label1}</text>
-    <text x=${x + 6} y="226" style="font:600 5.2px Onest,sans-serif;fill:#3f4147">${label2}</text>
-  </g>`;
-  const short = String(name || 'Your compound');
-  const l1 = short.length > 13 ? short.slice(0, 13) : short;
-  const l2 = short.length > 13 ? short.slice(13, 26) : '';
-  return html`<svg viewBox="0 0 320 290" style=${'width:100%;max-width:' + (compact ? 240 : 320) + 'px;height:auto;display:block'} role="img" aria-label=${'Presentation box with a vial of ' + short + ' and a free vial of bacteriostatic water'}>
-    <defs><linearGradient id=${'lid-' + goal} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color=${c} /><stop offset="1" stop-color=${c} stop-opacity=".82" /></linearGradient></defs>
-    <rect x="22" y="8" width="276" height="118" rx="10" fill=${'url(#lid-' + goal + ')'} />
-    <text x="40" y="40" style=${'font:700 22px Onest,sans-serif;letter-spacing:-.02em;fill:' + ink}>optml</text>
-    <text x="282" y="38" text-anchor="end" style=${'font:600 10px Onest,sans-serif;fill:' + ink}>stayoptml.com</text>
-    <rect x="40" y="86" width=${(GOAL_LABELS[goal] || 'custom').length * 7 + 22} height="22" rx="11" fill="#ffffff" opacity=".92" />
-    <text x="51" y="101" style="font:600 11px Onest,sans-serif;fill:#222326">${(GOAL_LABELS[goal] || 'custom').toLowerCase()}</text>
-    <rect x="14" y="122" width="292" height="160" rx="10" fill=${c} />
-    <rect x="30" y="136" width="260" height="132" rx="6" fill="#f6f7f9" />
-    ${vial(88, 'Bacteriostatic', 'Water', false)}
-    ${vial(184, l1, l2, true)}
-  </svg>`;
-}
-
 function TitrationEditor({ m, onChange }) {
   const L = computeLadder(m);
   const unitLbl = m.unit === 'iu' ? 'IU' : 'mg';
@@ -121,7 +89,7 @@ function Builder({ st, set, items, act }) {
       <p class="lead">Pick from the range or add anything that is not on the list, set weekly doses and titrations, then export a client-ready PDF or send a link with a built-in daily tracker.</p></div>
     ${st.shared ? html`<div class="banner"><b style="color:var(--ink);font-size:17px">${st.client ? 'Protocol for ' + st.client : 'A protocol was shared with you'}${st.by ? ' · prepared by ' + st.by : ''}</b>
       <p class="small">Everything below is your plan. Your daily tracker is at the top of the page, and you can export the full PDF guide any time.</p>
-      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Export PDF</button><a class="btn sm outline" href="#today">Open my tracker</a>
+      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Export PDF</button><a class="btn sm outline" href="#/plan">Open my tracker</a>
       ${act.hasPrev ? html`<button type="button" class="btn sm ghost" onClick=${act.restorePrev}>Restore my previous draft</button>` : null}</div></div>` : null}
 
     <div class="bstep"><span class="n">1</span><div class="stack g12"><div><h3>Who it is for</h3><p class="small muted">Appears on the cover of the PDF and in the shared link.</p></div>
@@ -136,7 +104,7 @@ function Builder({ st, set, items, act }) {
     <div class="bstep"><span class="n">2</span><div class="stack g16"><div><h3>Compounds and doses</h3><p class="small muted">Tap to add from the range. Switch any compound to your own titration, or add one that is not on the list.</p></div>
       <div class="picker" role="group" aria-label="Add compounds from the range">${PRODUCTS.map(p => { const on = st.order.indexOf(p.id) > -1; return html`<button type="button" class="pill" aria-pressed=${String(on)} onClick=${() => act.add(p.id)}><img src=${GOAL_ICONS[p.goal]} alt="" />${p.name}</button>`; })}</div>
       <div class="row g8 wrapx"><button type="button" class="btn outline" onClick=${act.addCustom}><${Icon} name="plus" size=${16} /> Add a compound not on the list</button>
-        <button type="button" class="btn ghost" onClick=${() => act.add('stack')}>Add the recomp stack</button></div>
+        <button type="button" class="btn ghost" onClick=${() => act.add('stack')}>Add the metabolic recomp stack</button></div>
       ${items.length ? html`<div class="stack g10">${items.map(it => html`<${ItemEditor} key=${it.key} it=${it} st=${st} set=${set} act=${act} />`)}</div>`
         : html`<div class="empty">Nothing in the plan yet. Tap a compound above, add one from the catalogue, or add a custom compound.</div>`}
     </div></div>
