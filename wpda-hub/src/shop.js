@@ -188,7 +188,7 @@ function QuickAdd({ g, cur, setPick, sh, bump, o, onClose }) {
   const p = cur.p; const coa = COAS[p.sku];
   return html`<div class="qa-back" onClick=${e => { if (e.target === e.currentTarget) onClose(); }}>
     <div class="qa" role="dialog" aria-modal="true" aria-label=${'Add ' + p.name + ' to your order'} tabindex="-1">
-      <div class="qa-head"><img src=${GOAL_ICONS[g.goal]} alt="" />
+      <div class="qa-head"><img class=${PRODUCT_PHOTOS[p.sku] ? 'ph' : ''} src=${PRODUCT_PHOTOS[p.sku] || GOAL_ICONS[g.goal]} alt="" />
         <div class="grow"><h2>${g.base}${g.items.length === 1 && cur.strength ? ' ' + cur.strength : ''}</h2><div class="psub">${coa ? html`<i class="okdot"></i>${coa[0]} pure` : GOAL_LABELS[g.goal]}</div></div>
         <button type="button" class="qa-x" aria-label="Close" onClick=${onClose}>×</button></div>
       ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill lg" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}

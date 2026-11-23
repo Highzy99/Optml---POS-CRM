@@ -141,7 +141,7 @@ function ShopHero() {
         <li><a href="#/guide"><img class="seal" src="assets/brand/label-circle.png" alt="" />A dosing guide for everything you order<${Icon} name="chev" size=${16} /></a></li>
       </ul>
     </div>
-    <figure class="sh-photo"><img src="assets/brand/hero-vials-web.jpg" alt="Three optml vials with printed labels, lot numbers and QR codes" fetchpriority="high" />
+    <figure class="sh-photo"><img src="assets/brand/hero-box.webp" alt="Open blue optml box with two labelled vials in a fitted tray" fetchpriority="high" />
       <figcaption class="sh-pill"><img src="assets/features/save.svg" alt="" />Pack pricing, up to ${Math.floor(best * 100)}% off</figcaption></figure>
   </div></section>`;
 }
