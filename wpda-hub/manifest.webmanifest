@@ -2,7 +2,7 @@
   "name": "optml",
   "short_name": "optml",
   "description": "optml price list, dosing guides and your plan.",
-  "start_url": "/",
+  "start_url": "/#/plan",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",

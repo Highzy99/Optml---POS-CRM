@@ -82,10 +82,12 @@ function loadState() {
     const h = (location.hash || '').replace(/^#/, '');
     if (h.startsWith('home=')) {
       // Opened from the Home Screen icon: bring the plan across once, then the copy saved in the app wins.
-      const fromLink = stateFromPayload(decodePlan(h.slice(5))); let done = '';
-      try { done = localStorage.getItem('optml-home-imported') || ''; } catch (e) {}
-      if (!st.order.length && fromLink.order.length && done !== fromLink.planId) { Object.assign(st, fromLink); try { localStorage.setItem('optml-home-imported', fromLink.planId || '1'); } catch (e) {} }
       st.fromHome = true;
+      try {
+        const fromLink = stateFromPayload(decodePlan(h.slice(5))); let done = '';
+        try { done = localStorage.getItem('optml-home-imported') || ''; } catch (e) {}
+        if (!st.order.length && fromLink.order.length && done !== fromLink.planId) { Object.assign(st, fromLink); try { localStorage.setItem('optml-home-imported', fromLink.planId || '1'); } catch (e) {} }
+      } catch (e) {}
     }
     else if (h.startsWith('plan=')) { Object.assign(st, stateFromPayload(decodePlan(h.slice(5))), { shared: true }); }
     else { const leg = legacyFromHash(h); if (leg) Object.assign(st, defaultState(), leg, { shared: true }); }

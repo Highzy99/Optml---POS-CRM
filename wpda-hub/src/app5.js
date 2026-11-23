@@ -136,7 +136,7 @@ function InstallSheet({ st, onClose }) {
   const install = () => { const e = window.__bip; if (!e) return; e.prompt(); (e.userChoice || Promise.resolve()).then(() => { window.__bip = null; setBip(null); onClose(); }); };
   return html`<div class="qa-back" onClick=${e => { if (e.target === e.currentTarget) onClose(); }}>
     <div class="qa" role="dialog" aria-modal="true" aria-label="Add optml to your Home Screen" tabindex="-1">
-      <div class="qa-head"><div class="grow"><h2>Add optml to your Home Screen</h2><div class="psub">Opens like an app: your plan, doses and reorders in one tap.</div></div>
+      <div class="qa-head"><div class="grow"><h2>Add optml to your Home Screen</h2><div class="psub">The icon opens straight to your protocol and today's doses.</div></div>
         <button type="button" class="qa-x" aria-label="Close" onClick=${onClose}>×</button></div>
       <div class="hs-icon"><img src="assets/brand/app-192.png" alt="" /><span>optml</span></div>
       ${!IS_IOS && !IS_ANDROID ? html`<div class="seg hs-tabs" role="group" aria-label="Your phone"><button type="button" aria-pressed=${String(os === 'ios')} onClick=${() => setOs('ios')}>iPhone</button><button type="button" aria-pressed=${String(os === 'android')} onClick=${() => setOs('android')}>Android</button></div>` : null}
@@ -246,14 +246,14 @@ function PlanPage({ st, set, items, onReorder, openInstall }) {
       <p class="small muted">Dosing something that isn't on the list? <a href="#/build" style="color:var(--ink);font-weight:600">Build a protocol yourself</a>.</p></div></div>`;
   return html`<div class="wrap page narrow">
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
-    <${InstallPrompt} onOpen=${openInstall} title="Keep your plan one tap away" text="Add optml to your Home Screen. See how." />
+    <${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap. See how." />
     <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
       <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button><a class="btn sm outline" href="#/build">Edit plan</a><a class="btn sm outline" href="#/protocols">View all protocols</a></div></div>
   </div>`;
 }
 
 // Every compound's protocol in one list, grouped by goal. Rows open the product's how-to-use page.
-function ProtocolsPage({ st, exportPdf }) {
+function ProtocolsPage({ st, exportPdf, openInstall }) {
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(null);
   const toggle = id => setSel(s => Object.assign({}, s, { [id]: !s[id] }));
@@ -281,6 +281,7 @@ function ProtocolsPage({ st, exportPdf }) {
           : html`<a class="prow2" href=${'#/p/' + r.sku}>${body}${r.mine ? html`<i>In My plan</i>` : null}<${Icon} name="chev" size=${18} /></a>`; })}
     </section>`)}
     ${rows.length === 0 ? html`<div class="empty" style="margin-top:16px">Nothing matches "${q.trim()}". Try a compound name.</div>` : null}
+    ${sel ? null : html`<${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap. See how." />`}
     <p class="small muted" style="margin-top:22px">Dosing something that isn't here? <a href="#/build" style="color:var(--ink);font-weight:600">Build a protocol yourself</a>.</p>
     ${sel ? html`<div class="selbar screen"><span>${chosen.length ? chosen.length + ' selected' : 'Tick protocols to export'}</span>
       <button type="button" class="btn" disabled=${!chosen.length} onClick=${() => exportPdf(chosen.map(id => [id, idxOf(id)]))}><${Icon} name="print" size=${16} /> Save as PDF</button></div>` : null}
@@ -291,7 +292,7 @@ function Footer({ openInstall }) {
   return html`<footer class="foot screen"><div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:28px">
     <div class="stack g12"><img src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:22px;width:auto;align-self:flex-start;filter:invert(1)" /><p>Research-grade peptides with free bac water and a batch-matched certificate. Guides by the World Peptide Dosage Association.</p></div>
     <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Contact</div><a href=${'https://wa.me/' + WA_NUMBER} target="_blank" rel="noopener">WhatsApp</a><a href=${'mailto:' + CONTACT}>${CONTACT}</a></div>
-    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Pages</div><a href="#/">Price list</a><a href="#/guide">How to use</a><a href="#/protocols">All protocols</a><a href="#/coa">Certificates</a><a href="#/build">Build a protocol</a>${IS_STANDALONE ? null : html`<a href="#" onClick=${e => { e.preventDefault(); openInstall(); }}>Add to Home Screen</a>`}</div>
+    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Pages</div><a href="#/">Price list</a><a href="#/guide">How to use</a><a href="#/protocols">All protocols</a><a href="#/coa">Certificates</a><a href="#/build">Build a protocol</a></div>
     <p class="tiny" style="grid-column:1/-1;border-top:1px solid rgba(255,255,255,.14);padding-top:18px;color:rgba(255,255,255,.6)">Supplied for laboratory research use. ${DISCLAIMER}</p>
   </div></footer>`;
 }
@@ -323,7 +324,7 @@ function App() {
         if (raw) { const prev = JSON.parse(raw); if (prev.planId && prev.planId !== st.planId && prev.order && prev.order.length) { localStorage.setItem('wpda-hub-prev', raw); setHasPrev(true); } }
       } catch (e) {}
       location.replace('#/plan');
-    } else if (st.fromHome) location.replace(st.order.length ? '#/plan' : '#/');
+    } else if (st.fromHome) location.replace('#/plan');
     return () => window.removeEventListener('hashchange', on);
   }, []);
   useEffect(() => { try { const x = {}; PERSIST.forEach(k => { x[k] = st[k]; }); localStorage.setItem(STORE_KEY, JSON.stringify(x)); } catch (e) {} }, PERSIST.map(k => st[k]));
@@ -403,8 +404,8 @@ function App() {
   else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} openInstall=${openInstall} />`;
   else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
   else if (route.page === 'coa') page = html`<${CoaSection} />`;
-  else if (route.page === 'protocols') page = html`<${ProtocolsPage} st=${st} exportPdf=${exportPdf} />`;
-  else page = html`<${ShopHero} /><div class="wrap"><${InstallPrompt} onOpen=${openInstall} title="Add optml to your Home Screen" text="Your plan and reorders in one tap. See how." dismissable /></div><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} /><${AfterOrder} /><${GuideCard} />`;
+  else if (route.page === 'protocols') page = html`<${ProtocolsPage} st=${st} exportPdf=${exportPdf} openInstall=${openInstall} />`;
+  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} /><${AfterOrder} /><${GuideCard} />`;
 
   return html`${route.page === 'shop' ? html`<${Ticker} />` : null}<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
     <main class="screen" id="main">${page}</main>
