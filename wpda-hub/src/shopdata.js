@@ -120,6 +120,8 @@ function makeRef() {
 // Product photos for the shop cards, keyed by SKU (path under assets/products/). A card without one shows its goal badge.
 const PRODUCT_PHOTOS = {};
 ['RE10','RE20','RE30','GH50','GH100','ME10','WO20','GL70','KL80','MO10','MO40','TE10','BA50','BP10','CJ10','DS10','GH10','KI10','KP10','NA1000','SK10','SL10','SX10','TB10','TI10','TI20','TI30'].forEach(k => { PRODUCT_PHOTOS[k] = 'assets/products/' + k + '.webp'; });
+// Pink (glow) label versions; the ?v bumps past the 7-day asset cache.
+['GL70','KL80'].forEach(k => { PRODUCT_PHOTOS[k] += '?v=2'; });
 
 // Top sellers carousel, best first. From POS sales 25 Oct to 23 Nov 2026 (vials sold and number of orders). Edit this list to change the carousel.
-const TOP_SELLERS = ['RE20', 'CJ10', 'KL80', 'MO10', 'WO20', 'TE10'];
+const TOP_SELLERS = ['RE20', 'WO20', 'CJ10', 'KL80', 'MO10', 'TE10'];
