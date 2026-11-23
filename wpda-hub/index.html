@@ -2868,7 +2868,7 @@ function PlanPage({ st, set, items, onReorder, openInstall }) {
       <p class="small muted">Dosing something that isn't on the list? <a href="#/build" style="color:var(--ink);font-weight:600">Build a protocol yourself</a>.</p></div></div>`;
   return html`<div class="wrap page narrow">
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
-    <${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap. See how." />
+    <${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap." />
     <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
       <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button><a class="btn sm outline" href="#/build">Edit plan</a><a class="btn sm outline" href="#/protocols">View all protocols</a></div></div>
   </div>`;
@@ -2903,7 +2903,7 @@ function ProtocolsPage({ st, exportPdf, openInstall }) {
           : html`<a class="prow2" href=${'#/p/' + r.sku}>${body}${r.mine ? html`<i>In My plan</i>` : null}<${Icon} name="chev" size=${18} /></a>`; })}
     </section>`)}
     ${rows.length === 0 ? html`<div class="empty" style="margin-top:16px">Nothing matches "${q.trim()}". Try a compound name.</div>` : null}
-    ${sel ? null : html`<${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap. See how." />`}
+    ${sel ? null : html`<${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap." />`}
     <p class="small muted" style="margin-top:22px">Dosing something that isn't here? <a href="#/build" style="color:var(--ink);font-weight:600">Build a protocol yourself</a>.</p>
     ${sel ? html`<div class="selbar screen"><span>${chosen.length ? chosen.length + ' selected' : 'Tick protocols to export'}</span>
       <button type="button" class="btn" disabled=${!chosen.length} onClick=${() => exportPdf(chosen.map(id => [id, idxOf(id)]))}><${Icon} name="print" size=${16} /> Save as PDF</button></div>` : null}
