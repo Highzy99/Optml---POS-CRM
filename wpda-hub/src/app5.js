@@ -40,8 +40,8 @@ function Tracker({ st, set, items, onReorder }) {
     return html`<div><div class="banner">
       <div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h2 id="h-today" style="font-size:28px">Ready when you are</h2>
       <p class="small">Set a start date and this becomes a daily tracker: what to take today, what to draw, where to inject next and when to reorder.</p>
-      <div class="row g8 wrapx"><button type="button" class="btn" onClick=${() => set({ start: isoDay(t0) })}>Start today</button>
-        <label class="row g8"><span class="small" style="font-weight:600;color:var(--ink)">or pick a date</span><input class="input" style="width:auto" type="date" value=${st.start} onInput=${e => set({ start: e.target.value })} /></label></div>
+      <div class="pair"><button type="button" class="btn" onClick=${() => set({ start: isoDay(t0) })}>Start today</button>
+        <label class="btn outline datebtn"><${Icon} name="plan" size=${17} /> Pick a date<input type="date" aria-label="Pick a start date" value=${st.start} onClick=${e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (x) {} }} onInput=${e => set({ start: e.target.value })} /></label></div>
     </div></div>`;
   }
   const day = addDays(t0, dayOff);
@@ -247,8 +247,9 @@ function PlanPage({ st, set, items, onReorder, openInstall }) {
   return html`<div class="wrap page narrow">
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
     <${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap." />
-    <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
-      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button><a class="btn sm outline" href="#/build">Edit plan</a><a class="btn sm outline" href="#/protocols">View all protocols</a></div></div>
+    <div class="card plancard"><div><div class="small muted">Your plan</div><b>${items.map(i => i.name).join(', ')}</b></div>
+      <button type="button" class="btn block" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button>
+      <div class="pair"><a class="btn outline" href="#/build">Edit plan</a><a class="btn outline" href="#/protocols">All protocols</a></div></div>
   </div>`;
 }
 

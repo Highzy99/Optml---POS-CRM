@@ -596,6 +596,13 @@ button.prow2 { width: 100%; background: none; border: 0; border-bottom: 1px soli
 .prow2 .tick svg { color: #fff; }
 .selbar { position: sticky; bottom: calc(68px + env(safe-area-inset-bottom)); z-index: 30; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid var(--n200); border-radius: var(--pill); padding: 8px 8px 8px 18px; box-shadow: var(--shadow-lg); font-size: 14.5px; font-weight: 600; color: var(--ink); }
 @media (min-width: 860px) { .selbar { bottom: 16px; } }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pair .btn { padding: 0 12px; min-width: 0; }
+.datebtn { position: relative; overflow: hidden; }
+.datebtn input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; font-size: 16px; }
+.datebtn:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.plancard { padding: 16px; margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+.plancard b { display: block; color: var(--ink); font-size: 17px; line-height: 1.3; }
 .a2hs { display: flex; align-items: center; gap: 4px; margin-top: 14px; border: 1px solid var(--n200); border-radius: var(--r-lg); background: #fff; }
 .a2hs .go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: none; border: 0; text-align: left; font: inherit; cursor: pointer; border-radius: var(--r-lg); color: var(--n500); }
 .a2hs .go img { width: 44px; height: 44px; border-radius: 11px; flex: none; }
@@ -2662,8 +2669,8 @@ function Tracker({ st, set, items, onReorder }) {
     return html`<div><div class="banner">
       <div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h2 id="h-today" style="font-size:28px">Ready when you are</h2>
       <p class="small">Set a start date and this becomes a daily tracker: what to take today, what to draw, where to inject next and when to reorder.</p>
-      <div class="row g8 wrapx"><button type="button" class="btn" onClick=${() => set({ start: isoDay(t0) })}>Start today</button>
-        <label class="row g8"><span class="small" style="font-weight:600;color:var(--ink)">or pick a date</span><input class="input" style="width:auto" type="date" value=${st.start} onInput=${e => set({ start: e.target.value })} /></label></div>
+      <div class="pair"><button type="button" class="btn" onClick=${() => set({ start: isoDay(t0) })}>Start today</button>
+        <label class="btn outline datebtn"><${Icon} name="plan" size=${17} /> Pick a date<input type="date" aria-label="Pick a start date" value=${st.start} onClick=${e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (x) {} }} onInput=${e => set({ start: e.target.value })} /></label></div>
     </div></div>`;
   }
   const day = addDays(t0, dayOff);
@@ -2869,8 +2876,9 @@ function PlanPage({ st, set, items, onReorder, openInstall }) {
   return html`<div class="wrap page narrow">
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
     <${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap." />
-    <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
-      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button><a class="btn sm outline" href="#/build">Edit plan</a><a class="btn sm outline" href="#/protocols">View all protocols</a></div></div>
+    <div class="card plancard"><div><div class="small muted">Your plan</div><b>${items.map(i => i.name).join(', ')}</b></div>
+      <button type="button" class="btn block" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button>
+      <div class="pair"><a class="btn outline" href="#/build">Edit plan</a><a class="btn outline" href="#/protocols">All protocols</a></div></div>
   </div>`;
 }
 

@@ -583,6 +583,13 @@ button.prow2 { width: 100%; background: none; border: 0; border-bottom: 1px soli
 .prow2 .tick svg { color: #fff; }
 .selbar { position: sticky; bottom: calc(68px + env(safe-area-inset-bottom)); z-index: 30; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid var(--n200); border-radius: var(--pill); padding: 8px 8px 8px 18px; box-shadow: var(--shadow-lg); font-size: 14.5px; font-weight: 600; color: var(--ink); }
 @media (min-width: 860px) { .selbar { bottom: 16px; } }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pair .btn { padding: 0 12px; min-width: 0; }
+.datebtn { position: relative; overflow: hidden; }
+.datebtn input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; font-size: 16px; }
+.datebtn:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.plancard { padding: 16px; margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+.plancard b { display: block; color: var(--ink); font-size: 17px; line-height: 1.3; }
 .a2hs { display: flex; align-items: center; gap: 4px; margin-top: 14px; border: 1px solid var(--n200); border-radius: var(--r-lg); background: #fff; }
 .a2hs .go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: none; border: 0; text-align: left; font: inherit; cursor: pointer; border-radius: var(--r-lg); color: var(--n500); }
 .a2hs .go img { width: 44px; height: 44px; border-radius: 11px; flex: none; }
