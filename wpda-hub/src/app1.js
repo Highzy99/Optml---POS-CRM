@@ -211,7 +211,7 @@ function Pills({ options, value, onPick, label }) {
 
 // ---------- Product page: buy at the top, how-to below in tabs ----------
 
-function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
+function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash, exportPdf }) {
   const sp = SHOP_BY_SKU[sku];
   if (!sp) return html`<div class="wrap page narrow"><a class="back" href="#/">Price list</a><div class="empty" style="margin-top:16px">That product isn't on the price list.</div></div>`;
   const map = SKU_PROTOCOL[sku];
@@ -251,7 +251,8 @@ function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash }) {
           ${p.note ? html`<div class="note">${p.note}</div>` : null}
           <div class="row g8 wrapx">${st.order.indexOf(p.id) > -1 ? html`<a class="btn soft" href="#/plan"><${Icon} name="check" size=${16} /> In My plan</a>`
             : html`<button type="button" class="btn" onClick=${() => { set(s => ({ order: s.order.concat([p.id]), sizeIdx: Object.assign({}, s.sizeIdx, { [p.id]: idx }) })); flash && flash(p.name + ' added to My plan'); }}><${Icon} name="plus" size=${16} /> Add to My plan</button>`}
-            ${!it.oral ? html`<a class="btn outline" href="#/guide/sites"><${Icon} name="body" size=${16} /> Where to inject</a>` : null}</div>` : null}
+            ${!it.oral ? html`<a class="btn outline" href="#/guide/sites"><${Icon} name="body" size=${16} /> Where to inject</a>` : null}
+            ${exportPdf ? html`<button type="button" class="btn outline" onClick=${() => exportPdf([[p.id, idx]])}><${Icon} name="print" size=${16} /> Save as PDF</button>` : null}</div>` : null}
         ${t === 'mix' && !it.oral ? html`
           ${it.bacOk ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">How much bac water are you adding?</div>
             <${Pills} label="Bac water" value=${it.bac} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { [p.id]: v }) }))} /></div>` : null}

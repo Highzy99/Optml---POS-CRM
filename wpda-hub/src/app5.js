@@ -116,7 +116,7 @@ function parseRoute() {
   const h = location.hash || '';
   if (h.startsWith('#/p/')) { const parts = h.slice(4).split('/'); return { page: 'product', sku: decodeURIComponent(parts[0]).toUpperCase(), tab: parts[1] || '' }; }
   if (h.startsWith('#/guide')) return { page: 'guide', chapter: h.split('/')[2] || 'mix' };
-  const m = h.match(/^#\/(order|plan|build|coa)$/);
+  const m = h.match(/^#\/(order|plan|build|coa|protocols)$/);
   if (m) return { page: m[1] };
   return { page: 'shop' };
 }
@@ -151,7 +151,7 @@ function GuideCard() {
     <img src="assets/brand/label-circle.png" alt="World Peptide Dosage Association" />
     <div class="stack g8"><h2>Not sure how to dose or mix?</h2>
       <p>Every compound on this list has a guide: the dose week by week, mixing steps, injection sites and a daily tracker.</p></div>
-    <a class="btn on-dark" href="#/guide">Open the guide</a>
+    <div class="row g8 wrapx"><a class="btn on-dark" href="#/protocols">View all protocols</a><a class="btn on-dark-outline" href="#/guide">How to mix and inject</a></div>
   </div></section>`;
 }
 
@@ -173,13 +173,13 @@ function Header({ route, count, total, planCount }) {
   return html`<header class=${'top screen' + (stuck ? ' stuck' : '')}><div class="wrap inner">
     <a href="#/" aria-label="optml price list home" style="justify-self:start;display:flex;align-items:center;min-height:40px;text-decoration:none"><img class="logo" src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:24px" /></a>
     <a class=${'btn sm plan' + (count ? '' : ' outline')} href="#/order" aria-label=${count ? 'Your order, ' + count + ' pack' + (count === 1 ? '' : 's') + ', ' + money(total) : 'Your order, empty'}>${count ? html`${money(total)}<span class="count">${count}</span>` : 'Order'}</a>
-    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan${planCount ? html`<i class="navdot">${planCount}</i>` : null}</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
+    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan') || cur('protocols')}>My plan${planCount ? html`<i class="navdot">${planCount}</i>` : null}</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
   </div></header>`;
 }
 
 function TabBar({ route, count, planCount }) {
   const tabs = [['shop', '#/', 'Shop', 'shop'], ['guide', '#/guide', 'How to use', 'book'], ['plan', '#/plan', 'My plan', 'plan'], ['order', '#/order', 'Order', 'bag']];
-  return html`<nav class="tabbar screen" aria-label="Pages">${tabs.map(t => { const on = route.page === t[0] || (t[0] === 'shop' && route.page === 'product');
+  return html`<nav class="tabbar screen" aria-label="Pages">${tabs.map(t => { const on = route.page === t[0] || (t[0] === 'shop' && route.page === 'product') || (t[0] === 'plan' && route.page === 'protocols');
     return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : t[0] === 'plan' && planCount ? html`<i class="dot soft">${planCount}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
 }
 
@@ -187,11 +187,47 @@ function PlanPage({ st, set, items, onReorder }) {
   if (!items.length) return html`<div class="wrap page narrow"><div class="page-head"><h1>Your guide lives here</h1>
       <p class="lead">Add a product to your cart and its guide appears here: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
     <div class="stack g12">
-      <div class="row g8 wrapx"><a class="btn" href="#/">Browse the price list</a><a class="btn outline" href="#/build">Build a protocol yourself</a></div></div></div>`;
+      <div class="row g8 wrapx"><a class="btn" href="#/protocols">View all protocols</a><a class="btn outline" href="#/">Browse the price list</a></div>
+      <p class="small muted">Dosing something that isn't on the list? <a href="#/build" style="color:var(--ink);font-weight:600">Build a protocol yourself</a>.</p></div></div>`;
   return html`<div class="wrap page narrow">
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
     <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
-      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button><a class="btn sm outline" href="#/build">Edit plan</a><a class="btn sm ghost" href="#/guide">How to use</a></div></div>
+      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button><a class="btn sm outline" href="#/build">Edit plan</a><a class="btn sm outline" href="#/protocols">View all protocols</a></div></div>
+  </div>`;
+}
+
+// Every compound's protocol in one list, grouped by goal. Rows open the product's how-to-use page.
+function ProtocolsPage({ st, exportPdf }) {
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState(null);
+  const toggle = id => setSel(s => Object.assign({}, s, { [id]: !s[id] }));
+  const startSel = () => setSel(st.order.reduce((a, id) => { if (PROTOCOL_SKUS[id]) a[id] = true; return a; }, {}));
+  const chosen = sel ? Object.keys(sel).filter(id => sel[id]) : [];
+  const idxOf = id => { const skus = PROTOCOL_SKUS[id]; const cur = st.sizeIdx[id]; return st.order.indexOf(id) > -1 && skus[cur] ? cur : skus.findIndex(Boolean); };
+  const term = q.trim().toLowerCase();
+  const rows = PRODUCTS.filter(p => PROTOCOL_SKUS[p.id] && PROTOCOL_SKUS[p.id].filter(Boolean).length).map(p => {
+    const skus = PROTOCOL_SKUS[p.id].filter(Boolean); const sp = SHOP_BY_SKU[skus[0]];
+    const it = listedItem(p, Object.assign({}, st, { mode: {}, sizeIdx: Object.assign({}, st.sizeIdx, { [p.id]: SKU_PROTOCOL[skus[0]][1] }) }));
+    return { p, sku: skus[0], goal: sp.goal, name: skus.length > 1 ? splitName(sp.name)[0] : sp.name, strengths: skus.length > 1 ? skus.map(k => splitName(SHOP_BY_SKU[k].name)[1]).join(', ') : '', freq: it.freqText, duration: it.duration, oral: it.oral, mine: st.order.indexOf(p.id) > -1 };
+  }).filter(r => !term || (r.name + ' ' + r.p.name + ' ' + GOAL_LABELS[r.goal] + ' ' + r.sku).toLowerCase().includes(term));
+  return html`<div class="wrap page narrow">
+    <a class="back" href="#/plan"><${Icon} name="back" size=${18} /> My plan</a>
+    <div class="page-head"><h1>All protocols</h1>
+      <p class="lead">${sel ? 'Tick the protocols you want in your PDF, then save.' : 'The dose week by week, mixing and timing for every compound on the price list. Tap one to open it.'}</p>
+      <div class="row g8 wrapx">${sel ? html`<button type="button" class="btn sm outline" onClick=${() => setSel(null)}>Cancel</button>`
+        : html`<button type="button" class="btn sm outline" onClick=${startSel}><${Icon} name="print" size=${16} /> Export as PDF</button>`}</div></div>
+    <label class="field"><span class="sr">Search protocols</span><input class="input" type="search" style="border-radius:var(--pill);padding-left:22px" placeholder="Search — reta, bpc, ghk…" value=${q} onInput=${e => setQ(e.target.value)} /></label>
+    ${GOALS.filter(g => rows.some(r => r.goal === g)).map(g => html`<section class="pgroup" aria-labelledby=${'pg-' + g}>
+      <h2 id=${'pg-' + g}><img src=${GOAL_ICONS[g]} alt="" />${GOAL_LABELS[g]}</h2>
+      ${rows.filter(r => r.goal === g).map(r => { const body = html`<img src=${PRODUCT_PHOTOS[r.sku] || GOAL_ICONS[g]} alt="" loading="lazy" />
+        <span class="grow"><b>${r.name}</b><span>${[r.freq, r.duration, r.oral ? 'Capsules' : ''].filter(x => x && x !== '—').join(' · ')}</span>${r.strengths ? html`<span>${r.strengths}</span>` : null}</span>`;
+        return sel ? html`<button type="button" class="prow2" role="checkbox" aria-checked=${String(!!sel[r.p.id])} onClick=${() => toggle(r.p.id)}>${body}<span class=${'tick' + (sel[r.p.id] ? ' on' : '')}>${sel[r.p.id] ? html`<${Icon} name="check" size=${16} />` : null}</span></button>`
+          : html`<a class="prow2" href=${'#/p/' + r.sku}>${body}${r.mine ? html`<i>In My plan</i>` : null}<${Icon} name="chev" size=${18} /></a>`; })}
+    </section>`)}
+    ${rows.length === 0 ? html`<div class="empty" style="margin-top:16px">Nothing matches "${q.trim()}". Try a compound name.</div>` : null}
+    <p class="small muted" style="margin-top:22px">Dosing something that isn't here? <a href="#/build" style="color:var(--ink);font-weight:600">Build a protocol yourself</a>.</p>
+    ${sel ? html`<div class="selbar screen"><span>${chosen.length ? chosen.length + ' selected' : 'Tick protocols to export'}</span>
+      <button type="button" class="btn" disabled=${!chosen.length} onClick=${() => exportPdf(chosen.map(id => [id, idxOf(id)]))}><${Icon} name="print" size=${16} /> Save as PDF</button></div>` : null}
   </div>`;
 }
 
@@ -199,7 +235,7 @@ function Footer() {
   return html`<footer class="foot screen"><div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:28px">
     <div class="stack g12"><img src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:22px;width:auto;align-self:flex-start;filter:invert(1)" /><p>Research-grade peptides with free bac water and a batch-matched certificate. Guides by the World Peptide Dosage Association.</p></div>
     <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Contact</div><a href=${'https://wa.me/' + WA_NUMBER} target="_blank" rel="noopener">WhatsApp</a><a href=${'mailto:' + CONTACT}>${CONTACT}</a></div>
-    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Pages</div><a href="#/">Price list</a><a href="#/guide">How to use</a><a href="#/coa">Certificates</a><a href="#/build">Build a protocol</a></div>
+    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Pages</div><a href="#/">Price list</a><a href="#/guide">How to use</a><a href="#/protocols">All protocols</a><a href="#/coa">Certificates</a><a href="#/build">Build a protocol</a></div>
     <p class="tiny" style="grid-column:1/-1;border-top:1px solid rgba(255,255,255,.14);padding-top:18px;color:rgba(255,255,255,.6)">Supplied for laboratory research use. ${DISCLAIMER}</p>
   </div></footer>`;
 }
@@ -212,12 +248,16 @@ function App() {
   const [route, setRoute] = useState(parseRoute);
   const [ptab, setPtab] = useState('use');
   const [toast, setToast] = useState('');
+  // PDF export of chosen protocols (from a product page or the All protocols list) without touching My plan.
+  const [exp, setExp] = useState(null);
+  useEffect(() => { if (!exp) return; const t = setTimeout(() => window.print(), 120); return () => clearTimeout(t); }, [exp]);
+  const exportPdf = picks => setExp({ picks, n: Date.now() });
   const items = planItems(st);
   const o = computeOrder(sh, Date.now());
   const [hasPrev, setHasPrev] = useState(() => { try { return !!localStorage.getItem('wpda-hub-prev'); } catch (e) { return false; } });
 
   useEffect(() => {
-    const on = () => { setRoute(parseRoute()); setPtab('use'); window.scrollTo({ top: 0, behavior: 'instant' }); };
+    const on = () => { setRoute(parseRoute()); setPtab('use'); setExp(null); window.scrollTo({ top: 0, behavior: 'instant' }); };
     window.addEventListener('hashchange', on);
     if (st.shared) {
       try {
@@ -295,18 +335,22 @@ function App() {
   const reorder = sku => { if (!sku) return; bump(sku + ':1', 1); location.hash = '#/order'; };
   const planReady = o.items.some(it => SKU_PROTOCOL[it.p.sku]);
 
+  const expSt = exp ? Object.assign({}, st, { order: exp.picks.map(x => x[0]), customs: {}, own: {}, mode: {}, notes: '', inotes: {}, sizeIdx: Object.assign({}, st.sizeIdx, exp.picks.reduce((a, x) => { a[x[0]] = x[1]; return a; }, {})) }) : null;
+  const docSt = Object.assign({}, expSt || st, { preview: !exp && st.preview && route.page === 'build' });
+  const docItems = expSt ? planItems(expSt) : items;
   let page;
-  if (route.page === 'product') page = html`<${ProductPage} sku=${route.sku} st=${st} set=${set} sh=${sh} bump=${bump} tab=${ptab} setTab=${setPtab} flash=${flash} />`;
+  if (route.page === 'product') page = html`<${ProductPage} sku=${route.sku} st=${st} set=${set} sh=${sh} bump=${bump} tab=${ptab} setTab=${setPtab} flash=${flash} exportPdf=${exportPdf} />`;
   else if (route.page === 'order') page = html`<${OrderSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} onSent=${onSent} planReady=${planReady} />`;
   else if (route.page === 'guide') page = html`<${Guide} st=${st} set=${set} chapter=${route.chapter} />`;
   else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} />`;
   else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
   else if (route.page === 'coa') page = html`<${CoaSection} />`;
+  else if (route.page === 'protocols') page = html`<${ProtocolsPage} st=${st} exportPdf=${exportPdf} />`;
   else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} /><${AfterOrder} /><${GuideCard} />`;
 
   return html`${route.page === 'shop' ? html`<${Ticker} />` : null}<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
     <main class="screen" id="main">${page}</main>
-    <${Doc} st=${Object.assign({}, st, { preview: st.preview && route.page === 'build' })} items=${items} />
+    <${Doc} st=${docSt} items=${docItems} />
     <${Footer} />
     <${TabBar} route=${route} count=${o.packCount} planCount=${items.length} />
     ${toast ? html`<div class="toast screen" role="status">${toast}</div>` : null}`;

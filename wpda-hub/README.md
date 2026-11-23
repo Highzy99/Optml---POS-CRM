@@ -2,7 +2,7 @@
 
 The optml price list with the World Peptide Dosage Association guide built in. Customers order on WhatsApp (the message format is the one the CRM's "paste order" parser reads); everything they order becomes their personal guide under My plan: exact draws, mixing, injection sites, a daily tracker and a PDF.
 
-Pages (hash routes): `#/` price list, `#/p/SKU` product (prices, how to use, mix and draw, certificate), `#/order`, `#/guide/mix|measure|inject|sites|store|faq`, `#/plan` (tracker), `#/build` (protocol builder with custom compounds and titrations), `#/coa`. `/wholesale` shows wholesale rates including 10-vial packs. Old share links (`#plan=…`, `#p=…`) still open the shared plan.
+Pages (hash routes): `#/` price list, `#/p/SKU` product (prices, how to use, mix and draw, certificate), `#/order`, `#/guide/mix|measure|inject|sites|store|faq`, `#/plan` (tracker), `#/build` (protocol builder with custom compounds and titrations), `#/coa`, `#/protocols` (every protocol in one list, with PDF export of the ones you tick). `/wholesale` shows wholesale rates including 10-vial packs. Old share links (`#plan=…`, `#p=…`) still open the shared plan.
 
 Live: https://stayoptml.vercel.app (Vercel project `wpda-hub`, root directory `wpda-hub/`).
 
