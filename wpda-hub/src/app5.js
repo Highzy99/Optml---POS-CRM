@@ -111,6 +111,61 @@ function Tracker({ st, set, items, onReorder }) {
 }
 
 
+// ---------- Add to Home Screen ----------
+const A2HS_KEY = 'optml-a2hs-dismissed';
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+const IS_STANDALONE = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+// Android/desktop Chrome can install from a manifest. iOS is left without one on purpose so its Home Screen icon keeps the page address, which carries the plan.
+if (!IS_IOS && !WHOLESALE) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = 'manifest.webmanifest'; document.head.appendChild(l); }
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__bip = e; window.dispatchEvent(new Event('bipready')); });
+
+function InstallSheet({ st, onClose }) {
+  const [os, setOs] = useState(IS_ANDROID ? 'android' : 'ios');
+  const [bip, setBip] = useState(window.__bip || null);
+  useEffect(() => {
+    const k = e => { if (e.key === 'Escape') onClose(); }; const r = () => setBip(window.__bip);
+    document.addEventListener('keydown', k); window.addEventListener('bipready', r);
+    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    // While the steps are open on iPhone, the address carries the plan so the Home Screen icon opens with it.
+    const was = location.hash; let swapped = false;
+    try { if (IS_IOS && st.order.length) { history.replaceState(null, '', location.pathname + location.search + '#home=' + encodePlan(planPayload(st))); swapped = true; } } catch (e) {}
+    return () => { document.removeEventListener('keydown', k); window.removeEventListener('bipready', r); document.body.style.overflow = prev;
+      try { if (swapped) history.replaceState(null, '', location.pathname + location.search + was); } catch (e) {} };
+  }, []);
+  const install = () => { const e = window.__bip; if (!e) return; e.prompt(); (e.userChoice || Promise.resolve()).then(() => { window.__bip = null; setBip(null); onClose(); }); };
+  return html`<div class="qa-back" onClick=${e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div class="qa" role="dialog" aria-modal="true" aria-label="Add optml to your Home Screen" tabindex="-1">
+      <div class="qa-head"><div class="grow"><h2>Add optml to your Home Screen</h2><div class="psub">Opens like an app: your plan, doses and reorders in one tap.</div></div>
+        <button type="button" class="qa-x" aria-label="Close" onClick=${onClose}>×</button></div>
+      <div class="hs-icon"><img src="assets/brand/app-192.png" alt="" /><span>optml</span></div>
+      ${!IS_IOS && !IS_ANDROID ? html`<div class="seg hs-tabs" role="group" aria-label="Your phone"><button type="button" aria-pressed=${String(os === 'ios')} onClick=${() => setOs('ios')}>iPhone</button><button type="button" aria-pressed=${String(os === 'android')} onClick=${() => setOs('android')}>Android</button></div>` : null}
+      ${os === 'android' && bip ? html`<button type="button" class="btn block" onClick=${install}><${Icon} name="plus" size=${16} /> Add to Home Screen</button><p class="tiny muted">Or do it by hand:</p>` : null}
+      ${os === 'ios' ? html`<ol class="hs-steps">
+          <li><span>Tap <span class="key"><${Icon} name="share" size=${18} /></span> <b>Share</b> in Safari's toolbar.</span></li>
+          <li><span>Scroll down and tap <span class="key"><${Icon} name="plusbox" size=${18} /></span> <b>Add to Home Screen</b>.</span></li>
+          <li><span>Tap <b>Add</b>. Look for the black optml icon.</span></li>
+        </ol><p class="tiny muted">No Share button? Open this page in Safari first, then follow the steps.</p>`
+        : html`<ol class="hs-steps">
+          <li><span>Tap <span class="key"><${Icon} name="dots" size=${18} /></span> <b>Menu</b> at the top right of Chrome.</span></li>
+          <li><span>Tap <b>Add to Home screen</b> (or <b>Install app</b>).</span></li>
+          <li><span>Tap <b>Add</b>. Look for the black optml icon.</span></li>
+        </ol>`}
+      <button type="button" class="btn outline block" onClick=${onClose}>Done</button>
+    </div>
+  </div>`;
+}
+
+// Slim prompt for phones that haven't added the site yet. dismissKey set = can be closed for good.
+function InstallPrompt({ onOpen, title, text, dismissable }) {
+  const [gone, setGone] = useState(() => { try { return !!localStorage.getItem(A2HS_KEY); } catch (e) { return false; } });
+  if (IS_STANDALONE || !(IS_IOS || IS_ANDROID) || (dismissable && gone)) return null;
+  return html`<div class="a2hs"><button type="button" class="go" onClick=${onOpen}><img src="assets/brand/app-192.png" alt="" />
+      <span class="grow"><b>${title}</b>${text}</span>${dismissable ? null : html`<${Icon} name="chev" size=${18} />`}</button>
+    ${dismissable ? html`<button type="button" class="x" aria-label="Dismiss" onClick=${() => { try { localStorage.setItem(A2HS_KEY, '1'); } catch (e) {} setGone(true); }}>×</button>` : null}
+  </div>`;
+}
+
 // ---------- Routing ----------
 function parseRoute() {
   const h = location.hash || '';
@@ -183,7 +238,7 @@ function TabBar({ route, count, planCount }) {
     return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : t[0] === 'plan' && planCount ? html`<i class="dot soft">${planCount}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
 }
 
-function PlanPage({ st, set, items, onReorder }) {
+function PlanPage({ st, set, items, onReorder, openInstall }) {
   if (!items.length) return html`<div class="wrap page narrow"><div class="page-head"><h1>Your guide lives here</h1>
       <p class="lead">Add a product to your cart and its guide appears here: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
     <div class="stack g12">
@@ -191,6 +246,7 @@ function PlanPage({ st, set, items, onReorder }) {
       <p class="small muted">Dosing something that isn't on the list? <a href="#/build" style="color:var(--ink);font-weight:600">Build a protocol yourself</a>.</p></div></div>`;
   return html`<div class="wrap page narrow">
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
+    <${InstallPrompt} onOpen=${openInstall} title="Keep your plan one tap away" text="Add optml to your Home Screen. See how." />
     <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
       <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button><a class="btn sm outline" href="#/build">Edit plan</a><a class="btn sm outline" href="#/protocols">View all protocols</a></div></div>
   </div>`;
@@ -231,11 +287,11 @@ function ProtocolsPage({ st, exportPdf }) {
   </div>`;
 }
 
-function Footer() {
+function Footer({ openInstall }) {
   return html`<footer class="foot screen"><div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:28px">
     <div class="stack g12"><img src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:22px;width:auto;align-self:flex-start;filter:invert(1)" /><p>Research-grade peptides with free bac water and a batch-matched certificate. Guides by the World Peptide Dosage Association.</p></div>
     <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Contact</div><a href=${'https://wa.me/' + WA_NUMBER} target="_blank" rel="noopener">WhatsApp</a><a href=${'mailto:' + CONTACT}>${CONTACT}</a></div>
-    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Pages</div><a href="#/">Price list</a><a href="#/guide">How to use</a><a href="#/protocols">All protocols</a><a href="#/coa">Certificates</a><a href="#/build">Build a protocol</a></div>
+    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Pages</div><a href="#/">Price list</a><a href="#/guide">How to use</a><a href="#/protocols">All protocols</a><a href="#/coa">Certificates</a><a href="#/build">Build a protocol</a>${IS_STANDALONE ? null : html`<a href="#" onClick=${e => { e.preventDefault(); openInstall(); }}>Add to Home Screen</a>`}</div>
     <p class="tiny" style="grid-column:1/-1;border-top:1px solid rgba(255,255,255,.14);padding-top:18px;color:rgba(255,255,255,.6)">Supplied for laboratory research use. ${DISCLAIMER}</p>
   </div></footer>`;
 }
@@ -249,6 +305,8 @@ function App() {
   const [ptab, setPtab] = useState('use');
   const [toast, setToast] = useState('');
   // PDF export of chosen protocols (from a product page or the All protocols list) without touching My plan.
+  const [a2hs, setA2hs] = useState(false);
+  const openInstall = () => setA2hs(true);
   const [exp, setExp] = useState(null);
   useEffect(() => { if (!exp) return; const t = setTimeout(() => window.print(), 120); return () => clearTimeout(t); }, [exp]);
   const exportPdf = picks => setExp({ picks, n: Date.now() });
@@ -265,7 +323,7 @@ function App() {
         if (raw) { const prev = JSON.parse(raw); if (prev.planId && prev.planId !== st.planId && prev.order && prev.order.length) { localStorage.setItem('wpda-hub-prev', raw); setHasPrev(true); } }
       } catch (e) {}
       location.replace('#/plan');
-    }
+    } else if (st.fromHome) location.replace(st.order.length ? '#/plan' : '#/');
     return () => window.removeEventListener('hashchange', on);
   }, []);
   useEffect(() => { try { const x = {}; PERSIST.forEach(k => { x[k] = st[k]; }); localStorage.setItem(STORE_KEY, JSON.stringify(x)); } catch (e) {} }, PERSIST.map(k => st[k]));
@@ -342,16 +400,17 @@ function App() {
   if (route.page === 'product') page = html`<${ProductPage} sku=${route.sku} st=${st} set=${set} sh=${sh} bump=${bump} tab=${ptab} setTab=${setPtab} flash=${flash} exportPdf=${exportPdf} />`;
   else if (route.page === 'order') page = html`<${OrderSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} onSent=${onSent} planReady=${planReady} />`;
   else if (route.page === 'guide') page = html`<${Guide} st=${st} set=${set} chapter=${route.chapter} />`;
-  else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} />`;
+  else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} openInstall=${openInstall} />`;
   else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
   else if (route.page === 'coa') page = html`<${CoaSection} />`;
   else if (route.page === 'protocols') page = html`<${ProtocolsPage} st=${st} exportPdf=${exportPdf} />`;
-  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} /><${AfterOrder} /><${GuideCard} />`;
+  else page = html`<${ShopHero} /><div class="wrap"><${InstallPrompt} onOpen=${openInstall} title="Add optml to your Home Screen" text="Your plan and reorders in one tap. See how." dismissable /></div><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} /><${AfterOrder} /><${GuideCard} />`;
 
   return html`${route.page === 'shop' ? html`<${Ticker} />` : null}<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
     <main class="screen" id="main">${page}</main>
     <${Doc} st=${docSt} items=${docItems} />
-    <${Footer} />
+    <${Footer} openInstall=${openInstall} />
+    ${a2hs ? html`<${InstallSheet} st=${st} onClose=${() => setA2hs(false)} />` : null}
     <${TabBar} route=${route} count=${o.packCount} planCount=${items.length} />
     ${toast ? html`<div class="toast screen" role="status">${toast}</div>` : null}`;
 }

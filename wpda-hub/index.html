@@ -21,7 +21,11 @@
 <meta name="twitter:description" content="Research-grade peptides with free bac water, batch-matched certificates and a step-by-step dosing guide for every vial. Order on WhatsApp in under a minute.">
 <meta name="twitter:image" content="https://stayoptml.vercel.app/og.jpg?v=5">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/brand/icon-192.png">
-<link rel="apple-touch-icon" href="assets/brand/icon-180.png">
+<link rel="apple-touch-icon" href="assets/brand/app-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="optml">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preload" href="assets/fonts/onest.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 @font-face { font-family: 'Onest'; src: url('assets/fonts/onest.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
@@ -592,6 +596,21 @@ button.prow2 { width: 100%; background: none; border: 0; border-bottom: 1px soli
 .prow2 .tick svg { color: #fff; }
 .selbar { position: sticky; bottom: calc(68px + env(safe-area-inset-bottom)); z-index: 30; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid var(--n200); border-radius: var(--pill); padding: 8px 8px 8px 18px; box-shadow: var(--shadow-lg); font-size: 14.5px; font-weight: 600; color: var(--ink); }
 @media (min-width: 860px) { .selbar { bottom: 16px; } }
+.a2hs { display: flex; align-items: center; gap: 4px; margin-top: 14px; border: 1px solid var(--n200); border-radius: var(--r-lg); background: #fff; }
+.a2hs .go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: none; border: 0; text-align: left; font: inherit; cursor: pointer; border-radius: var(--r-lg); color: var(--n500); }
+.a2hs .go img { width: 44px; height: 44px; border-radius: 11px; flex: none; }
+.a2hs .grow { display: flex; flex-direction: column; min-width: 0; font-size: 13px; line-height: 1.35; color: var(--n600); }
+.a2hs b { font-size: 15px; color: var(--ink); }
+.a2hs .x { width: 40px; height: 40px; margin-right: 4px; border-radius: 50%; border: 0; background: none; color: var(--n500); font-size: 22px; line-height: 1; cursor: pointer; flex: none; }
+.hs-icon { display: flex; flex-direction: column; align-items: center; gap: 6px; align-self: center; font-size: 12.5px; color: var(--ink); }
+.hs-icon img { width: 68px; height: 68px; border-radius: 16px; box-shadow: 0 6px 16px rgba(34,35,38,.18); }
+.hs-steps { list-style: none; margin: 0; padding: 0; counter-reset: hs; }
+.hs-steps li { counter-increment: hs; display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--n200); font-size: 15.5px; color: var(--n700); }
+.hs-steps li:first-child { border-top: 0; }
+.hs-steps li::before { content: counter(hs); width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.hs-steps b { color: var(--ink); }
+.hs-steps .key { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: var(--paper); color: var(--ink); vertical-align: middle; margin: 0 2px; }
+.hs-tabs { align-self: flex-start; }
 .coagrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 0 28px; }
 .coacard { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--n200); text-decoration: none; color: inherit; }
 .coacard:hover b { text-decoration: underline; text-underline-offset: 3px; }
@@ -1881,7 +1900,14 @@ function loadState() {
   } catch (e) {}
   try {
     const h = (location.hash || '').replace(/^#/, '');
-    if (h.startsWith('plan=')) { Object.assign(st, stateFromPayload(decodePlan(h.slice(5))), { shared: true }); }
+    if (h.startsWith('home=')) {
+      // Opened from the Home Screen icon: bring the plan across once, then the copy saved in the app wins.
+      const fromLink = stateFromPayload(decodePlan(h.slice(5))); let done = '';
+      try { done = localStorage.getItem('optml-home-imported') || ''; } catch (e) {}
+      if (!st.order.length && fromLink.order.length && done !== fromLink.planId) { Object.assign(st, fromLink); try { localStorage.setItem('optml-home-imported', fromLink.planId || '1'); } catch (e) {} }
+      st.fromHome = true;
+    }
+    else if (h.startsWith('plan=')) { Object.assign(st, stateFromPayload(decodePlan(h.slice(5))), { shared: true }); }
     else { const leg = legacyFromHash(h); if (leg) Object.assign(st, defaultState(), leg, { shared: true }); }
   } catch (e) {}
   if (!st.planId) st.planId = Math.random().toString(36).slice(2, 10);
@@ -1975,6 +2001,7 @@ function planItems(st) {
 
 function Icon({ name, size = 20 }) {
   const P = {
+    share: 'M12 15V3M8 7l4-4 4 4M8 11H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2', plusbox: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM12 8v8M8 12h8', dots: 'M12 5.5v.01M12 12v.01M12 18.5v.01',
     close: 'M6 6l12 12M18 6L6 18', plus: 'M12 5v14M5 12h14', check: 'M5 12.5l4.5 4.5L19 7', arrow: 'M5 12h14M13 6l6 6-6 6', chev: 'M9.5 6.5L15 12l-5.5 5.5',
     search: 'M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-4-4', link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
     print: 'M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M7 14h10v6H7z', trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12',
@@ -2704,6 +2731,61 @@ function Tracker({ st, set, items, onReorder }) {
 }
 
 
+// ---------- Add to Home Screen ----------
+const A2HS_KEY = 'optml-a2hs-dismissed';
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+const IS_STANDALONE = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+// Android/desktop Chrome can install from a manifest. iOS is left without one on purpose so its Home Screen icon keeps the page address, which carries the plan.
+if (!IS_IOS && !WHOLESALE) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = 'manifest.webmanifest'; document.head.appendChild(l); }
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__bip = e; window.dispatchEvent(new Event('bipready')); });
+
+function InstallSheet({ st, onClose }) {
+  const [os, setOs] = useState(IS_ANDROID ? 'android' : 'ios');
+  const [bip, setBip] = useState(window.__bip || null);
+  useEffect(() => {
+    const k = e => { if (e.key === 'Escape') onClose(); }; const r = () => setBip(window.__bip);
+    document.addEventListener('keydown', k); window.addEventListener('bipready', r);
+    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    // While the steps are open on iPhone, the address carries the plan so the Home Screen icon opens with it.
+    const was = location.hash; let swapped = false;
+    try { if (IS_IOS && st.order.length) { history.replaceState(null, '', location.pathname + location.search + '#home=' + encodePlan(planPayload(st))); swapped = true; } } catch (e) {}
+    return () => { document.removeEventListener('keydown', k); window.removeEventListener('bipready', r); document.body.style.overflow = prev;
+      try { if (swapped) history.replaceState(null, '', location.pathname + location.search + was); } catch (e) {} };
+  }, []);
+  const install = () => { const e = window.__bip; if (!e) return; e.prompt(); (e.userChoice || Promise.resolve()).then(() => { window.__bip = null; setBip(null); onClose(); }); };
+  return html`<div class="qa-back" onClick=${e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div class="qa" role="dialog" aria-modal="true" aria-label="Add optml to your Home Screen" tabindex="-1">
+      <div class="qa-head"><div class="grow"><h2>Add optml to your Home Screen</h2><div class="psub">Opens like an app: your plan, doses and reorders in one tap.</div></div>
+        <button type="button" class="qa-x" aria-label="Close" onClick=${onClose}>×</button></div>
+      <div class="hs-icon"><img src="assets/brand/app-192.png" alt="" /><span>optml</span></div>
+      ${!IS_IOS && !IS_ANDROID ? html`<div class="seg hs-tabs" role="group" aria-label="Your phone"><button type="button" aria-pressed=${String(os === 'ios')} onClick=${() => setOs('ios')}>iPhone</button><button type="button" aria-pressed=${String(os === 'android')} onClick=${() => setOs('android')}>Android</button></div>` : null}
+      ${os === 'android' && bip ? html`<button type="button" class="btn block" onClick=${install}><${Icon} name="plus" size=${16} /> Add to Home Screen</button><p class="tiny muted">Or do it by hand:</p>` : null}
+      ${os === 'ios' ? html`<ol class="hs-steps">
+          <li><span>Tap <span class="key"><${Icon} name="share" size=${18} /></span> <b>Share</b> in Safari's toolbar.</span></li>
+          <li><span>Scroll down and tap <span class="key"><${Icon} name="plusbox" size=${18} /></span> <b>Add to Home Screen</b>.</span></li>
+          <li><span>Tap <b>Add</b>. Look for the black optml icon.</span></li>
+        </ol><p class="tiny muted">No Share button? Open this page in Safari first, then follow the steps.</p>`
+        : html`<ol class="hs-steps">
+          <li><span>Tap <span class="key"><${Icon} name="dots" size=${18} /></span> <b>Menu</b> at the top right of Chrome.</span></li>
+          <li><span>Tap <b>Add to Home screen</b> (or <b>Install app</b>).</span></li>
+          <li><span>Tap <b>Add</b>. Look for the black optml icon.</span></li>
+        </ol>`}
+      <button type="button" class="btn outline block" onClick=${onClose}>Done</button>
+    </div>
+  </div>`;
+}
+
+// Slim prompt for phones that haven't added the site yet. dismissKey set = can be closed for good.
+function InstallPrompt({ onOpen, title, text, dismissable }) {
+  const [gone, setGone] = useState(() => { try { return !!localStorage.getItem(A2HS_KEY); } catch (e) { return false; } });
+  if (IS_STANDALONE || !(IS_IOS || IS_ANDROID) || (dismissable && gone)) return null;
+  return html`<div class="a2hs"><button type="button" class="go" onClick=${onOpen}><img src="assets/brand/app-192.png" alt="" />
+      <span class="grow"><b>${title}</b>${text}</span>${dismissable ? null : html`<${Icon} name="chev" size=${18} />`}</button>
+    ${dismissable ? html`<button type="button" class="x" aria-label="Dismiss" onClick=${() => { try { localStorage.setItem(A2HS_KEY, '1'); } catch (e) {} setGone(true); }}>×</button>` : null}
+  </div>`;
+}
+
 // ---------- Routing ----------
 function parseRoute() {
   const h = location.hash || '';
@@ -2776,7 +2858,7 @@ function TabBar({ route, count, planCount }) {
     return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : t[0] === 'plan' && planCount ? html`<i class="dot soft">${planCount}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
 }
 
-function PlanPage({ st, set, items, onReorder }) {
+function PlanPage({ st, set, items, onReorder, openInstall }) {
   if (!items.length) return html`<div class="wrap page narrow"><div class="page-head"><h1>Your guide lives here</h1>
       <p class="lead">Add a product to your cart and its guide appears here: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
     <div class="stack g12">
@@ -2784,6 +2866,7 @@ function PlanPage({ st, set, items, onReorder }) {
       <p class="small muted">Dosing something that isn't on the list? <a href="#/build" style="color:var(--ink);font-weight:600">Build a protocol yourself</a>.</p></div></div>`;
   return html`<div class="wrap page narrow">
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
+    <${InstallPrompt} onOpen=${openInstall} title="Keep your plan one tap away" text="Add optml to your Home Screen. See how." />
     <div class="card" style="padding:16px;margin-top:22px;display:flex;flex-direction:column;gap:10px"><b style="color:var(--ink)">Your plan: ${items.map(i => i.name).join(', ')}</b>
       <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button><a class="btn sm outline" href="#/build">Edit plan</a><a class="btn sm outline" href="#/protocols">View all protocols</a></div></div>
   </div>`;
@@ -2824,11 +2907,11 @@ function ProtocolsPage({ st, exportPdf }) {
   </div>`;
 }
 
-function Footer() {
+function Footer({ openInstall }) {
   return html`<footer class="foot screen"><div class="wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:28px">
     <div class="stack g12"><img src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:22px;width:auto;align-self:flex-start;filter:invert(1)" /><p>Research-grade peptides with free bac water and a batch-matched certificate. Guides by the World Peptide Dosage Association.</p></div>
     <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Contact</div><a href=${'https://wa.me/' + WA_NUMBER} target="_blank" rel="noopener">WhatsApp</a><a href=${'mailto:' + CONTACT}>${CONTACT}</a></div>
-    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Pages</div><a href="#/">Price list</a><a href="#/guide">How to use</a><a href="#/protocols">All protocols</a><a href="#/coa">Certificates</a><a href="#/build">Build a protocol</a></div>
+    <div class="stack g8"><div class="lbl" style="color:rgba(255,255,255,.6)">Pages</div><a href="#/">Price list</a><a href="#/guide">How to use</a><a href="#/protocols">All protocols</a><a href="#/coa">Certificates</a><a href="#/build">Build a protocol</a>${IS_STANDALONE ? null : html`<a href="#" onClick=${e => { e.preventDefault(); openInstall(); }}>Add to Home Screen</a>`}</div>
     <p class="tiny" style="grid-column:1/-1;border-top:1px solid rgba(255,255,255,.14);padding-top:18px;color:rgba(255,255,255,.6)">Supplied for laboratory research use. ${DISCLAIMER}</p>
   </div></footer>`;
 }
@@ -2842,6 +2925,8 @@ function App() {
   const [ptab, setPtab] = useState('use');
   const [toast, setToast] = useState('');
   // PDF export of chosen protocols (from a product page or the All protocols list) without touching My plan.
+  const [a2hs, setA2hs] = useState(false);
+  const openInstall = () => setA2hs(true);
   const [exp, setExp] = useState(null);
   useEffect(() => { if (!exp) return; const t = setTimeout(() => window.print(), 120); return () => clearTimeout(t); }, [exp]);
   const exportPdf = picks => setExp({ picks, n: Date.now() });
@@ -2858,7 +2943,7 @@ function App() {
         if (raw) { const prev = JSON.parse(raw); if (prev.planId && prev.planId !== st.planId && prev.order && prev.order.length) { localStorage.setItem('wpda-hub-prev', raw); setHasPrev(true); } }
       } catch (e) {}
       location.replace('#/plan');
-    }
+    } else if (st.fromHome) location.replace(st.order.length ? '#/plan' : '#/');
     return () => window.removeEventListener('hashchange', on);
   }, []);
   useEffect(() => { try { const x = {}; PERSIST.forEach(k => { x[k] = st[k]; }); localStorage.setItem(STORE_KEY, JSON.stringify(x)); } catch (e) {} }, PERSIST.map(k => st[k]));
@@ -2935,16 +3020,17 @@ function App() {
   if (route.page === 'product') page = html`<${ProductPage} sku=${route.sku} st=${st} set=${set} sh=${sh} bump=${bump} tab=${ptab} setTab=${setPtab} flash=${flash} exportPdf=${exportPdf} />`;
   else if (route.page === 'order') page = html`<${OrderSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} onSent=${onSent} planReady=${planReady} />`;
   else if (route.page === 'guide') page = html`<${Guide} st=${st} set=${set} chapter=${route.chapter} />`;
-  else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} />`;
+  else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} openInstall=${openInstall} />`;
   else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
   else if (route.page === 'coa') page = html`<${CoaSection} />`;
   else if (route.page === 'protocols') page = html`<${ProtocolsPage} st=${st} exportPdf=${exportPdf} />`;
-  else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} /><${AfterOrder} /><${GuideCard} />`;
+  else page = html`<${ShopHero} /><div class="wrap"><${InstallPrompt} onOpen=${openInstall} title="Add optml to your Home Screen" text="Your plan and reorders in one tap. See how." dismissable /></div><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} /><${AfterOrder} /><${GuideCard} />`;
 
   return html`${route.page === 'shop' ? html`<${Ticker} />` : null}<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
     <main class="screen" id="main">${page}</main>
     <${Doc} st=${docSt} items=${docItems} />
-    <${Footer} />
+    <${Footer} openInstall=${openInstall} />
+    ${a2hs ? html`<${InstallSheet} st=${st} onClose=${() => setA2hs(false)} />` : null}
     <${TabBar} route=${route} count=${o.packCount} planCount=${items.length} />
     ${toast ? html`<div class="toast screen" role="status">${toast}</div>` : null}`;
 }

@@ -80,7 +80,14 @@ function loadState() {
   } catch (e) {}
   try {
     const h = (location.hash || '').replace(/^#/, '');
-    if (h.startsWith('plan=')) { Object.assign(st, stateFromPayload(decodePlan(h.slice(5))), { shared: true }); }
+    if (h.startsWith('home=')) {
+      // Opened from the Home Screen icon: bring the plan across once, then the copy saved in the app wins.
+      const fromLink = stateFromPayload(decodePlan(h.slice(5))); let done = '';
+      try { done = localStorage.getItem('optml-home-imported') || ''; } catch (e) {}
+      if (!st.order.length && fromLink.order.length && done !== fromLink.planId) { Object.assign(st, fromLink); try { localStorage.setItem('optml-home-imported', fromLink.planId || '1'); } catch (e) {} }
+      st.fromHome = true;
+    }
+    else if (h.startsWith('plan=')) { Object.assign(st, stateFromPayload(decodePlan(h.slice(5))), { shared: true }); }
     else { const leg = legacyFromHash(h); if (leg) Object.assign(st, defaultState(), leg, { shared: true }); }
   } catch (e) {}
   if (!st.planId) st.planId = Math.random().toString(36).slice(2, 10);
@@ -174,6 +181,7 @@ function planItems(st) {
 
 function Icon({ name, size = 20 }) {
   const P = {
+    share: 'M12 15V3M8 7l4-4 4 4M8 11H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2', plusbox: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM12 8v8M8 12h8', dots: 'M12 5.5v.01M12 12v.01M12 18.5v.01',
     close: 'M6 6l12 12M18 6L6 18', plus: 'M12 5v14M5 12h14', check: 'M5 12.5l4.5 4.5L19 7', arrow: 'M5 12h14M13 6l6 6-6 6', chev: 'M9.5 6.5L15 12l-5.5 5.5',
     search: 'M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-4-4', link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
     print: 'M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M7 14h10v6H7z', trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12',

@@ -8,7 +8,11 @@
 <meta name="theme-color" content="#ffffff">
 %%OG%%
 <link rel="icon" type="image/png" sizes="192x192" href="assets/brand/icon-192.png">
-<link rel="apple-touch-icon" href="assets/brand/icon-180.png">
+<link rel="apple-touch-icon" href="assets/brand/app-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="optml">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preload" href="assets/fonts/onest.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 @font-face { font-family: 'Onest'; src: url('assets/fonts/onest.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
@@ -579,6 +583,21 @@ button.prow2 { width: 100%; background: none; border: 0; border-bottom: 1px soli
 .prow2 .tick svg { color: #fff; }
 .selbar { position: sticky; bottom: calc(68px + env(safe-area-inset-bottom)); z-index: 30; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid var(--n200); border-radius: var(--pill); padding: 8px 8px 8px 18px; box-shadow: var(--shadow-lg); font-size: 14.5px; font-weight: 600; color: var(--ink); }
 @media (min-width: 860px) { .selbar { bottom: 16px; } }
+.a2hs { display: flex; align-items: center; gap: 4px; margin-top: 14px; border: 1px solid var(--n200); border-radius: var(--r-lg); background: #fff; }
+.a2hs .go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: none; border: 0; text-align: left; font: inherit; cursor: pointer; border-radius: var(--r-lg); color: var(--n500); }
+.a2hs .go img { width: 44px; height: 44px; border-radius: 11px; flex: none; }
+.a2hs .grow { display: flex; flex-direction: column; min-width: 0; font-size: 13px; line-height: 1.35; color: var(--n600); }
+.a2hs b { font-size: 15px; color: var(--ink); }
+.a2hs .x { width: 40px; height: 40px; margin-right: 4px; border-radius: 50%; border: 0; background: none; color: var(--n500); font-size: 22px; line-height: 1; cursor: pointer; flex: none; }
+.hs-icon { display: flex; flex-direction: column; align-items: center; gap: 6px; align-self: center; font-size: 12.5px; color: var(--ink); }
+.hs-icon img { width: 68px; height: 68px; border-radius: 16px; box-shadow: 0 6px 16px rgba(34,35,38,.18); }
+.hs-steps { list-style: none; margin: 0; padding: 0; counter-reset: hs; }
+.hs-steps li { counter-increment: hs; display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--n200); font-size: 15.5px; color: var(--n700); }
+.hs-steps li:first-child { border-top: 0; }
+.hs-steps li::before { content: counter(hs); width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.hs-steps b { color: var(--ink); }
+.hs-steps .key { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: var(--paper); color: var(--ink); vertical-align: middle; margin: 0 2px; }
+.hs-tabs { align-self: flex-start; }
 .coagrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 0 28px; }
 .coacard { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--n200); text-decoration: none; color: inherit; }
 .coacard:hover b { text-decoration: underline; text-underline-offset: 3px; }
