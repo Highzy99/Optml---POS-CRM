@@ -343,6 +343,6 @@ function CoaSection({ goal }) {
       <p class="lead">${withCoa.length} compounds with batch certificates, purity ${Math.min.apply(null, purities).toFixed(2)}–${Math.max.apply(null, purities).toFixed(2)}%. Identity confirmed by HPLC-MS. Tap one to open the PDF.</p></div>
     <div class="coagrid">${shown.map(p => html`<a class="coacard" href=${COA_BASE + COAS[p.sku][2]} target="_blank" rel="noopener"><img src=${GOAL_ICONS[p.goal]} alt="" /><div class="grow"><b>${p.name}</b><div class="tiny muted">Tested ${COAS[p.sku][1]}</div></div><span class="pur">${COAS[p.sku][0]}</span></a>`)}</div>
     <div class="row g8 wrapx" style="margin-top:12px"><button type="button" class="btn sm outline" onClick=${() => setAll(!all)}>${all ? 'Show fewer' : 'Show all ' + withCoa.length + ' certificates'}</button>
-      ${pending.length ? html`<a class="btn sm ghost" href=${'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent('Hi, could you please send the latest COA' + (pending.length > 1 ? 's' : '') + ' for ' + pending.join(', ') + '?')} target="_blank" rel="noopener">Request: ${pending.join(', ')}</a>` : null}</div>
+      ${pending.length ? html`<a class="btn sm ghost" href=${'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent('Hi, could you please send the latest COA' + (pending.length > 1 ? 's' : '') + ' for ' + pending.join(', ') + '?')} target="_blank" rel="noopener">Request the other ${pending.length} on WhatsApp</a>` : null}</div>
   </div>`;
 }

@@ -424,6 +424,7 @@ body:has(.qa-back) .toast { display: none; }
 .gchip i { width: 7px; height: 7px; border-radius: 50%; background: var(--gd, var(--n400)); }
 .ptitle { font-size: 16.5px; font-weight: 800; letter-spacing: -.015em; line-height: 1.2; color: var(--ink); text-decoration: none; }
 .ptitle:hover { text-decoration: underline; text-underline-offset: 3px; }
+.ptitle { display: inline-block; padding: 8px 6px; margin: -8px -6px; }
 .psub { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--n600); }
 .pcard .psub { font-size: 12.5px; gap: 5px; margin-top: -2px; }
 .pcard .okdot { width: 6px; height: 6px; }
@@ -521,7 +522,7 @@ button.tier:active { transform: scale(.97); }
 .inbox svg { flex: none; }
 .inbox b { font-weight: 700; }
 .pintro { font-size: 16px; max-width: 62ch; }
-.seg.full { display: flex; width: 100%; } .seg.full button { flex: 1; padding: 0 8px; min-height: 40px; font-weight: 600; }
+.seg.full { display: flex; width: 100%; } .seg.full button { flex: 1 1 auto; padding: 0 8px; min-height: 40px; font-weight: 600; white-space: nowrap; }
 .mixsteps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
 .mixsteps li { display: flex; gap: 14px; padding: 14px 0; border-top: 1px solid var(--n200); }
 .mixsteps li:first-child { border-top: 0; }
