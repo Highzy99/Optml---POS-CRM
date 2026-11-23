@@ -4,7 +4,7 @@ The optml price list with the World Peptide Dosage Association guide built in. C
 
 Pages (hash routes): `#/` price list, `#/p/SKU` product (prices, how to use, mix and draw, certificate), `#/order`, `#/guide/mix|measure|inject|sites|store|faq`, `#/plan` (tracker), `#/build` (protocol builder with custom compounds and titrations), `#/coa`. `/wholesale` shows wholesale rates including 10-vial packs. Old share links (`#plan=…`, `#p=…`) still open the shared plan.
 
-Live: https://wpda-protocol-hub.vercel.app (Vercel project `wpda-hub`, root directory `wpda-hub/`).
+Live: https://stayoptml.vercel.app (Vercel project `wpda-hub`, root directory `wpda-hub/`).
 
 ## Design
 

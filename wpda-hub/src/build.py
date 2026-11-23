@@ -1,5 +1,5 @@
 import sys, os, html
-base = sys.argv[1] if len(sys.argv) > 1 else 'https://wpda-protocol-hub.vercel.app'
+base = sys.argv[1] if len(sys.argv) > 1 else 'https://stayoptml.vercel.app'
 B = os.path.dirname(os.path.abspath(__file__))
 rd = lambda f: open(os.path.join(B, f), encoding='utf-8').read()
 shell = rd('shell.html')
