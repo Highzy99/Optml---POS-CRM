@@ -34,7 +34,7 @@ function defaultState() {
   };
 }
 
-const PERSIST = ['sizeIdx', 'bac', 'order', 'customs', 'own', 'mode', 'nextId', 'client', 'by', 'start', 'notes', 'inotes', 'planId'];
+const PERSIST = ['sizeIdx', 'bac', 'order', 'customs', 'own', 'mode', 'nextId', 'client', 'by', 'start', 'notes', 'inotes', 'planId', 'cartAdded'];
 
 function planPayload(st) {
   return {

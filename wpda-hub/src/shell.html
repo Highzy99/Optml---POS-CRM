@@ -320,6 +320,8 @@ footer.foot a { color: var(--white); }
 .tabbar a[aria-current="page"] { color: var(--ink); font-weight: 700; }
 .tabbar a[aria-current="page"]::before { background: var(--ink); }
 .tabbar .ico { position: relative; display: flex; }
+.tabbar .dot.soft { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink), 0 0 0 2px #fff; }
+.navdot { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; font-style: normal; }
 .tabbar .dot { position: absolute; top: -6px; left: 14px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; font-style: normal; display: flex; align-items: center; justify-content: center; padding: 0 5px; box-shadow: 0 0 0 2px #fff; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 90; background: var(--ink); color: #fff; border-radius: 999px; padding: 10px 16px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); max-width: 92vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: toast .18s cubic-bezier(.2,.7,.2,1); }
 @keyframes toast { from { opacity: 0; transform: translate(-50%, 6px); } }
@@ -544,6 +546,9 @@ button.tier:active { transform: scale(.97); }
 .otot { display: flex; flex-direction: column; gap: 8px; }
 .otot > div { display: flex; justify-content: space-between; font-size: 15px; color: rgba(255,255,255,.9); }
 .otot .grand { font-size: 22px; letter-spacing: -.02em; color: #fff; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.28); }
+.planlink { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--r-md); background: rgba(255,255,255,.16); color: #fff; text-decoration: none; font-size: 14.5px; }
+.planlink:hover { background: rgba(255,255,255,.24); }
+.planlink span { flex: 1; }
 .linkbtn { background: none; border: 0; color: #fff; text-decoration: underline; text-underline-offset: 3px; font-size: 14px; cursor: pointer; padding: 0; min-height: 32px; }
 .odetails { display: flex; flex-direction: column; gap: 16px; margin-top: 28px; }
 .odetails .field small { color: var(--bad); font-weight: 600; }

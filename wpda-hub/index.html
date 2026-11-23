@@ -333,6 +333,8 @@ footer.foot a { color: var(--white); }
 .tabbar a[aria-current="page"] { color: var(--ink); font-weight: 700; }
 .tabbar a[aria-current="page"]::before { background: var(--ink); }
 .tabbar .ico { position: relative; display: flex; }
+.tabbar .dot.soft { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink), 0 0 0 2px #fff; }
+.navdot { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; font-style: normal; }
 .tabbar .dot { position: absolute; top: -6px; left: 14px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; font-style: normal; display: flex; align-items: center; justify-content: center; padding: 0 5px; box-shadow: 0 0 0 2px #fff; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 90; background: var(--ink); color: #fff; border-radius: 999px; padding: 10px 16px; font-size: 14px; font-weight: 500; box-shadow: var(--shadow-lg); max-width: 92vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: toast .18s cubic-bezier(.2,.7,.2,1); }
 @keyframes toast { from { opacity: 0; transform: translate(-50%, 6px); } }
@@ -557,6 +559,9 @@ button.tier:active { transform: scale(.97); }
 .otot { display: flex; flex-direction: column; gap: 8px; }
 .otot > div { display: flex; justify-content: space-between; font-size: 15px; color: rgba(255,255,255,.9); }
 .otot .grand { font-size: 22px; letter-spacing: -.02em; color: #fff; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.28); }
+.planlink { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--r-md); background: rgba(255,255,255,.16); color: #fff; text-decoration: none; font-size: 14.5px; }
+.planlink:hover { background: rgba(255,255,255,.24); }
+.planlink span { flex: 1; }
 .linkbtn { background: none; border: 0; color: #fff; text-decoration: underline; text-underline-offset: 3px; font-size: 14px; cursor: pointer; padding: 0; min-height: 32px; }
 .odetails { display: flex; flex-direction: column; gap: 16px; margin-top: 28px; }
 .odetails .field small { color: var(--bad); font-weight: 600; }
@@ -1725,6 +1730,7 @@ function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
         <div>${sh.code ? html`<div class="row g8 wrapx tiny"><span>${o.codeNote}</span><button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ code: '', codeOpen: false, codeError: '' })}>Remove code</button></div>`
           : sh.codeOpen ? html`<div class="row g8"><label class="grow"><span class="sr">Discount code</span><input class="input" placeholder="Discount code" value=${sh.codeInput} onInput=${e => setSh({ codeInput: e.target.value.toUpperCase(), codeError: '' })} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } }} /></label><button type="button" class="btn on-dark sm" onClick=${applyCode}>Apply</button></div>${sh.codeError ? html`<div class="tiny" style="color:#fff;font-weight:600;margin-top:6px">${sh.codeError}</div>` : null}`
           : html`<button type="button" class="linkbtn" onClick=${() => setSh({ codeOpen: true, codeError: '' })}>Have a discount code?</button>`}</div>
+        ${planReady && !sh.sent ? html`<a class="planlink" href="#/plan"><${Icon} name="plan" size=${18} /><span>The guide for these is ready in <b>My plan</b></span><${Icon} name="chev" size=${16} /></a>` : null}
       ` : null}
 
     </div>
@@ -1813,7 +1819,7 @@ function defaultState() {
   };
 }
 
-const PERSIST = ['sizeIdx', 'bac', 'order', 'customs', 'own', 'mode', 'nextId', 'client', 'by', 'start', 'notes', 'inotes', 'planId'];
+const PERSIST = ['sizeIdx', 'bac', 'order', 'customs', 'own', 'mode', 'nextId', 'client', 'by', 'start', 'notes', 'inotes', 'planId', 'cartAdded'];
 
 function planPayload(st) {
   return {
@@ -2743,19 +2749,19 @@ function Header({ route, count, total, planCount }) {
   return html`<header class=${'top screen' + (stuck ? ' stuck' : '')}><div class="wrap inner">
     <a href="#/" aria-label="optml price list home" style="justify-self:start;display:flex;align-items:center;min-height:40px;text-decoration:none"><img class="logo" src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:24px" /></a>
     <a class=${'btn sm plan' + (count ? '' : ' outline')} href="#/order" aria-label=${count ? 'Your order, ' + count + ' pack' + (count === 1 ? '' : 's') + ', ' + money(total) : 'Your order, empty'}>${count ? html`${money(total)}<span class="count">${count}</span>` : 'Order'}</a>
-    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
+    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan${planCount ? html`<i class="navdot">${planCount}</i>` : null}</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
   </div></header>`;
 }
 
 function TabBar({ route, count, planCount }) {
   const tabs = [['shop', '#/', 'Shop', 'shop'], ['guide', '#/guide', 'How to use', 'book'], ['plan', '#/plan', 'My plan', 'plan'], ['order', '#/order', 'Order', 'bag']];
   return html`<nav class="tabbar screen" aria-label="Pages">${tabs.map(t => { const on = route.page === t[0] || (t[0] === 'shop' && route.page === 'product');
-    return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
+    return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : t[0] === 'plan' && planCount ? html`<i class="dot soft">${planCount}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
 }
 
 function PlanPage({ st, set, items, onReorder }) {
   if (!items.length) return html`<div class="wrap page narrow"><div class="page-head"><h1>Your guide lives here</h1>
-      <p class="lead">Send an order and this page fills in with what you bought: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
+      <p class="lead">Add a product to your cart and its guide appears here: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
     <div class="stack g12">
       <div class="row g8 wrapx"><a class="btn" href="#/">Browse the price list</a><a class="btn outline" href="#/build">Build a protocol yourself</a></div></div></div>`;
   return html`<div class="wrap page narrow">
@@ -2801,6 +2807,23 @@ function App() {
   useEffect(() => { try { const x = {}; PERSIST.forEach(k => { x[k] = st[k]; }); localStorage.setItem(STORE_KEY, JSON.stringify(x)); } catch (e) {} }, PERSIST.map(k => st[k]));
   useEffect(() => { try { const x = {}; SHOP_SAVED.forEach(k => { x[k] = sh[k]; }); localStorage.setItem(SHOP_KEY, JSON.stringify(x)); } catch (e) {} }, SHOP_SAVED.map(k => sh[k]));
 
+  // My plan follows the cart: adding a product adds its guide, taking it out again removes it.
+  // Guides the customer added or removed by hand, and anything from a sent order, are left alone.
+  const cartKey = Object.keys(sh.cart).filter(k => sh.cart[k] > 0).sort().join(',');
+  useEffect(() => {
+    const inCart = {};
+    cartKey.split(',').forEach(k => { const m = SKU_PROTOCOL[k.split(':')[0]]; if (m && PRODUCT[m[0]]) (inCart[m[0]] = inCart[m[0]] || []).push(m[1]); });
+    set(s => {
+      const seen = Object.assign({}, s.cartAdded || {}); let order = s.order; const sizeIdx = Object.assign({}, s.sizeIdx); let changed = false;
+      Object.keys(inCart).forEach(id => {
+        if (!seen[id]) { if (order.indexOf(id) === -1) { order = order.concat([id]); seen[id] = 'added'; sizeIdx[id] = inCart[id][0]; } else seen[id] = 'had'; changed = true; }
+        else if (seen[id] === 'added' && inCart[id].indexOf(sizeIdx[id] || 0) === -1) { sizeIdx[id] = inCart[id][0]; changed = true; }
+      });
+      Object.keys(seen).forEach(id => { if (inCart[id]) return; if (seen[id] === 'added') order = order.filter(x => x !== id); delete seen[id]; changed = true; });
+      return changed ? { order, sizeIdx, cartAdded: seen } : {};
+    });
+  }, [cartKey]);
+
   const flash = m => { setToast(m); clearTimeout(window.__tt); window.__tt = setTimeout(() => setToast(''), 1800); };
   const bump = (key, d) => {
     setSh(s => { const cart = Object.assign({}, s.cart); cart[key] = (cart[key] || 0) + d; if (cart[key] <= 0) delete cart[key]; return { cart, sent: false }; });
@@ -2841,7 +2864,8 @@ function App() {
     set(s => {
       const order = s.order.slice(); const sizeIdx = Object.assign({}, s.sizeIdx);
       orderItems.forEach(it => { const m = SKU_PROTOCOL[it.p.sku]; if (!m) return; if (order.indexOf(m[0]) === -1) order.push(m[0]); sizeIdx[m[0]] = m[1]; });
-      return { order, sizeIdx, client: s.client || sh.name.trim() };
+      const kept = {}; Object.keys(s.cartAdded || {}).forEach(id => { kept[id] = 'had'; });
+      return { order, sizeIdx, client: s.client || sh.name.trim(), cartAdded: kept };
     });
   };
   const reorder = sku => { if (!sku) return; bump(sku + ':1', 1); location.hash = '#/order'; };

@@ -173,19 +173,19 @@ function Header({ route, count, total, planCount }) {
   return html`<header class=${'top screen' + (stuck ? ' stuck' : '')}><div class="wrap inner">
     <a href="#/" aria-label="optml price list home" style="justify-self:start;display:flex;align-items:center;min-height:40px;text-decoration:none"><img class="logo" src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:24px" /></a>
     <a class=${'btn sm plan' + (count ? '' : ' outline')} href="#/order" aria-label=${count ? 'Your order, ' + count + ' pack' + (count === 1 ? '' : 's') + ', ' + money(total) : 'Your order, empty'}>${count ? html`${money(total)}<span class="count">${count}</span>` : 'Order'}</a>
-    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
+    <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan')}>My plan${planCount ? html`<i class="navdot">${planCount}</i>` : null}</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
   </div></header>`;
 }
 
 function TabBar({ route, count, planCount }) {
   const tabs = [['shop', '#/', 'Shop', 'shop'], ['guide', '#/guide', 'How to use', 'book'], ['plan', '#/plan', 'My plan', 'plan'], ['order', '#/order', 'Order', 'bag']];
   return html`<nav class="tabbar screen" aria-label="Pages">${tabs.map(t => { const on = route.page === t[0] || (t[0] === 'shop' && route.page === 'product');
-    return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
+    return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : t[0] === 'plan' && planCount ? html`<i class="dot soft">${planCount}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
 }
 
 function PlanPage({ st, set, items, onReorder }) {
   if (!items.length) return html`<div class="wrap page narrow"><div class="page-head"><h1>Your guide lives here</h1>
-      <p class="lead">Send an order and this page fills in with what you bought: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
+      <p class="lead">Add a product to your cart and its guide appears here: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
     <div class="stack g12">
       <div class="row g8 wrapx"><a class="btn" href="#/">Browse the price list</a><a class="btn outline" href="#/build">Build a protocol yourself</a></div></div></div>`;
   return html`<div class="wrap page narrow">
@@ -231,6 +231,23 @@ function App() {
   useEffect(() => { try { const x = {}; PERSIST.forEach(k => { x[k] = st[k]; }); localStorage.setItem(STORE_KEY, JSON.stringify(x)); } catch (e) {} }, PERSIST.map(k => st[k]));
   useEffect(() => { try { const x = {}; SHOP_SAVED.forEach(k => { x[k] = sh[k]; }); localStorage.setItem(SHOP_KEY, JSON.stringify(x)); } catch (e) {} }, SHOP_SAVED.map(k => sh[k]));
 
+  // My plan follows the cart: adding a product adds its guide, taking it out again removes it.
+  // Guides the customer added or removed by hand, and anything from a sent order, are left alone.
+  const cartKey = Object.keys(sh.cart).filter(k => sh.cart[k] > 0).sort().join(',');
+  useEffect(() => {
+    const inCart = {};
+    cartKey.split(',').forEach(k => { const m = SKU_PROTOCOL[k.split(':')[0]]; if (m && PRODUCT[m[0]]) (inCart[m[0]] = inCart[m[0]] || []).push(m[1]); });
+    set(s => {
+      const seen = Object.assign({}, s.cartAdded || {}); let order = s.order; const sizeIdx = Object.assign({}, s.sizeIdx); let changed = false;
+      Object.keys(inCart).forEach(id => {
+        if (!seen[id]) { if (order.indexOf(id) === -1) { order = order.concat([id]); seen[id] = 'added'; sizeIdx[id] = inCart[id][0]; } else seen[id] = 'had'; changed = true; }
+        else if (seen[id] === 'added' && inCart[id].indexOf(sizeIdx[id] || 0) === -1) { sizeIdx[id] = inCart[id][0]; changed = true; }
+      });
+      Object.keys(seen).forEach(id => { if (inCart[id]) return; if (seen[id] === 'added') order = order.filter(x => x !== id); delete seen[id]; changed = true; });
+      return changed ? { order, sizeIdx, cartAdded: seen } : {};
+    });
+  }, [cartKey]);
+
   const flash = m => { setToast(m); clearTimeout(window.__tt); window.__tt = setTimeout(() => setToast(''), 1800); };
   const bump = (key, d) => {
     setSh(s => { const cart = Object.assign({}, s.cart); cart[key] = (cart[key] || 0) + d; if (cart[key] <= 0) delete cart[key]; return { cart, sent: false }; });
@@ -271,7 +288,8 @@ function App() {
     set(s => {
       const order = s.order.slice(); const sizeIdx = Object.assign({}, s.sizeIdx);
       orderItems.forEach(it => { const m = SKU_PROTOCOL[it.p.sku]; if (!m) return; if (order.indexOf(m[0]) === -1) order.push(m[0]); sizeIdx[m[0]] = m[1]; });
-      return { order, sizeIdx, client: s.client || sh.name.trim() };
+      const kept = {}; Object.keys(s.cartAdded || {}).forEach(id => { kept[id] = 'had'; });
+      return { order, sizeIdx, client: s.client || sh.name.trim(), cartAdded: kept };
     });
   };
   const reorder = sku => { if (!sku) return; bump(sku + ':1', 1); location.hash = '#/order'; };
