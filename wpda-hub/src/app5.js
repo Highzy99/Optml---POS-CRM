@@ -131,18 +131,18 @@ function Ticker() {
 function ShopHero() {
   const best = Math.max.apply(null, SHOP_PRODUCTS.map(p => Math.max.apply(null, TIERS.filter(n => n > 1 && p.prices[n]).map(n => 1 - p.prices[n] / (p.prices[1] * n)).concat([0]))));
   return html`<section class="wrap"><div class="shero">
+    <figure class="sh-photo"><img src="assets/brand/hero-box.webp" alt="Open blue optml box with two labelled vials in a fitted tray" fetchpriority="high" />
+      <figcaption class="sh-pill"><img src="assets/features/save.svg" alt="" />Packs up to ${Math.floor(best * 100)}% off</figcaption></figure>
     <div class="sh-copy">
       <h1>${WHOLESALE ? 'Wholesale price list' : 'Research‑grade peptides, properly tested.'}</h1>
-      <p class="lead">${WHOLESALE ? 'Your confirmed wholesale rates. Every vial ships with bacteriostatic water included and a batch-matched certificate of analysis.' : 'Every vial ships with bacteriostatic water included and a batch-matched certificate of analysis. Order before 2pm and it ships the same day.'}</p>
+      <p class="lead">${WHOLESALE ? 'Your confirmed wholesale rates, boxed with bac water and a batch certificate.' : 'Boxed with free bac water and a batch certificate. Order before 2pm and it ships today.'}</p>
       <ul class="sh-feats">
-        <li><a href="#/coa"><img src="assets/features/tested.svg" alt="" />98%+ purity, see the certificates<${Icon} name="chev" size=${16} /></a></li>
-        <li><span><img src="assets/features/auto.svg" alt="" />Free bac water with every vial</span></li>
-        <li><span><img src="assets/features/discreet.svg" alt="" />Discreet, tracked express shipping</span></li>
-        <li><a href="#/guide"><img class="seal" src="assets/brand/label-circle.png" alt="" />A dosing guide for everything you order<${Icon} name="chev" size=${16} /></a></li>
+        <li><a href="#/coa"><img src="assets/features/tested.svg" alt="" /><span><b>98%+ purity</b>View certificates</span></a></li>
+        <li><div><img src="assets/features/auto.svg" alt="" /><span><b>Free bac water</b>In every box</span></div></li>
+        <li><div><img src="assets/features/discreet.svg" alt="" /><span><b>Fast shipping</b>Tracked, discreet</span></div></li>
+        <li><a href="#/guide"><img class="seal" src="assets/brand/label-circle.png" alt="" /><span><b>Dosing guide</b>For every order</span></a></li>
       </ul>
     </div>
-    <figure class="sh-photo"><img src="assets/brand/hero-box.webp" alt="Open blue optml box with two labelled vials in a fitted tray" fetchpriority="high" />
-      <figcaption class="sh-pill"><img src="assets/features/save.svg" alt="" />Pack pricing, up to ${Math.floor(best * 100)}% off</figcaption></figure>
   </div></section>`;
 }
 
