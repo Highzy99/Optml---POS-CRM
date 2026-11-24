@@ -429,13 +429,12 @@ body:has(.qa-back) .toast { display: none; }
 .pcard .psub { font-size: 12.5px; gap: 5px; margin-top: -2px; }
 .pcard .okdot { width: 6px; height: 6px; }
 .okdot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
-.coa-btn { position: relative; display: inline-flex; align-items: center; gap: 3px; flex: none; height: 22px; padding: 0 8px; border: 1px solid var(--n200); border-radius: var(--pill); background: #fff; color: var(--ink); font-size: 11.5px; font-weight: 700; letter-spacing: .02em; line-height: 1; text-decoration: none; }
-.coa-btn::after { content: ""; position: absolute; inset: -11px -6px; }
-.coa-btn:hover { border-color: var(--ink); }
-.pcard .psub { white-space: nowrap; }
-@media (max-width: 380px) { .pcard .psub { gap: 5px; font-size: 13px; } .pcard .coa-btn { padding: 0 7px; } .pcard .coa-btn svg { display: none; } }
-@media (max-width: 340px) { .pcard .psub { flex-wrap: wrap; justify-content: center; row-gap: 4px; } }
-.coa-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pur-btn { position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none; height: 28px; padding: 0 11px; border: 1px solid var(--n200); border-radius: var(--pill); background: #fff; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; text-decoration: none; }
+.pur-btn::after { content: ""; position: absolute; inset: -8px -4px; }
+.pur-btn svg { color: var(--n500); }
+.pur-btn:hover { border-color: var(--ink); }
+.pur-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (max-width: 340px) { .pcard .pur-btn { height: 26px; padding: 0 8px; gap: 5px; font-size: 12.5px; } }
 .dose-row { position: relative; z-index: 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 1px; }
 .qa .dose-row { justify-content: flex-start; }
 .dose-pill { display: inline-flex; align-items: center; min-height: 30px; padding: 0 6px; border: 1px solid var(--n300); border-radius: var(--pill); background: #fff; color: var(--n700); font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color .15s ease, color .15s ease; }

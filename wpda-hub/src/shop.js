@@ -169,7 +169,7 @@ function ProductCard({ g, cur, sh, onOpen }) {
     </div>
     <div class="pbody">
       <a class="ptitle" href=${'#/p/' + p.sku}>${g.base}${g.items.length === 1 && cur.strength ? ' ' + cur.strength : ''}</a>
-      <span class="psub">${coa ? html`<i class="okdot"></i>${coa[0]} pure<a class="coa-btn" href=${COA_BASE + coa[2]} target="_blank" rel="noopener" aria-label=${'Open the certificate of analysis for ' + p.name}>COA<${Icon} name="ext" size=${11} /></a>` : 'Research peptide'}</span>
+      <span class="psub">${coa ? html`<a class="pur-btn" href=${COA_BASE + coa[2]} target="_blank" rel="noopener" aria-label=${coa[0] + ' pure. Open the certificate of analysis for ' + p.name}><i class="okdot"></i>${coa[0]} pure<${Icon} name="ext" size=${12} /></a>` : 'Research peptide'}</span>
       ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill" aria-pressed=${String(x.p.sku === p.sku)} aria-label=${g.base + ' ' + x.strength + ': choose a pack'} onClick=${() => onOpen(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}
       <button type="button" class="pbuy" aria-label=${'Add ' + p.name + ' to cart, from ' + t1.price + '. Choose a pack'} onClick=${() => onOpen(g.key, p.sku)}><span>Add to cart</span><b>${t1.price}</b></button>
     </div>
@@ -189,7 +189,7 @@ function QuickAdd({ g, cur, setPick, sh, bump, o, onClose }) {
   return html`<div class="qa-back" onClick=${e => { if (e.target === e.currentTarget) onClose(); }}>
     <div class="qa" role="dialog" aria-modal="true" aria-label=${'Add ' + p.name + ' to your order'} tabindex="-1">
       <div class="qa-head"><img class=${PRODUCT_PHOTOS[p.sku] ? 'ph' : ''} src=${PRODUCT_PHOTOS[p.sku] || GOAL_ICONS[g.goal]} alt="" />
-        <div class="grow"><h2>${g.base}${g.items.length === 1 && cur.strength ? ' ' + cur.strength : ''}</h2><div class="psub">${coa ? html`<i class="okdot"></i>${coa[0]} pure<a class="coa-btn" href=${COA_BASE + coa[2]} target="_blank" rel="noopener" aria-label="Open the certificate of analysis">COA<${Icon} name="ext" size=${11} /></a>` : GOAL_LABELS[g.goal]}</div></div>
+        <div class="grow"><h2>${g.base}${g.items.length === 1 && cur.strength ? ' ' + cur.strength : ''}</h2><div class="psub">${coa ? html`<a class="pur-btn" href=${COA_BASE + coa[2]} target="_blank" rel="noopener" aria-label=${coa[0] + ' pure. Open the certificate of analysis'}><i class="okdot"></i>${coa[0]} pure<${Icon} name="ext" size=${12} /></a>` : GOAL_LABELS[g.goal]}</div></div>
         <button type="button" class="qa-x" aria-label="Close" onClick=${onClose}>×</button></div>
       ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill lg" aria-pressed=${String(x.p.sku === p.sku)} onClick=${() => setPick(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}
       <${Tiers} p=${p} sh=${sh} bump=${bump} />
