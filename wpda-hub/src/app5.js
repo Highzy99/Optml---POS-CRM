@@ -171,7 +171,7 @@ function parseRoute() {
   const h = location.hash || '';
   if (h.startsWith('#/p/')) { const parts = h.slice(4).split('/'); return { page: 'product', sku: decodeURIComponent(parts[0]).toUpperCase(), tab: parts[1] || '' }; }
   if (h.startsWith('#/guide')) return { page: 'guide', chapter: h.split('/')[2] || 'mix' };
-  const m = h.match(/^#\/(order|plan|build|coa|protocols)$/);
+  const m = h.match(/^#\/(order|checkout|pay|plan|build|coa|protocols)$/);
   if (m) return { page: m[1] };
   return { page: 'shop' };
 }
@@ -234,7 +234,7 @@ function Header({ route, count, total, planCount }) {
 
 function TabBar({ route, count, planCount }) {
   const tabs = [['shop', '#/', 'Shop', 'shop'], ['guide', '#/guide', 'How to use', 'book'], ['plan', '#/plan', 'My plan', 'plan'], ['order', '#/order', 'Order', 'bag']];
-  return html`<nav class="tabbar screen" aria-label="Pages">${tabs.map(t => { const on = route.page === t[0] || (t[0] === 'shop' && route.page === 'product') || (t[0] === 'plan' && route.page === 'protocols');
+  return html`<nav class="tabbar screen" aria-label="Pages">${tabs.map(t => { const on = route.page === t[0] || (t[0] === 'shop' && route.page === 'product') || (t[0] === 'plan' && route.page === 'protocols') || (t[0] === 'order' && (route.page === 'checkout' || route.page === 'pay'));
     return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : t[0] === 'plan' && planCount ? html`<i class="dot soft">${planCount}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
 }
 
@@ -350,7 +350,7 @@ function App() {
 
   const flash = m => { setToast(m); clearTimeout(window.__tt); window.__tt = setTimeout(() => setToast(''), 1800); };
   const bump = (key, d) => {
-    setSh(s => { const cart = Object.assign({}, s.cart); cart[key] = (cart[key] || 0) + d; if (cart[key] <= 0) delete cart[key]; return { cart, sent: false }; });
+    setSh(s => { const base = freshOrder(s); const cart = Object.assign({}, base.ref ? {} : s.cart); cart[key] = (cart[key] || 0) + d; if (cart[key] <= 0) delete cart[key]; return Object.assign(base, { cart, sent: false }); });
     if (d > 0) { const b = key.split(':'); const p = SHOP_BY_SKU[b[0]]; if (p) flash('Added ' + p.name + ' · ' + (b[1] === '1' ? '1 vial' : b[1] + ' vials')); }
   };
   const act = {
@@ -400,7 +400,9 @@ function App() {
   const docItems = expSt ? planItems(expSt) : items;
   let page;
   if (route.page === 'product') page = html`<${ProductPage} sku=${route.sku} st=${st} set=${set} sh=${sh} bump=${bump} tab=${ptab} setTab=${setPtab} flash=${flash} exportPdf=${exportPdf} />`;
-  else if (route.page === 'order') page = html`<${OrderSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} onSent=${onSent} planReady=${planReady} />`;
+  else if (route.page === 'order') page = html`<${OrderSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} planReady=${planReady} />`;
+  else if (route.page === 'checkout') page = html`<${CheckoutPage} sh=${sh} setSh=${setSh} o=${o} onSent=${onSent} />`;
+  else if (route.page === 'pay') page = html`<${PayPage} sh=${sh} setSh=${setSh} hasPlan=${items.length > 0} />`;
   else if (route.page === 'guide') page = html`<${Guide} st=${st} set=${set} chapter=${route.chapter} />`;
   else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} openInstall=${openInstall} />`;
   else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;

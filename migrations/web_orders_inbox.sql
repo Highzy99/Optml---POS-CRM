@@ -12,6 +12,8 @@ create table if not exists public.web_orders(
   subtotal numeric, discount numeric, shipping numeric, total numeric,   -- what the customer saw
   list_total numeric, price_ok boolean not null default true, price_note text,  -- re-worked from the POS prices
   message text, revisions int not null default 1, sale_id text, replied_at timestamptz,
+  upload_token uuid not null default gen_random_uuid(),   -- private key the customer's browser gets back, so only they can attach a screenshot
+  proof_at timestamptz, proof_count int not null default 0,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 create index if not exists web_orders_updated_idx on public.web_orders(updated_at desc);
@@ -38,7 +40,7 @@ declare
   it jsonb; v_out jsonb := '[]'::jsonb; v_sub numeric := 0; v_ok boolean := true; v_note text := '';
   v_pack int; v_qty int; v_line numeric; v_amount numeric; pr record;
   v_pct numeric; v_disc numeric := 0; v_after numeric; v_ship numeric; v_total numeric;
-  v_client_total numeric; ex record; v_id text; n int; v_payid text;
+  v_client_total numeric; ex record; v_id text; n int; v_payid text; v_token uuid;
 begin
   if v_ref !~ '^OPT-[A-Z0-9]{4,10}$' then return jsonb_build_object('ok',false,'error','bad_ref'); end if;
   if length(v_name) < 2 or length(v_phone_digits) not between 8 and 13 then return jsonb_build_object('ok',false,'error','details'); end if;
@@ -92,7 +94,8 @@ begin
       items = v_out, subtotal = round(coalesce((p->>'subtotal')::numeric,0),2), discount = round(coalesce((p->>'discount')::numeric,0),2),
       shipping = round(coalesce((p->>'shipping')::numeric,0),2), total = v_client_total, list_total = v_total, price_ok = v_ok, price_note = nullif(btrim(v_note),''),
       message = left(coalesce(p->>'message',''),8000), revisions = ex.revisions + 1, updated_at = now()
-    where id = ex.id;
+    where id = ex.id
+    returning upload_token into v_token;
   else
     v_id := v_ref;
     if found then select count(*) + 1 into n from public.web_orders where ref = v_ref; v_id := v_ref || '-' || n; end if;
@@ -102,26 +105,55 @@ begin
       left(btrim(coalesce(p->>'street','')),160), left(btrim(coalesce(p->>'suburb','')),80), left(btrim(coalesce(p->>'region','')),40),
       left(btrim(coalesce(p->>'postcode','')),10), v_country, left(btrim(coalesce(p->>'notes','')),500), v_code, v_out,
       round(coalesce((p->>'subtotal')::numeric,0),2), round(coalesce((p->>'discount')::numeric,0),2), round(coalesce((p->>'shipping')::numeric,0),2),
-      v_client_total, v_total, v_ok, nullif(btrim(v_note),''), left(coalesce(p->>'message',''),8000));
+      v_client_total, v_total, v_ok, nullif(btrim(v_note),''), left(coalesce(p->>'message',''),8000))
+    returning upload_token into v_token;
   end if;
   v_payid := coalesce(nullif((select value->>'payid' from public.settings where key='intel'),''), '0408769377');
-  return jsonb_build_object('ok',true,'id',v_id,'ref',v_ref,'payid',v_payid,'total',v_total,'price_ok',v_ok);
+  return jsonb_build_object('ok',true,'id',v_id,'ref',v_ref,'payid',v_payid,'total',v_total,'price_ok',v_ok,'token',v_token);
 end $$;
 revoke all on function public.submit_web_order(jsonb) from public;
 grant execute on function public.submit_web_order(jsonb) to anon, authenticated;
+
+-- payment screenshots the customer adds on the pay page (shrunk JPEG as a data URL)
+create table if not exists public.web_order_proofs(
+  id bigint generated always as identity primary key,
+  order_id text not null references public.web_orders(id) on delete cascade,
+  image text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists web_order_proofs_order_idx on public.web_order_proofs(order_id);
+alter table public.web_order_proofs enable row level security;
+drop policy if exists web_order_proofs_members on public.web_order_proofs;
+create policy web_order_proofs_members on public.web_order_proofs for all using ((select public.is_member())) with check ((select public.is_member()));
+
+create or replace function public.attach_payment_proof(p_id text, p_token uuid, p_image text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare w record; n int;
+begin
+  select id, proof_count into w from public.web_orders where id = p_id and upload_token = p_token;
+  if not found then return jsonb_build_object('ok',false,'error','not_found'); end if;
+  if p_image !~ '^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$' or length(p_image) > 3000000 then return jsonb_build_object('ok',false,'error','image'); end if;
+  select count(*) into n from public.web_order_proofs where order_id = p_id;
+  if n >= 5 then return jsonb_build_object('ok',false,'error','too_many'); end if;
+  insert into public.web_order_proofs(order_id, image) values (p_id, p_image);
+  update public.web_orders set proof_at = now(), proof_count = n + 1, updated_at = now() where id = p_id;
+  return jsonb_build_object('ok',true);
+end $$;
+revoke all on function public.attach_payment_proof(text, uuid, text) from public;
+grant execute on function public.attach_payment_proof(text, uuid, text) to anon, authenticated;
 
 -- Telegram alert to your own chat (settings.telegram.alert_chat) for each new or changed web order
 create or replace function public.web_order_alert() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare tg jsonb; v_lines text; v_msg text;
 begin
-  if TG_OP = 'UPDATE' and NEW.message is not distinct from OLD.message then return NEW; end if;
+  if TG_OP = 'UPDATE' and NEW.message is not distinct from OLD.message and NEW.proof_at is not distinct from OLD.proof_at then return NEW; end if;
   if NEW.status not in ('new','changed') then return NEW; end if;
   select value into tg from public.settings where key = 'telegram';
   if coalesce(tg->>'token','') = '' or coalesce(tg->>'alert_chat','') = '' then return NEW; end if;
   select string_agg((i->>'qty') || '× ' || (i->>'name') || case when (i->>'pack')::int > 1 then ' (' || (i->>'pack') || '-pack)' else '' end, E'\n')
     into v_lines from jsonb_array_elements(NEW.items) i;
-  v_msg := case when TG_OP = 'INSERT' then '🛒 New web order ' else '✏️ Web order changed ' end || NEW.id
+  v_msg := case when TG_OP = 'INSERT' then '🛒 New web order (pending payment) ' when NEW.proof_at is distinct from OLD.proof_at then '💸 Payment screenshot received for ' else '✏️ Web order changed ' end || NEW.id
     || case when NEW.wholesale then ' (wholesale)' else '' end || E'\n'
     || coalesce(NEW.name,'') || ' · ' || coalesce(NEW.phone,'') || E'\n\n' || coalesce(v_lines,'')
     || E'\n\nTotal $' || to_char(NEW.total,'FM999990.00')
