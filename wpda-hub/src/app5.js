@@ -210,23 +210,44 @@ function Ticker() {
   return html`<div class="ticker screen"><div class="tk-track">${row(false)}${row(true)}</div></div>`;
 }
 
-// The hero while a sale is on: black panel, the offer in the headline, the end time, a live countdown.
+// The hero while a sale is on. One job: make the offer impossible to miss. The headline fills the panel, the deals
+// themselves are the picture (the brand's own coloured tiles on black), and the single bit of motion is each
+// crossed-out price running down to its sale price once, as the page loads.
+function PriceDrop({ from, to }) {
+  const [v, setV] = useState(from);
+  useEffect(() => {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setV(to); return; }
+    let raf = 0, t0 = 0; const wait = 450, dur = 1100;
+    const step = t => { if (!t0) t0 = t; const k = Math.min(1, Math.max(0, (t - t0 - wait) / dur)); setV(Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)))); if (k < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return html`<b>${money(v)}</b>`;
+}
 function SaleHero() {
-  return html`<section class="wrap"><div class="shero bf">
-    <figure class="sh-photo"><img src="assets/brand/hero-box.webp" alt="Open blue optml box with two labelled vials in a fitted tray" fetchpriority="high" />
-      <figcaption class="sh-pill"><img src="assets/features/save.svg" alt="" />${SALE_CLAIM > SALE.pct ? SALE.pct + '% off everything else' : 'Every product reduced'}</figcaption></figure>
-    <div class="sh-copy">
-      <h1>${SALE.name}.<br />${SALE_CLAIM > SALE.pct ? 'Up to ' + SALE_CLAIM + '% off.' : SALE.pct + '% off everything.'}</h1>
-      <p class="lead">Every product on the list is reduced, boxed with free bac water and a batch certificate. Ends ${SALE_ENDS_TEXT}.</p>
-      <div class="bfend"><span class="lbl">Prices go back in</span><${SaleClock} boxes=${true} /></div>
-      <ul class="sh-feats">
-        <li><a href="#shop"><img src="assets/features/save.svg" alt="" /><span><b>${SALE_CLAIM > SALE.pct ? 'Up to ' + SALE_CLAIM + '% off' : SALE.pct + '% off'}</b>See the deals</span></a></li>
-        <li><div><img src="assets/features/auto.svg" alt="" /><span><b>Free bac water</b>In every box</span></div></li>
-        <li><div><img src="assets/features/discreet.svg" alt="" /><span><b>Free express</b>Orders over $200</span></div></li>
-        <li><a href="#/coa"><img src="assets/features/tested.svg" alt="" /><span><b>98%+ purity</b>View certificates</span></a></li>
-      </ul>
+  // the three deepest deals that have a photo: doorbusters first, then whatever is cut the most
+  const off = p => 1 - p.prices[1] / p.reg[1];
+  const deals = SHOP_PRODUCTS.filter(p => p.reg && PRODUCT_PHOTOS[p.sku]).slice().sort((a, b) => (b.door ? 1 : 0) - (a.door ? 1 : 0) || off(b) - off(a)).slice(0, 3);
+  const big = SALE_CLAIM > SALE.pct;
+  const toDeals = () => { const el = document.getElementById('shop'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  return html`<section class="wrap"><div class="bfhero">
+    <div class="bfh-copy">
+      <h1><span class="o">${SALE.name.split(' ').map((w, i, a) => html`${w}${i === a.length - 1 ? '.' : html`<br />`}`)}</span><span>${big ? html`Up to<br />${SALE_CLAIM}% off.` : html`${SALE.pct}% off<br />everything.`}</span></h1>
+      <p class="lead">Every product on the list is reduced until ${SALE_ENDS_TEXT}.<span class="more"> Free bac water and a batch certificate in every box.</span></p>
+      <div class="bfh-act"><button type="button" class="btn bfh-cta" onClick=${toDeals}>Shop the deals</button>
+        <div class="bfh-end"><span>Prices go back in</span><${SaleClock} /></div></div>
     </div>
-  </div></section>`;
+    <div class="bfh-deals">${deals.map((p, i) => html`<a class=${'bfd bfd' + i} href=${'#/p/' + p.sku} aria-label=${p.name + ', was ' + money(p.reg[1]) + ', now ' + money(p.prices[1])}>
+      <img src=${PRODUCT_PHOTOS[p.sku]} alt="" />
+      <i class="bfd-off">−${Math.round(off(p) * 100)}%</i>
+      <span class="bfd-tag"><s>${money(p.reg[1])}</s><${PriceDrop} from=${p.reg[1]} to=${p.prices[1]} /></span></a>`)}</div>
+  </div>
+  <ul class="sh-feats bfh-feats">
+    <li><a href="#/coa"><img src="assets/features/tested.svg" alt="" /><span><b>98%+ purity</b>View certificates</span></a></li>
+    <li><div><img src="assets/features/auto.svg" alt="" /><span><b>Free bac water</b>In every box</span></div></li>
+    <li><div><img src="assets/features/discreet.svg" alt="" /><span><b>Free express</b>Orders over $200</span></div></li>
+    <li><a href="#/guide"><img class="seal" src="assets/brand/label-circle.png" alt="" /><span><b>Dosing guide</b>For every order</span></a></li>
+  </ul></section>`;
 }
 
 function ShopHero() {

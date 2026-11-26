@@ -664,18 +664,47 @@ footer.foot { margin-top: 56px; }
 .bfbar { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 34px; padding: 4px 12px; background: var(--ink); color: rgba(255,255,255,.86); font-size: 13.5px; font-weight: 500; text-decoration: none; }
 .bfbar .bfc { color: #92e8a6; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
 .bfprev { background: #ffe9dc; color: #5f240f; font-size: 12.5px; font-weight: 600; text-align: center; padding: 5px 12px; }
-.shero.bf { background: var(--ink); }
-.shero.bf .sh-copy h1 { color: #fff; }
-.shero.bf .sh-copy .lead { color: rgba(255,255,255,.82); }
-.shero.bf .sh-feats a, .shero.bf .sh-feats div { background: rgba(255,255,255,.1); color: rgba(255,255,255,.72); }
-.shero.bf .sh-feats a:hover { background: rgba(255,255,255,.16); }
-.shero.bf .sh-feats b { color: #fff; }
-.shero.bf .sh-feats img:not(.seal) { filter: brightness(0) invert(1); }
-.bfend { display: flex; flex-direction: column; gap: 8px; }
-.bfend .lbl { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: rgba(255,255,255,.7); }
-.bfclock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 340px; }
-.bfclock span { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 10px 4px 8px; border-radius: 14px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.7); font-size: 11.5px; font-weight: 500; }
-.bfclock b { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.05; color: #92e8a6; font-variant-numeric: tabular-nums; }
+.bfhero { position: relative; overflow: hidden; border-radius: var(--r-xl); background: var(--ink); color: #fff; margin-top: 6px; padding: 28px 20px 0; display: grid; gap: 8px; }
+.bfh-copy { display: flex; flex-direction: column; gap: 18px; min-width: 0; position: relative; z-index: 4; }
+.bfhero h1 { display: flex; flex-direction: column; gap: .07em; color: #fff; font-weight: 800; font-size: clamp(56px, 18.4vw, 78px); line-height: .86; letter-spacing: -.055em; text-wrap: nowrap; }
+.bfhero h1 .o { color: transparent; -webkit-text-stroke: 1.6px #fff; }
+@supports not (-webkit-text-stroke: 1px #fff) { .bfhero h1 .o { color: rgba(255,255,255,.55); } }
+.bfhero .lead { color: rgba(255,255,255,.82); font-size: 16px; line-height: 1.45; max-width: 42ch; }
+.bfh-act { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; }
+.btn.bfh-cta { min-height: 56px; padding: 0 30px; font-size: 17px; font-weight: 700; background: #fff; color: var(--ink); border-color: #fff; }
+.btn.bfh-cta:hover { background: #f0f1f3; }
+.bfh-end { display: flex; flex-direction: column; gap: 1px; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,.66); }
+.bfh-end .bfc { font-size: 23px; line-height: 1.1; font-weight: 700; letter-spacing: -.015em; color: #fff; font-variant-numeric: tabular-nums; }
+.bfh-deals { position: relative; height: clamp(206px, 58vw, 280px); margin: 0 -20px; }
+.bfd { position: absolute; bottom: 20px; width: 45%; aspect-ratio: 1 / 1.06; border-radius: 22px; overflow: hidden; text-decoration: none; box-shadow: 0 20px 44px rgba(0,0,0,.5); animation: bfrise .7s cubic-bezier(.2,.8,.2,1) both; }
+.bfd img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bfd0 { left: 1%; rotate: -9deg; z-index: 1; }
+.bfd0 .bfd-off { right: auto; left: 9px; rotate: -8deg; }
+.bfd1 { left: 27.5%; bottom: 34px; rotate: 2deg; z-index: 3; animation-delay: .09s; }
+.bfd2 { right: 1%; rotate: 10deg; z-index: 2; animation-delay: .18s; }
+.bfd2 .bfd-tag { left: auto; right: 8px; }
+@keyframes bfrise { from { opacity: 0; translate: 0 56px; } to { opacity: 1; translate: 0 0; } }
+.bfd-off { position: absolute; top: 9px; right: 9px; min-width: 52px; height: 52px; padding: 0 8px; border-radius: 26px; background: #fff; color: var(--ink); display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 15.5px; font-weight: 800; letter-spacing: -.02em; rotate: 8deg; box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+.bfd-tag { position: absolute; left: 8px; bottom: 8px; display: inline-flex; align-items: baseline; gap: 7px; background: var(--ink); color: #fff; border-radius: var(--pill); padding: 6px 12px 6px 11px; }
+.bfd-tag s { font-size: 12.5px; color: rgba(255,255,255,.6); }
+.bfd-tag b { font-size: 17px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.bfh-feats { margin-top: 10px; }
+.bfh-feats a, .bfh-feats div { background: var(--paper); }
+.bfh-feats a:hover { background: var(--sunken); }
+@media (min-width: 640px) {
+  .bfhero { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: stretch; padding: 36px 0 0 34px; gap: 0; }
+  .bfh-copy { padding-bottom: 36px; justify-content: center; }
+  .bfhero h1 { font-size: clamp(56px, 8.3vw, 104px); }
+  .bfhero .lead { font-size: 17px; }
+  .bfh-deals { height: auto; min-height: 360px; margin: 0; }
+  .bfd { width: 50%; bottom: 40px; }
+  .bfd0 { left: 0; } .bfd1 { left: 25%; bottom: 96px; } .bfd2 { right: 3%; }
+  .bfh-feats { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: none; }
+}
+@media (min-width: 1000px) { .bfhero { padding: 46px 0 0 48px; } .bfh-copy { padding-bottom: 48px; gap: 22px; } .bfh-deals { min-height: 470px; } .bfd1 { bottom: 130px; } .bfd-off { min-width: 64px; height: 64px; border-radius: 32px; font-size: 19px; top: 14px; right: 14px; } .bfd-tag { left: 14px; bottom: 14px; padding: 8px 16px; } .bfd-tag b { font-size: 21px; } }
+@media (max-width: 639.98px) { .bfhero .lead .more, .bfh-end { display: none; } .btn.bfh-cta { width: 100%; } .bfh-copy { gap: 16px; } }
+@media (min-width: 1000px) { .bfd2 .bfd-tag { right: 14px; } .bfd0 .bfd-off { left: 14px; } }
+@media (prefers-reduced-motion: reduce) { .bfd { animation: none; } }
 .pcard.bf .pflag { background: var(--ink); color: #fff; display: inline-flex; align-items: center; gap: 6px; }
 .pcard.bf .pflag i { font-style: normal; font-weight: 600; }
 .pcard.door { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
@@ -686,9 +715,6 @@ footer.foot { margin-top: 56px; }
 .otot .bfsave { color: #92e8a6; } .otot .bfsave b { color: #92e8a6; }
 .plid-chip.bfchip { background: var(--ink); color: #fff; }
 @media (max-width: 639.98px) {
-  .shero.bf .bfend { order: 3; padding: 0 12px 14px; }
-  .shero.bf .sh-feats { order: 4; }
-  .shero.bf .sh-photo { order: 5; }
   .pgrid .pcard.bf .pflag i { display: none; }
   .pgrid .pbuy .pp s { display: none; }
 }
@@ -3660,23 +3686,44 @@ function Ticker() {
   return html`<div class="ticker screen"><div class="tk-track">${row(false)}${row(true)}</div></div>`;
 }
 
-// The hero while a sale is on: black panel, the offer in the headline, the end time, a live countdown.
+// The hero while a sale is on. One job: make the offer impossible to miss. The headline fills the panel, the deals
+// themselves are the picture (the brand's own coloured tiles on black), and the single bit of motion is each
+// crossed-out price running down to its sale price once, as the page loads.
+function PriceDrop({ from, to }) {
+  const [v, setV] = useState(from);
+  useEffect(() => {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setV(to); return; }
+    let raf = 0, t0 = 0; const wait = 450, dur = 1100;
+    const step = t => { if (!t0) t0 = t; const k = Math.min(1, Math.max(0, (t - t0 - wait) / dur)); setV(Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)))); if (k < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return html`<b>${money(v)}</b>`;
+}
 function SaleHero() {
-  return html`<section class="wrap"><div class="shero bf">
-    <figure class="sh-photo"><img src="assets/brand/hero-box.webp" alt="Open blue optml box with two labelled vials in a fitted tray" fetchpriority="high" />
-      <figcaption class="sh-pill"><img src="assets/features/save.svg" alt="" />${SALE_CLAIM > SALE.pct ? SALE.pct + '% off everything else' : 'Every product reduced'}</figcaption></figure>
-    <div class="sh-copy">
-      <h1>${SALE.name}.<br />${SALE_CLAIM > SALE.pct ? 'Up to ' + SALE_CLAIM + '% off.' : SALE.pct + '% off everything.'}</h1>
-      <p class="lead">Every product on the list is reduced, boxed with free bac water and a batch certificate. Ends ${SALE_ENDS_TEXT}.</p>
-      <div class="bfend"><span class="lbl">Prices go back in</span><${SaleClock} boxes=${true} /></div>
-      <ul class="sh-feats">
-        <li><a href="#shop"><img src="assets/features/save.svg" alt="" /><span><b>${SALE_CLAIM > SALE.pct ? 'Up to ' + SALE_CLAIM + '% off' : SALE.pct + '% off'}</b>See the deals</span></a></li>
-        <li><div><img src="assets/features/auto.svg" alt="" /><span><b>Free bac water</b>In every box</span></div></li>
-        <li><div><img src="assets/features/discreet.svg" alt="" /><span><b>Free express</b>Orders over $200</span></div></li>
-        <li><a href="#/coa"><img src="assets/features/tested.svg" alt="" /><span><b>98%+ purity</b>View certificates</span></a></li>
-      </ul>
+  // the three deepest deals that have a photo: doorbusters first, then whatever is cut the most
+  const off = p => 1 - p.prices[1] / p.reg[1];
+  const deals = SHOP_PRODUCTS.filter(p => p.reg && PRODUCT_PHOTOS[p.sku]).slice().sort((a, b) => (b.door ? 1 : 0) - (a.door ? 1 : 0) || off(b) - off(a)).slice(0, 3);
+  const big = SALE_CLAIM > SALE.pct;
+  const toDeals = () => { const el = document.getElementById('shop'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  return html`<section class="wrap"><div class="bfhero">
+    <div class="bfh-copy">
+      <h1><span class="o">${SALE.name.split(' ').map((w, i, a) => html`${w}${i === a.length - 1 ? '.' : html`<br />`}`)}</span><span>${big ? html`Up to<br />${SALE_CLAIM}% off.` : html`${SALE.pct}% off<br />everything.`}</span></h1>
+      <p class="lead">Every product on the list is reduced until ${SALE_ENDS_TEXT}.<span class="more"> Free bac water and a batch certificate in every box.</span></p>
+      <div class="bfh-act"><button type="button" class="btn bfh-cta" onClick=${toDeals}>Shop the deals</button>
+        <div class="bfh-end"><span>Prices go back in</span><${SaleClock} /></div></div>
     </div>
-  </div></section>`;
+    <div class="bfh-deals">${deals.map((p, i) => html`<a class=${'bfd bfd' + i} href=${'#/p/' + p.sku} aria-label=${p.name + ', was ' + money(p.reg[1]) + ', now ' + money(p.prices[1])}>
+      <img src=${PRODUCT_PHOTOS[p.sku]} alt="" />
+      <i class="bfd-off">−${Math.round(off(p) * 100)}%</i>
+      <span class="bfd-tag"><s>${money(p.reg[1])}</s><${PriceDrop} from=${p.reg[1]} to=${p.prices[1]} /></span></a>`)}</div>
+  </div>
+  <ul class="sh-feats bfh-feats">
+    <li><a href="#/coa"><img src="assets/features/tested.svg" alt="" /><span><b>98%+ purity</b>View certificates</span></a></li>
+    <li><div><img src="assets/features/auto.svg" alt="" /><span><b>Free bac water</b>In every box</span></div></li>
+    <li><div><img src="assets/features/discreet.svg" alt="" /><span><b>Free express</b>Orders over $200</span></div></li>
+    <li><a href="#/guide"><img class="seal" src="assets/brand/label-circle.png" alt="" /><span><b>Dosing guide</b>For every order</span></a></li>
+  </ul></section>`;
 }
 
 function ShopHero() {
