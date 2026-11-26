@@ -193,3 +193,11 @@ Customers order from the price list / wholesale catalogue sites, which send a fo
 - Settings → **Insights & nudges**: monthly target, PayID, days 1 vial lasts, supplier days, shelf days, and the four message templates.
 
 Needs the `intel_audit_safety` migration at the bottom of `supabase-schema.sql` for expenses, the activity log, cross-device "last messaged", atomic stock changes (`adjust_stock`) and frozen courier shares. Without it the app still runs and those parts say they're waiting on the database update.
+
+## Web orders (price list → POS)
+
+Orders sent from the price list (stayoptml.vercel.app, `wpda-hub/`) are also posted to the Supabase function `submit_web_order` (no login, publishable key). It checks the order, re-prices every line from the POS product list (flags anything that doesn't match), and saves it in `web_orders`. Resending the same order ref updates it; a ref reused a day after it was dealt with becomes a new order.
+
+In the POS they show at the top of Home and Sales (owner only): **Reply with PayID** (WhatsApp message from Settings → Insights & nudges → Web order reply), **Make sale** (loads it into Sell as awaiting payment; finishing the sale marks it done — pasting the same message by hand does too), **Dismiss**. A toast appears when one arrives while the app is open. Telegram alerts go to Settings → Telegram → "Web order alerts → your chat". After ordering, the site shows the PayID, the order reference and the amount.
+
+Database: `migrations/web_orders_inbox.sql`.

@@ -536,7 +536,7 @@ const Team = {
 const Settings = {
   open(){ if(!App.ownerOnly()) return;
     Lock.renderSettings();
-    const tg=Store.get('telegram')||{}; $('st-tg-token').value=tg.token||''; $('st-tg-chat').value=tg.chat||'';
+    const tg=Store.get('telegram')||{}; $('st-tg-token').value=tg.token||''; $('st-tg-chat').value=tg.chat||''; if($('st-tg-alert')) $('st-tg-alert').value=tg.alert_chat||'';
     $('st-courier-tpl').value=Store.get('courier_template')||''; $('st-dispatch-tpl').value=Store.get('dispatch_template')||''; $('st-quote-tpl').value=Store.get('quote_template')||DEFAULT_SETTINGS.quote_template;
     const sh=Store.get('shipping')||{}; $('st-ship-flat').value=sh.flat??15; $('st-ship-free').value=sh.free_over??200; const pf=Store.get('profit')||{}; $('st-fx').value=pf.fx??1.55; $('st-courier-pct').value=pf.courier_pct??25; $('st-postage').value=pf.postage??(sh.flat??15); $('st-packaging').value=pf.packaging??5;
     const wa=Store.get('whatsapp')||{}; this.waMode(wa.mode||'app'); $('st-wa-phone-id').value=wa.phone_id||''; $('st-wa-token').value=wa.token||''; $('st-wa-tpl').value=wa.dispatch_template||''; $('st-wa-lang').value=wa.lang||'en'; $('st-wa-courier').value=wa.courier||''; $('st-wa-test').value=wa.test||'';
@@ -544,7 +544,7 @@ const Settings = {
   },
   moreInfo(){ const tg=Store.get('telegram')||{}; $('more-tg').textContent=(tg.token&&tg.chat)?'Telegram connected':'Telegram not set'; const c=JSON.parse(localStorage.getItem('optml_conn')||'{}'); $('more-conn').textContent=Store.mode==='cloud'?('Supabase · '+(c.url||'').replace('https://','')):'This device only — no cloud sync'; },
   async save(){
-    await Store.setSetting('telegram',{token:$('st-tg-token').value.trim(),chat:$('st-tg-chat').value.trim()});
+    await Store.setSetting('telegram',{...(Store.get('telegram')||{}),token:$('st-tg-token').value.trim(),chat:$('st-tg-chat').value.trim(),...($('st-tg-alert')?{alert_chat:$('st-tg-alert').value.trim()}:{})});
     await Store.setSetting('courier_template',$('st-courier-tpl').value); await Store.setSetting('dispatch_template',$('st-dispatch-tpl').value); await Store.setSetting('quote_template',$('st-quote-tpl').value);
     const keep=(id,old,def)=>{ const v=$(id).value.trim(); return v===''||isNaN(+v)?(old??def):+v; }; const sh0=Store.get('shipping')||{}, pf0=Store.get('profit')||{};
     await Store.setSetting('shipping',{flat:keep('st-ship-flat',sh0.flat,15),free_over:keep('st-ship-free',sh0.free_over,200)});
@@ -561,6 +561,7 @@ const Settings = {
       if(!chats.length){ toast('Nothing yet — add the bot to the group (or message it), send one message there, then try again','err',5000); return; }
       const label=c=>(c.title||[c.first_name,c.last_name].filter(Boolean).join(' ')||c.username||c.id)+(c.type&&c.type!=='private'?' · group':'');
       $('st-tg-found').innerHTML=chats.map(c=>`<button class="chip ${String(c.id)===$('st-tg-chat').value?'on':''}" data-id="${esc(c.id)}" data-l="${esc(label(c))}" onclick="document.getElementById('st-tg-chat').value=this.dataset.id;[...this.parentNode.children].forEach(b=>b.classList.toggle('on',b===this));toast('Using '+this.dataset.l)">${esc(label(c))}</button>`).join('');
+      if($('st-tg-alert-found')) $('st-tg-alert-found').innerHTML=chats.map(c=>`<button class="chip ${String(c.id)===$('st-tg-alert').value?'on':''}" data-id="${esc(c.id)}" data-l="${esc(label(c))}" onclick="document.getElementById('st-tg-alert').value=this.dataset.id;[...this.parentNode.children].forEach(b=>b.classList.toggle('on',b===this));toast('Web order alerts → '+this.dataset.l)">${esc(label(c))}</button>`).join('');
       if(chats.length===1){ $('st-tg-chat').value=chats[0].id; toast('Found: '+label(chats[0])); } else toast(chats.length+' chats found — tap the one to use',"ok",4000);
     }catch(e){ toast('Telegram: '+e.message,'err',4000); }
   },

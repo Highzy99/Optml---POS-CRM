@@ -263,6 +263,7 @@
     <div class="card"><div class="pad">
       <div class="f"><label>Bot token</label><input class="in" id="st-tg-token" placeholder="123456:ABC-DEF…"><div class="hint">Telegram → @BotFather → /newbot → copy token</div></div>
       <div class="f"><label>Chat ID</label><input class="in" id="st-tg-chat" placeholder="-100… or 123…"><div class="chips" id="st-tg-found" style="margin-top:6px"></div><div class="hint">Add @optml_orders_bot to your Telegram orders group, send any message in the group, then tap Find chat ID and pick the group. Orders and dispatch messages go there.</div></div>
+      <div class="f"><label>Web order alerts → your chat</label><input class="in" id="st-tg-alert" placeholder="Your own chat ID (leave blank for no alerts)"><div class="chips" id="st-tg-alert-found" style="margin-top:6px"></div><div class="hint">Each order from the price list pings you here. Message @optml_orders_bot from your own Telegram (just say hi), tap Find chat ID, then pick your name in this row.</div></div>
       <div class="actions"><button class="btn sm" onclick="Settings.findChat()">Find chat ID</button><button class="btn sm" onclick="Settings.testTg()">Send test</button></div>
     </div></div>
     <div class="sec">Customers — WhatsApp <small id="wa-status">opens app</small></div>

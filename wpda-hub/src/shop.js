@@ -5,6 +5,22 @@ const TIERS = WHOLESALE ? [1, 3, 5, 10] : [1, 3, 5];
 const WA_NUMBER = '61468315677';
 const ORDER_EMAIL = 'hello@stayoptml.com';
 const PAYMENT_NOTE = 'Pay by PayID once we confirm your order. Details come by reply.';
+const PAYID = '0408769377';
+// Orders also go straight into the OPTML POS (Supabase function submit_web_order). WhatsApp stays the main channel:
+// if this call fails the order still reaches us by message, so errors are ignored.
+const POS_RPC = 'https://suhxeslmyugjedjqwgtz.supabase.co/rest/v1/rpc/submit_web_order';
+const POS_KEY = 'sb_publishable_qnqBl5G9ybuh_9n9YpXSPw_kptUSiZi';
+function submitToPos(sh, o) {
+  const p = { ref: sh.ref, wholesale: WHOLESALE, country: o.nz ? 'NZ' : 'AU', nz_ship: sh.nzShip,
+    items: o.items.map(it => ({ sku: it.p.sku, name: it.p.name, pack: it.n, qty: it.qty, amount: it.amount })),
+    subtotal: o.subtotal, code: o.codeActive ? sh.code : '', discount: o.discount, shipping: o.shipping, total: o.total,
+    name: sh.name.trim(), phone: sh.phone.trim(), email: sh.email.trim(), street: sh.street.trim(), suburb: sh.suburb.trim(),
+    region: sh.region, postcode: sh.postcode.trim(), notes: sh.notes.trim(), message: o.waText };
+  try {
+    return fetch(POS_RPC, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', apikey: POS_KEY, Authorization: 'Bearer ' + POS_KEY }, body: JSON.stringify({ p }) })
+      .then(r => r.ok ? r.json() : null).catch(() => null);
+  } catch (e) { return Promise.resolve(null); }
+}
 const REPLY_NOTE = 'We reply within 30 minutes, 8am–8pm AEST.';
 const SHOP_KEY = 'optml-shop-' + (WHOLESALE ? 'wholesale' : 'retail') + '-v1';
 const SHOP_SAVED = ['cart', 'name', 'phone', 'email', 'street', 'suburb', 'region', 'postcode', 'notes', 'code', 'ref', 'sent', 'country', 'nzShip', 'lastOrder'];
@@ -33,6 +49,7 @@ function defaultShop() {
 function loadShop() {
   const sh = defaultShop();
   try { const saved = JSON.parse(localStorage.getItem(SHOP_KEY) || 'null'); if (saved) SHOP_SAVED.forEach(k => { if (saved[k] !== undefined && saved[k] !== null) sh[k] = saved[k]; }); } catch (e) {}
+  if (sh.sent && sh.lastOrder && sh.lastOrder.at && Date.now() - sh.lastOrder.at > 12 * 3600 * 1000) Object.assign(sh, { cart: {}, sent: false, code: '', ref: makeRef() });
   return sh;
 }
 
@@ -255,13 +272,17 @@ function ShopSection({ sh, setSh, bump, o }) {
   </div></section>`;
 }
 
+function copyPay(v, k, setSh) {
+  const done = () => { setSh({ copiedPay: k }); setTimeout(() => setSh({ copiedPay: '' }), 1800); };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(done, done); else done(); } catch (e) { done(); }
+}
 function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
   const field = k => e => { const v = e.target.value; setSh(prev => { const next = { [k]: v, sent: false }; if (k === 'postcode' && prev.country !== 'NZ' && /^\d{4}$/.test(v) && !prev.region) { const s = stateFromPostcode(v); if (s) next.region = s; } return next; }); };
   const blur = k => () => setSh(prev => ({ touched: Object.assign({}, prev.touched, { [k]: true }) }));
   const stage = sh.sent && o.items.length ? 4 : !o.items.length ? 1 : o.detailsOk ? 3 : 2;
   const applyCode = () => { const c = sh.codeInput.trim().toUpperCase(); if (!c) return; const codes = parseCodes(DEFAULT_CODES); if (codes[c]) setSh({ code: c, codeError: '', codeOpen: false, codeInput: '' }); else setSh({ codeError: "That code isn't valid. Check the spelling and try again." }); };
   const copy = () => { const done = () => { setSh({ copied: true }); setTimeout(() => setSh({ copied: false }), 2000); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(o.plainText).then(done, done); else done(); };
-  const send = () => { onSent(o.items); };
+  const send = () => { submitToPos(sh, o).then(r => { if (r && r.ok && r.payid) setSh({ payid: r.payid }); }); onSent(o.items); };
   const lastItems = sh.lastOrder && sh.lastOrder.cart ? Object.keys(sh.lastOrder.cart).map(k => { const b = k.split(':'); const p = SHOP_BY_SKU[b[0]]; const n = parseInt(b[1], 10); return p && p.prices[n] ? { key: k, qty: sh.lastOrder.cart[k], p, n } : null; }).filter(Boolean) : [];
   const inp = (k, label, extra = {}) => html`<label class="field"><span>${label}</span><input class="input" style=${o.err[k] ? 'border-color:var(--bad)' : ''} value=${sh[k]} onInput=${field(k)} onBlur=${blur(k)} aria-invalid=${o.err[k] ? 'true' : 'false'} ...${extra} />${o.err[k] ? html`<small>${o.err[k]}</small>` : null}</label>`;
   return html`<div class="wrap page narrow" id="order">
@@ -273,8 +294,15 @@ function OrderSection({ sh, setSh, bump, o, onSent, planReady }) {
         ${lastItems.length ? html`<button type="button" class="btn on-dark sm" onClick=${() => { const c = {}; lastItems.forEach(it => { c[it.key] = it.qty; }); setSh({ cart: c, sent: false }); }}>Order again: ${lastItems.slice(0, 2).map(it => it.qty + '× ' + it.p.name).join(', ')}${lastItems.length > 2 ? ' + more' : ''}</button>` : html`<a class="btn on-dark sm" href="#/">Browse the price list</a>`}</div>` : null}
 
       ${sh.sent && o.items.length ? html`<div class="osent">
-        <p>Your order is in WhatsApp. We confirm stock and send payment details by reply. ${REPLY_NOTE}</p>
-        <div class="row g8 wrapx"><a class="btn sm on-dark-outline" href=${o.orderHref} target="_blank" rel="noopener">Didn't open? Resend on WhatsApp</a>
+        <p>Your order is in WhatsApp. We check stock and confirm by reply. ${REPLY_NOTE}</p>
+        <div class="paybox" aria-label="Payment details">
+          <div class="lbl">How to pay · once we confirm</div>
+          <div class="payrow"><span>PayID</span><b>${String(sh.payid || PAYID).replace(/^(\d{4})(\d{3})(\d{3})$/, '$1 $2 $3')}</b><button type="button" class="btn sm on-dark-outline" onClick=${() => copyPay(sh.payid || PAYID, 'PayID', setSh)}>${sh.copiedPay === 'PayID' ? 'Copied' : 'Copy'}</button></div>
+          <div class="payrow"><span>Reference</span><b>${sh.ref}</b><button type="button" class="btn sm on-dark-outline" onClick=${() => copyPay(sh.ref, 'ref', setSh)}>${sh.copiedPay === 'ref' ? 'Copied' : 'Copy'}</button></div>
+          <div class="payrow"><span>Amount</span><b>${money(o.total)} AUD</b></div>
+          <p class="tiny">Put the reference in the payment description so we can match it. We send it out as soon as payment lands.</p>
+        </div>
+        <div class="row g8 wrapx"><a class="btn sm on-dark-outline" href=${o.orderHref} target="_blank" rel="noopener" onClick=${() => submitToPos(sh, o)}>Didn't open? Resend on WhatsApp</a>
           <button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ cart: {}, sent: false, code: '', codeInput: '', ref: makeRef() })}>Start a new order</button></div>
         ${planReady ? html`<div class="guidecard"><b style="font-size:20px;letter-spacing:-.02em;color:var(--ink)">Your guide is ready</b>
           <p class="small">Exact units to draw for each compound, how to mix it with the bac water in the box, where to inject, and a daily tracker. Save it as a PDF to keep.</p>
