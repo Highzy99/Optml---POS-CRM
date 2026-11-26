@@ -357,6 +357,15 @@ body:has(.qa-back) .toast { display: none; }
 .sh-feats b { font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; }
 .sh-feats img { width: 20px; height: 20px; flex: none; object-fit: contain; }
 .sh-feats img.seal { width: 24px; height: 24px; border-radius: 50%; margin: 0 -2px; }
+/* Phone: the wording leads, then the photo, then the four features */
+@media (max-width: 639.98px) {
+  .sh-copy { display: contents; }
+  .sh-copy h1 { order: 1; padding: 16px 12px 0; }
+  .sh-copy .lead { order: 2; padding: 10px 12px 16px; }
+  .sh-photo { order: 3; aspect-ratio: 1 / 1; max-height: 46vh; }
+  .sh-photo > img { object-position: 50% 92%; }
+  .sh-feats { order: 4; margin: 8px 0 0; }
+}
 @media (min-width: 640px) {
   .shero { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); padding: 12px; margin-top: 10px; }
   .sh-photo { order: 2; aspect-ratio: auto; max-height: none; min-height: 420px; }
