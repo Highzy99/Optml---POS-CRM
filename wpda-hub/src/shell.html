@@ -479,7 +479,9 @@ body:has(.qa-back) .toast { display: none; }
 .qa-x { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--paper); color: var(--ink); font-size: 24px; line-height: 1; cursor: pointer; flex: none; }
 .qa-note { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--n700); }
 .qa-note img { width: 18px; height: 18px; }
-.qa-foot { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 8px; }
+.qa-foot { display: grid; }
+.qa-foot .btn { min-height: 52px; font-size: 16px; font-weight: 600; }
+.qa-foot .btn b { font-weight: 700; }
 .gcard { background: var(--ink); color: #fff; border-radius: var(--r-xl); padding: 28px 24px; display: flex; flex-direction: column; gap: 16px; align-items: flex-start; margin-top: 40px; }
 .gcard > img { width: 72px; height: 72px; border-radius: 50%; }
 .gcard h2 { color: #fff; font-size: 23px; letter-spacing: -.02em; }
@@ -499,6 +501,10 @@ button.tier:active { transform: scale(.97); }
 .tier .tn s { color: var(--n500); }
 .tier .sv { font-size: 12px; font-weight: 600; color: var(--ok); }
 .tier.on { background: var(--ink); color: #fff; cursor: default; gap: 4px; }
+.tier.sel, button.tier.sel:hover { background: var(--ink); color: #fff; }
+.tier.sel .tl, .tier.sel .tn { color: rgba(255,255,255,.75); }
+.tier.sel .tn s { color: rgba(255,255,255,.55); }
+.tier.sel .sv { color: #92e8a6; }
 .tier.on .tl { color: rgba(255,255,255,.75); }
 .stepper { display: inline-flex; align-items: center; gap: 6px; }
 .stepper button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(255,255,255,.16); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
