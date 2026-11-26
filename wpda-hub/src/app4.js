@@ -45,14 +45,16 @@ function Doc({ st, items }) {
   const title = st.client ? 'Protocol for ' + st.client : 'Your protocol';
   const groups = WHENS.map(w => ({ key: w[0], label: w[1], items: items.filter(i => i.when === w[0]) })).filter(g => g.items.length);
   const firstDraw = it => { const w = it.week(1); return w ? w.draw : ''; };
-  const dayHead = (wk, i) => 'Day ' + ((wk - 1) * 7 + i + 1);
+  const start = parseDay(st.start);   // optional: with one, the trackers show real dates
+  const dayHead = (wk, i) => { const n = (wk - 1) * 7 + i; if (!start) return 'Day ' + (n + 1); const d = addDays(start, n); return DOW[d.getDay()] + ' ' + d.getDate(); };
+  const weekSpan = wk => { if (!start) return ''; const a = addDays(start, (wk - 1) * 7), b = addDays(start, wk * 7 - 1); const f = d => d.getDate() + ' ' + d.toLocaleDateString('en-AU', { month: 'short' }); return ' · ' + f(a) + ' – ' + f(b); };
   return html`<div class=${'doc' + (st.preview ? ' show' : '')} aria-label="Protocol document preview"><div class="wrap"><div class="paper">
 
     <div class="dpage">
       <div class="cover">
         <div class="row g12" style="justify-content:space-between"><img src="assets/brand/wordmark-dark.svg" alt="World Peptide Dosage Association" style="height:30px;width:auto" /><img src="assets/brand/label-circle.png" alt="" style="width:64px;height:64px" /></div>
         <div class="stack g8"><div class="lbl">Peptide protocol</div><h1>${title}</h1>
-          <div class="dmeta">${st.by ? html`<span><b>Prepared by</b> ${st.by}</span>` : null}<span><b>Created</b> ${fmtLong(generated)}</span></div></div>
+          <div class="dmeta">${st.by ? html`<span><b>Prepared by</b> ${st.by}</span>` : null}${start ? html`<span><b>Starts</b> ${fmtLong(start)}</span>` : null}<span><b>Created</b> ${fmtLong(generated)}</span></div></div>
       </div>
       <div class="keep"><h3 class="dh3">At a glance</h3>
       <div class="tblwrap"><table class="tbl"><thead><tr><th scope="col">Compound</th><th scope="col">Vial and water</th><th scope="col">First dose</th><th scope="col">Draw</th><th scope="col">When</th></tr></thead>
@@ -79,7 +81,7 @@ function Doc({ st, items }) {
         <tr><td><b style="color:var(--ink)">Sharps container</b></td><td>1</td><td>Free from most Australian pharmacies.</td></tr>` : null}
       </tbody></table></div></div>
       <${CardRows} head=${html`<h3 class="dh3">Your daily rhythm</h3>`} list=${groups} card=${g => html`<div class="mini"><h4>${g.label}</h4>${g.items.map(it => { const w = it.week(1); return html`<p><b style="color:var(--ink)">${it.name}</b> · ${w ? w.dose : ''}${w && unitsOf(w.draw) !== null ? ' · draw ' + String(w.draw).split(' · ')[0] : ''}<br /><span class="muted">${it.freqText}</span></p>`; })}</div>`} />
-      <div class="keep"><h3 class="dh3">Week one</h3>
+      <div class="keep"><h3 class="dh3">Week one${weekSpan(1)}</h3>
       <div class="tblwrap"><table class="tbl track"><thead><tr><th scope="col">Compound</th>${Array.from({ length: 7 }, (_, i) => html`<th scope="col">${dayHead(1, i)}</th>`)}</tr></thead>
         <tbody>${items.map(it => { const w = it.week(1); return html`<tr><td>${it.name}</td>${Array.from({ length: 7 }, (_, i) => w && w.days.indexOf(i) > -1 ? html`<td class="on">${w.perDay > 1 ? 'AM + PM' : '●'}</td>` : html`<td></td>`)}</tr>`; })}</tbody></table></div></div>
     </div>
@@ -100,7 +102,7 @@ function Doc({ st, items }) {
     </div>`; })}
 
     <div class="dpage">
-      ${[1, 2, 3, 4].map(wk => html`<div class="wkblock">${wk === 1 ? html`<h2 class="dh">Four-week tracker</h2><p class="dsub">Tick each dose as you take it. The number is what to draw on a 1ml insulin syringe. Write the site you used underneath if it helps you rotate.</p>` : null}<h3 class="dh3">Week ${wk}</h3>
+      ${[1, 2, 3, 4].map(wk => html`<div class="wkblock">${wk === 1 ? html`<h2 class="dh">Four-week tracker</h2><p class="dsub">Tick each dose as you take it. The number is what to draw on a 1ml insulin syringe. Write the site you used underneath if it helps you rotate.</p>` : null}<h3 class="dh3">Week ${wk}${weekSpan(wk)}</h3>
         <div class="tblwrap"><table class="tbl track"><thead><tr><th scope="col">Compound</th>${Array.from({ length: 7 }, (_, i) => html`<th scope="col">${dayHead(wk, i)}</th>`)}</tr></thead>
         <tbody>${items.map(it => { const w = it.week(wk); return html`<tr><td>${it.name}</td>${Array.from({ length: 7 }, (_, i) => w && w.days.indexOf(i) > -1 ? html`<td class="on"><span class="box"></span>${w.perDay > 1 ? html`<span class="box"></span>` : null}${shortDraw(w.draw)}</td>` : html`<td></td>`)}</tr>`; })}</tbody></table></div></div>`)}
     </div>

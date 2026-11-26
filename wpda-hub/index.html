@@ -98,6 +98,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field > span { font-size: 13px; font-weight: 600; color: var(--ink); }
 .field small { font-size: 12px; color: var(--n600); }
+.linkish { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .input, .select, .textarea { width: 100%; min-height: 46px; padding: 10px 14px; border-radius: var(--r-md); border: 1px solid var(--n300); background: var(--white); font-size: 16px; color: var(--ink); }
 .textarea { min-height: 88px; resize: vertical; line-height: 1.5; }
 .select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23222326' stroke-width='1.6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
@@ -2579,7 +2580,10 @@ function ItemEditor({ it, st, set, act }) {
 }
 
 function planLink(st) {
-  return location.origin + location.pathname + '#plan=' + encodePlan(planPayload(Object.assign({}, st, { start: '' })));
+  // A start date chosen in the builder travels with the link. One that only exists because doses were ticked on this
+  // device (the tracker sets it on the first tick) stays behind, so the person opening the link starts fresh.
+  let ticked = false; try { ticked = !!loadTrack(st.planId).auto; } catch (e) {}
+  return location.origin + location.pathname + '#plan=' + encodePlan(planPayload(Object.assign({}, st, { start: ticked ? '' : st.start })));
 }
 
 function Builder({ st, set, items, act }) {
@@ -2606,6 +2610,8 @@ function Builder({ st, set, items, act }) {
       <div class="fgrid">
         <label class="field"><span>Client name</span><input class="input" autocomplete="off" placeholder="e.g. Sarah M" value=${st.client} onInput=${e => set({ client: e.target.value })} /></label>
         <label class="field"><span>Prepared by</span><input class="input" placeholder="Your name or clinic" value=${st.by} onInput=${e => set({ by: e.target.value })} /></label>
+        <label class="field"><span>Start date (optional)</span><input class="input" type="date" value=${st.start} onInput=${e => set({ start: e.target.value })} />
+          <small>${st.start ? html`Dates show in the tracker, PDF and web page. <button type="button" class="linkish" onClick=${() => set({ start: '' })}>Remove</button>` : 'Leave it empty and the plan counts Day 1, Day 2…'}</small></label>
       </div>
       <label class="field"><span>Notes for the client</span><textarea class="textarea" placeholder="Goals, check-in dates, bloodwork reminders, anything they should know." value=${st.notes} onInput=${e => set({ notes: e.target.value })}></textarea></label>
     </div></div>
@@ -2687,14 +2693,16 @@ function Doc({ st, items }) {
   const title = st.client ? 'Protocol for ' + st.client : 'Your protocol';
   const groups = WHENS.map(w => ({ key: w[0], label: w[1], items: items.filter(i => i.when === w[0]) })).filter(g => g.items.length);
   const firstDraw = it => { const w = it.week(1); return w ? w.draw : ''; };
-  const dayHead = (wk, i) => 'Day ' + ((wk - 1) * 7 + i + 1);
+  const start = parseDay(st.start);   // optional: with one, the trackers show real dates
+  const dayHead = (wk, i) => { const n = (wk - 1) * 7 + i; if (!start) return 'Day ' + (n + 1); const d = addDays(start, n); return DOW[d.getDay()] + ' ' + d.getDate(); };
+  const weekSpan = wk => { if (!start) return ''; const a = addDays(start, (wk - 1) * 7), b = addDays(start, wk * 7 - 1); const f = d => d.getDate() + ' ' + d.toLocaleDateString('en-AU', { month: 'short' }); return ' · ' + f(a) + ' – ' + f(b); };
   return html`<div class=${'doc' + (st.preview ? ' show' : '')} aria-label="Protocol document preview"><div class="wrap"><div class="paper">
 
     <div class="dpage">
       <div class="cover">
         <div class="row g12" style="justify-content:space-between"><img src="assets/brand/wordmark-dark.svg" alt="World Peptide Dosage Association" style="height:30px;width:auto" /><img src="assets/brand/label-circle.png" alt="" style="width:64px;height:64px" /></div>
         <div class="stack g8"><div class="lbl">Peptide protocol</div><h1>${title}</h1>
-          <div class="dmeta">${st.by ? html`<span><b>Prepared by</b> ${st.by}</span>` : null}<span><b>Created</b> ${fmtLong(generated)}</span></div></div>
+          <div class="dmeta">${st.by ? html`<span><b>Prepared by</b> ${st.by}</span>` : null}${start ? html`<span><b>Starts</b> ${fmtLong(start)}</span>` : null}<span><b>Created</b> ${fmtLong(generated)}</span></div></div>
       </div>
       <div class="keep"><h3 class="dh3">At a glance</h3>
       <div class="tblwrap"><table class="tbl"><thead><tr><th scope="col">Compound</th><th scope="col">Vial and water</th><th scope="col">First dose</th><th scope="col">Draw</th><th scope="col">When</th></tr></thead>
@@ -2721,7 +2729,7 @@ function Doc({ st, items }) {
         <tr><td><b style="color:var(--ink)">Sharps container</b></td><td>1</td><td>Free from most Australian pharmacies.</td></tr>` : null}
       </tbody></table></div></div>
       <${CardRows} head=${html`<h3 class="dh3">Your daily rhythm</h3>`} list=${groups} card=${g => html`<div class="mini"><h4>${g.label}</h4>${g.items.map(it => { const w = it.week(1); return html`<p><b style="color:var(--ink)">${it.name}</b> · ${w ? w.dose : ''}${w && unitsOf(w.draw) !== null ? ' · draw ' + String(w.draw).split(' · ')[0] : ''}<br /><span class="muted">${it.freqText}</span></p>`; })}</div>`} />
-      <div class="keep"><h3 class="dh3">Week one</h3>
+      <div class="keep"><h3 class="dh3">Week one${weekSpan(1)}</h3>
       <div class="tblwrap"><table class="tbl track"><thead><tr><th scope="col">Compound</th>${Array.from({ length: 7 }, (_, i) => html`<th scope="col">${dayHead(1, i)}</th>`)}</tr></thead>
         <tbody>${items.map(it => { const w = it.week(1); return html`<tr><td>${it.name}</td>${Array.from({ length: 7 }, (_, i) => w && w.days.indexOf(i) > -1 ? html`<td class="on">${w.perDay > 1 ? 'AM + PM' : '●'}</td>` : html`<td></td>`)}</tr>`; })}</tbody></table></div></div>
     </div>
@@ -2742,7 +2750,7 @@ function Doc({ st, items }) {
     </div>`; })}
 
     <div class="dpage">
-      ${[1, 2, 3, 4].map(wk => html`<div class="wkblock">${wk === 1 ? html`<h2 class="dh">Four-week tracker</h2><p class="dsub">Tick each dose as you take it. The number is what to draw on a 1ml insulin syringe. Write the site you used underneath if it helps you rotate.</p>` : null}<h3 class="dh3">Week ${wk}</h3>
+      ${[1, 2, 3, 4].map(wk => html`<div class="wkblock">${wk === 1 ? html`<h2 class="dh">Four-week tracker</h2><p class="dsub">Tick each dose as you take it. The number is what to draw on a 1ml insulin syringe. Write the site you used underneath if it helps you rotate.</p>` : null}<h3 class="dh3">Week ${wk}${weekSpan(wk)}</h3>
         <div class="tblwrap"><table class="tbl track"><thead><tr><th scope="col">Compound</th>${Array.from({ length: 7 }, (_, i) => html`<th scope="col">${dayHead(wk, i)}</th>`)}</tr></thead>
         <tbody>${items.map(it => { const w = it.week(wk); return html`<tr><td>${it.name}</td>${Array.from({ length: 7 }, (_, i) => w && w.days.indexOf(i) > -1 ? html`<td class="on"><span class="box"></span>${w.perDay > 1 ? html`<span class="box"></span>` : null}${shortDraw(w.draw)}</td>` : html`<td></td>`)}</tr>`; })}</tbody></table></div></div>`)}
     </div>
@@ -2791,7 +2799,7 @@ function warmWebAssets() {
 const WEB_CSS = `
 :root{--ink:#222326;--paper:#f5f6f7;--sunken:#eceef0;--n200:#e0e2e6;--n300:#cfd2d7;--n500:#7c8089;--n600:#5b5e66;--n700:#3f4147;--ok-soft:#e3f6e8;--bad:#c8433f;--warn-soft:#ffe9dc;--warn-text:#5f240f;--lid-soft:#eef0fc;--lid-ink:#353a96;--font:'Onest',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;color-scheme:light}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:84px;-webkit-text-size-adjust:100%}
+html{scroll-behavior:smooth;scroll-padding-top:16px;-webkit-text-size-adjust:100%}
 body{margin:0;font-family:var(--font);font-size:16.5px;line-height:1.6;color:var(--n700);background:#fff;-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{color:var(--ink);margin:0;letter-spacing:-.02em;line-height:1.12;font-weight:700;text-wrap:balance}
 p{margin:0;text-wrap:pretty}
@@ -2810,7 +2818,7 @@ html:not(.js) .jsonly{display:none!important}
 .btn.on-dark{background:#fff;color:var(--ink);border-color:#fff}
 .btn.on-dark-outline{background:transparent;color:#fff;border-color:rgba(255,255,255,.45)}
 
-.top{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.97);-webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid var(--n200)}
+.top{background:#fff;border-bottom:1px solid var(--n200)}
 .top .inner{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px}
 .mark{display:inline-flex;align-items:center;min-height:40px;text-decoration:none;font-size:25px;font-weight:700;letter-spacing:-.05em;color:var(--ink)}
 .mark svg{height:24px;width:auto;display:block}
@@ -2843,18 +2851,19 @@ section{padding-top:52px}
 .first .big{display:block;font-size:44px;letter-spacing:-.04em;line-height:1;margin:4px 0 6px}
 .first .how{font-size:15.5px;color:var(--n700)}
 h4.h4{font-size:18px;letter-spacing:-.01em;margin:28px 0 4px}
-.plan{width:100%;border-collapse:collapse;font-size:15.5px}
-.plan th{text-align:left;font-size:13px;font-weight:600;color:var(--n600);padding:8px 0;border-bottom:1px solid var(--n200)}
-.plan td{padding:13px 0;border-bottom:1px solid var(--n200);vertical-align:top}
-.plan td:first-child{color:var(--n600);padding-right:10px;white-space:nowrap}
-.plan td:last-child,.plan th:last-child{text-align:right}
-.plan td:last-child{white-space:nowrap}
-.plan small{display:block;font-size:12.5px;color:var(--n600);font-weight:500}
-.plan td.mid{color:var(--ink);font-weight:600;padding-right:10px}
-.facts{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}
-.facts div{padding:12px 0;border-bottom:1px solid var(--n200)}
-.facts dt{font-size:13px;font-weight:600;color:var(--n600)}
-.facts dd{margin:2px 0 0;font-size:15.5px;font-weight:600;color:var(--ink);line-height:1.35}
+.gt{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--n200);border-radius:18px;overflow:hidden;font-size:15.5px;line-height:1.35;background:#fff}
+.gt th,.gt td{padding:14px 16px;text-align:left;vertical-align:middle;border-bottom:1px solid var(--n200);border-right:1px solid var(--n200)}
+.gt tr>*:last-child{border-right:0}
+.gt tbody tr:last-child>*{border-bottom:0}
+.gt thead th{background:var(--gs,var(--paper));font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap}
+.gt td{color:var(--ink);font-weight:600}
+.gt td small{display:block;margin-top:2px;font-size:13px;font-weight:500;color:var(--n600)}
+.gt .k{width:38%;background:var(--paper);font-size:14px;font-weight:600;color:var(--n600)}
+.gt .wkc{white-space:nowrap}
+.gt .num{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.gt .num small{display:inline-block;margin:0 0 0 6px;white-space:nowrap}
+.gt td,.gt th{overflow-wrap:anywhere}
+@media (max-width:420px){.gt th,.gt td{padding:13px 12px}.gt .num{font-size:16px}.gt .num small{display:block;margin:2px 0 0}}
 .note{background:var(--paper);border-radius:14px;padding:13px 16px;font-size:15px;line-height:1.6;margin-top:16px}
 .warn{background:var(--warn-soft);color:var(--warn-text);border-radius:14px;padding:11px 14px;font-size:14.5px;line-height:1.5;margin-top:12px}
 .inbox{display:flex;gap:12px;align-items:flex-start;padding:13px 15px;border-radius:14px;background:var(--lid-soft);color:var(--lid-ink);font-size:15px;line-height:1.5;margin-top:16px}
@@ -2883,7 +2892,9 @@ summary{list-style:none;cursor:pointer}
 summary::-webkit-details-marker{display:none}
 details.wk{border-bottom:1px solid var(--n200)}
 details.wk summary{display:flex;align-items:center;gap:10px;padding:15px 0;min-height:56px}
-.wkn{font-size:17px;font-weight:700;color:var(--ink);letter-spacing:-.01em;flex:none;min-width:74px}
+.wkn{font-size:17px;font-weight:700;color:var(--ink);letter-spacing:-.01em;flex:none;min-width:74px;display:flex;flex-direction:column;line-height:1.25}
+.wkn small{font-size:12.5px;font-weight:500;letter-spacing:0;color:var(--n600)}
+.wkn.d{min-width:102px}
 .wks{font-size:14.5px;color:var(--n600);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cnt{flex:none;font-size:13px;font-weight:600;color:var(--n600);background:var(--paper);border-radius:999px;padding:4px 11px}
 details.wk.done .cnt{background:var(--ok-soft);color:#1d5c33}
@@ -2897,6 +2908,8 @@ details.wk[open] summary::after,details.acc[open] summary::after{content:'−'}
 .slot{font-size:12px;font-weight:600;color:var(--n600);margin:8px 0 4px}
 .dbox{position:relative;aspect-ratio:1;border-radius:12px;border:1.5px solid var(--n300);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--n600);cursor:pointer;transition:background-color .15s ease,border-color .15s ease}
 .dbox input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.dbox small{display:block;font-size:10px;font-weight:600;line-height:1;margin-bottom:2px;color:var(--n500)}
+.dbox .dl{display:flex;flex-direction:column;align-items:center;line-height:1.05}
 .dbox i{position:absolute;inset:0;border-radius:10.5px;display:flex;align-items:center;justify-content:center;font-style:normal}
 .dbox i::after{content:'';width:7px;height:13px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:translateY(-1.5px) rotate(45deg);opacity:0}
 .dbox input:checked+i{background:var(--ink);box-shadow:0 0 0 1.5px var(--ink)}
@@ -2948,13 +2961,14 @@ footer .fine{border-top:1px solid rgba(255,255,255,.14);padding-top:18px;margin-
   .hero{padding:40px 36px 30px}
   .first{flex-direction:row;align-items:center;justify-content:space-between;padding:26px 28px}
   .first .fl{flex:none}.first .fr{flex:1;max-width:400px}
-  .facts{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .gt th,.gt td{padding:15px 20px}
+  .gt .k{width:34%}
 }
 @media print{
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .top,.cta,.jsonly,.prog{display:none!important}
   body{font-size:13.5px}section{padding-top:26px}
-  .first,.steps li,.item,.sup,.ck,.trow,.note,.warn,.inbox,.plan tr{break-inside:avoid}
+  .first,.steps li,.item,.sup,.ck,.trow,.note,.warn,.inbox,.gt tr{break-inside:avoid}
   footer{background:#fff;color:var(--n600);margin-top:24px;padding:16px 0}footer .mark{color:var(--ink)}footer .mark svg{filter:none}footer h2{display:none}footer .fine{color:var(--n600);border-color:var(--n200)}
 }
 `;
@@ -3002,6 +3016,11 @@ function WebAcc({ title, hint, children }) {
 function WebDoc({ st, items, link, home, title }) {
   const generated = new Date();
   const day = generated.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+  // Optional start date: with one, the tracker and the dose table show real dates; without, they count Day 1, Day 2…
+  const start = parseDay(st.start);
+  const dm = d => d.getDate() + ' ' + d.toLocaleDateString('en-AU', { month: 'short' });
+  const span = (a, b) => dm(addDays(start, (a - 1) * 7)) + ' – ' + dm(addDays(start, b * 7 - 1));
+  const rowDates = label => { if (!start) return ''; const r = parseWeekRange(label); if (!r) return ''; return isFinite(r[1]) ? span(r[0], r[1]) : 'From ' + dm(addDays(start, (r[0] - 1) * 7)); };
   const inj = items.filter(i => !i.oral);
   const drawOf = w => w ? (unitsOf(w.draw) !== null ? String(w.draw).split(' · ')[0] : String(w.draw)) : '—';
   const cid = it => 'c-' + String(it.key).replace(/[^a-zA-Z0-9_-]/g, '');
@@ -3041,7 +3060,7 @@ function WebDoc({ st, items, link, home, title }) {
     <div class="hero">
       <div class="lbl">${known ? weeksN + '-week protocol' : 'Peptide protocol'}</div>
       <h1>${headParts[0]}${headParts[1] ? html`<span>${headParts[1]}</span>` : null}</h1>
-      <p class="lead">${st.by ? 'Prepared by ' + st.by + ' · ' : ''}${day}</p>
+      <p class="lead">${[st.by ? 'Prepared by ' + st.by : '', start ? 'Starts ' + start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }) : day].filter(Boolean).join(' · ')}</p>
       <ul class="stats">
         <li><b>${known ? weeksN + ' weeks' : items.length + (items.length === 1 ? ' compound' : ' compounds')}</b>${known ? 'Full protocol' : 'In this plan'}</li>
         <li><b>${weeks[0].n} dose${weeks[0].n === 1 ? '' : 's'}</b>In week one</li>
@@ -3061,15 +3080,22 @@ function WebDoc({ st, items, link, home, title }) {
         <div class="first"><div class="fl"><span class="lbl">Start with</span><b class="big">${drawOf(w1)}</b><span class="how">${[w1 ? w1.dose : '', lower(it.freqText)].filter(Boolean).join(' · ')}</span></div>
           ${!it.oral && u !== null ? html`<div class="fr"><${Syringe} units=${u} /><div class="syr-scale"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div></div>` : null}</div>
         <h4 class="h4">Week by week</h4>
-        <table class="plan"><thead><tr><th scope="col">Weeks</th><th scope="col">Dose</th><th scope="col">${it.oral ? 'Take' : 'Draw'}</th></tr></thead>
-          <tbody>${it.rows.map(r => html`<tr><td>${r.label}</td><td class="mid">${r.dose}${r.extra ? html`<small>${r.extra}</small>` : null}</td><td><b>${r.units !== null ? String(r.draw).split(' · ')[0] : r.draw}</b>${r.units !== null && String(r.draw).split(' · ')[1] ? html`<small>${String(r.draw).split(' · ')[1]}</small>` : null}</td></tr>`)}</tbody></table>
+        <table class="gt"><thead><tr><th scope="col">Weeks</th><th scope="col">Dose</th><th scope="col">${it.oral ? 'Take' : 'Draw'}</th></tr></thead>
+          <tbody>${it.rows.map(r => html`<tr><td class="wkc">${/^\d/.test(r.label) ? 'Weeks ' + r.label : r.label}${rowDates(r.label) ? html`<small>${rowDates(r.label)}</small>` : null}</td><td>${r.dose}${r.extra ? html`<small>${r.extra}</small>` : null}</td>
+            <td class="num">${r.units !== null ? String(r.draw).split(' · ')[0] : r.draw}${r.units !== null && String(r.draw).split(' · ')[1] ? html`<small>${String(r.draw).split(' · ')[1]}</small>` : null}</td></tr>`)}</tbody></table>
         ${it.rows.some(r => r.warn) ? html`<div class="warn">${it.rows.find(r => r.warn).warn}</div>` : null}
         <h4 class="h4">The details</h4>
-        <dl class="facts"><div><dt>${it.vialLabel}</dt><dd>${it.vial || '—'}</dd></div>
-          ${!it.oral ? html`<div><dt>Mix with</dt><dd>${it.water ? trimNum(it.water, 2) + 'ml bac water' : '—'}</dd></div><div><dt>Once mixed</dt><dd>${it.conc || '—'}</dd></div>` : null}
-          <div><dt>When</dt><dd>${it.timing || it.whenLabel}</dd></div><div><dt>Where</dt><dd>${it.site}</dd></div>
-          ${it.duration ? html`<div><dt>For how long</dt><dd>${it.duration}</dd></div>` : null}
-          ${ps.count ? html`<div><dt>${it.oral ? 'Bottles needed' : 'Vials needed'}</dt><dd>${ps.text}${ps.forText ? ' ' + ps.forText : ''}</dd></div>` : null}</dl>
+        <table class="gt"><tbody>
+          <tr><th scope="row" class="k">${it.vialLabel}</th><td>${it.vial || '—'}</td></tr>
+          ${!it.oral ? html`<tr><th scope="row" class="k">Mix with</th><td>${it.water ? trimNum(it.water, 2) + 'ml bac water' : '—'}</td></tr>
+          <tr><th scope="row" class="k">Once mixed</th><td>${it.conc ? String(it.conc).split(' · ')[0] : '—'}${it.conc && String(it.conc).split(' · ')[1] ? html`<small>${String(it.conc).split(' · ')[1]}</small>` : null}</td></tr>` : null}
+          <tr><th scope="row" class="k">How often</th><td>${it.freqText}</td></tr>
+          <tr><th scope="row" class="k">When</th><td>${it.timing || it.whenLabel}</td></tr>
+          <tr><th scope="row" class="k">Where</th><td>${it.site}</td></tr>
+          ${start ? html`<tr><th scope="row" class="k">Start date</th><td>${start.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</td></tr>` : null}
+          ${it.duration ? html`<tr><th scope="row" class="k">For how long</th><td>${it.duration}</td></tr>` : null}
+          ${ps.count ? html`<tr><th scope="row" class="k">${it.oral ? 'Bottles needed' : 'Vials needed'}</th><td>${ps.text}${ps.forText ? html`<small>${ps.forText.replace(/^./, c => c.toUpperCase())}</small>` : null}</td></tr>` : null}
+        </tbody></table>
         ${!it.oral && it.water ? html`<div class="inbox"><${Icon} name="drop" size=${20} /><span><b>To mix:</b> add ${trimNum(it.water, 2)}ml of bac water slowly down the inside wall of the vial. Roll gently, never shake. Date the label, keep it in the fridge and use it within 4 weeks.</span></div>` : null}
         ${st.inotes[it.key] ? html`<div class="note" style="white-space:pre-line"><b>Note:</b> ${st.inotes[it.key]}</div>` : null}
         ${it.note ? html`<div class="note">${it.note}</div>` : null}
@@ -3078,14 +3104,15 @@ function WebDoc({ st, items, link, home, title }) {
 
     <section id="tracker"><div class="sec-h"><h2>${weeksN}-week tracker</h2><p>Tap a day when the dose is done. ${inj.length ? 'Move to a new injection site each time.' : ''}</p></div>
       <div class="prog jsonly"><div class="bar"><i data-bar="1"></i></div><span data-prog="1"></span></div>
-      <div class="weeks">${weeks.map(wkd => html`<details class="wk" open=${wkd.wk === 1}><summary><span class="wkn">Week ${wkd.wk}</span>
+      <div class="weeks">${weeks.map(wkd => html`<details class="wk" open=${wkd.wk === 1}><summary><span class=${'wkn' + (start ? ' d' : '')}>Week ${wkd.wk}${start ? html`<small>${span(wkd.wk, wkd.wk)}</small>` : null}</span>
           <span class="wks">${wkd.rows.length === 1 ? [wkd.rows[0].w.dose, unitsOf(wkd.rows[0].w.draw) !== null ? 'draw ' + drawOf(wkd.rows[0].w) : (wkd.rows[0].it.oral ? shortDraw(wkd.rows[0].w.draw) : '')].filter(Boolean).join(' · ') : wkd.rows.length ? wkd.rows.length + ' compounds' : 'Nothing scheduled'}</span>
           <span class="cnt">${wkd.n} dose${wkd.n === 1 ? '' : 's'}</span></summary>
         <div class="wkb">${wkd.rows.map(r => html`<div class="trow">
           ${items.length > 1 ? html`<div class="tname"><b>${r.it.name}</b><span>${[r.w.dose, unitsOf(r.w.draw) !== null ? drawOf(r.w) : (r.it.oral ? shortDraw(r.w.draw) : '')].filter(Boolean).join(' · ')}</span></div>` : null}
           ${Array.from({ length: r.per }, (_, n) => html`${r.per > 1 ? html`<div class="slot">${slot(r.per, n)}</div>` : null}<div class="days">
-            ${Array.from({ length: 7 }, (_, i) => { const dn = (wkd.wk - 1) * 7 + i + 1; return r.w.days.indexOf(i) > -1
-              ? html`<label class="dbox" aria-label=${'Day ' + dn + (r.per > 1 ? ', ' + slot(r.per, n).toLowerCase() : '') + ', ' + r.it.name}>${dn}<input type="checkbox" data-k=${'t' + wkd.wk + '-' + i + '-' + cid(r.it) + '-' + n} /><i></i></label>`
+            ${Array.from({ length: 7 }, (_, i) => { const idx = (wkd.wk - 1) * 7 + i; const on = start ? addDays(start, idx) : null;
+              const dn = on ? html`<span class="dl"><small>${DOW[on.getDay()]}</small>${on.getDate()}</span>` : idx + 1; const say = on ? fmtDay(on) : 'Day ' + (idx + 1); return r.w.days.indexOf(i) > -1
+              ? html`<label class="dbox" aria-label=${say + (r.per > 1 ? ', ' + slot(r.per, n).toLowerCase() : '') + ', ' + r.it.name}>${dn}<input type="checkbox" data-k=${'t' + wkd.wk + '-' + i + '-' + cid(r.it) + '-' + n} /><i></i></label>`
               : html`<span class="dbox off" aria-hidden="true">${dn}</span>`; })}</div>`)}
         </div>`)}</div>
       </details>`)}</div>
@@ -3144,7 +3171,7 @@ function WebDoc({ st, items, link, home, title }) {
 function buildWebDoc(st, items) {
   const title = st.client ? 'Protocol for ' + st.client.trim() : (items.length === 1 ? items[0].name + ' protocol' : 'Your protocol');
   const home = location.origin + location.pathname;
-  const link = home + '#plan=' + encodePlan(planPayload(Object.assign({}, st, { start: '' })));
+  const link = planLink(st);
   const box = document.createElement('div');
   render(html`<${WebDoc} st=${st} items=${items} link=${link} home=${home} title=${title} />`, box);
   const range = box.querySelector('[data-range]'); if (range) range.setAttribute('value', '20');
@@ -3185,7 +3212,7 @@ function exportWeb(st, flash) {
 
 // Plan state for a hand-picked set of listed protocols (product page, All protocols), leaving My plan alone.
 function stForPicks(st, picks) {
-  return Object.assign({}, st, { order: picks.map(x => x[0]), customs: {}, own: {}, mode: {}, notes: '', inotes: {}, sizeIdx: Object.assign({}, st.sizeIdx, picks.reduce((a, x) => { a[x[0]] = x[1]; return a; }, {})) });
+  return Object.assign({}, st, { order: picks.map(x => x[0]), customs: {}, own: {}, mode: {}, notes: '', inotes: {}, start: '', sizeIdx: Object.assign({}, st.sizeIdx, picks.reduce((a, x) => { a[x[0]] = x[1]; return a; }, {})) });
 }
 
 // ================= Daily tracker, hero, box section, header, footer, root =================
