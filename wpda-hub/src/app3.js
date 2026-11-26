@@ -90,7 +90,7 @@ function Builder({ st, set, items, act }) {
       <p class="lead">Pick from the range or add anything that is not on the list, set weekly doses and titrations, then export a client-ready PDF or send a link with a built-in daily tracker.</p></div>
     ${st.shared ? html`<div class="banner"><b style="color:var(--ink);font-size:17px">${st.client ? 'Protocol for ' + st.client : 'A protocol was shared with you'}${st.by ? ' · prepared by ' + st.by : ''}</b>
       <p class="small">Everything below is your plan. Your daily tracker is at the top of the page, and you can export the full PDF guide any time.</p>
-      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Export PDF</button><a class="btn sm outline" href="#/plan">Open my tracker</a>
+      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => printDoc()}><${Icon} name="print" size=${16} /> Export PDF</button><a class="btn sm outline" href="#/plan">Open my tracker</a>
       ${act.hasPrev ? html`<button type="button" class="btn sm ghost" onClick=${act.restorePrev}>Restore my previous draft</button>` : null}</div></div>` : null}
 
     <div class="bstep"><span class="n">1</span><div class="stack g12"><div><h3>Who it is for</h3><p class="small muted">Appears on the cover of the PDF and in the shared link.</p></div>
@@ -109,10 +109,11 @@ function Builder({ st, set, items, act }) {
         : html`<div class="empty">Nothing in the plan yet. Tap a compound above, add one from the catalogue, or add a custom compound.</div>`}
     </div></div>
 
-    <div class="bstep"><span class="n">3</span><div class="stack g16"><div><h3>Export and share</h3><p class="small muted">The PDF includes the plan, a four-week tracker, a supplies list and the full mixing and injection guide. The link opens this page with the plan loaded and a daily tracker.</p></div>
+    <div class="bstep"><span class="n">3</span><div class="stack g16"><div><h3>Export and share</h3><p class="small muted">The PDF and the web page both hold the plan, a four-week tracker, a supplies list and the full mixing and injection guide. The web page is one file that fits any screen, with boxes to tick. The link opens this page with the plan loaded and a daily tracker.</p></div>
       ${items.length ? html`<div class="summary"><span>${items.length} compound${items.length === 1 ? '' : 's'}</span><span>${injPerWeek} injection${injPerWeek === 1 ? '' : 's'} a week to start</span></div>` : null}
       <div class="row g8 wrapx">
-        <button type="button" class="btn" disabled=${!items.length} onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Export PDF</button>
+        <button type="button" class="btn" disabled=${!items.length} onClick=${() => printDoc()}><${Icon} name="print" size=${16} /> Export PDF</button>
+        <button type="button" class="btn outline" disabled=${!items.length} onClick=${() => exportWeb(st, act.flash)}><${Icon} name="share" size=${16} /> Export web page</button>
         <button type="button" class="btn outline" disabled=${!items.length} onClick=${share}><${Icon} name="link" size=${16} /> Share link</button>
         <button type="button" class="btn ghost" disabled=${!items.length} onClick=${copy}>${copied || 'Copy link'}</button>
         <button type="button" class="btn ghost" disabled=${!items.length} aria-pressed=${String(st.preview)} onClick=${() => set({ preview: !st.preview })}><${Icon} name="eye" size=${16} /> ${st.preview ? 'Hide preview' : 'Preview document'}</button>

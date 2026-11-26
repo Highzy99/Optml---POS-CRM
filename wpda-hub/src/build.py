@@ -4,7 +4,7 @@ B = os.path.dirname(os.path.abspath(__file__))
 rd = lambda f: open(os.path.join(B, f), encoding='utf-8').read()
 shell = rd('shell.html')
 lib = rd('htm-preact-standalone.umd.js')
-app = '\n'.join(rd(f) for f in ['shopdata.js', 'shop.js', 'app1.js', 'app2.js', 'app3.js', 'app4.js', 'app5.js'])
+app = '\n'.join(rd(f) for f in ['shopdata.js', 'shop.js', 'app1.js', 'app2.js', 'app3.js', 'app4.js', 'webdoc.js', 'app5.js'])
 js_all = rd('data.js') + rd('logic.js') + app
 assert '</script' not in js_all.lower() and '</script' not in lib.lower()
 title = 'optml · price list and dosing guide'

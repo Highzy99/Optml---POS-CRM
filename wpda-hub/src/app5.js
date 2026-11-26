@@ -264,7 +264,7 @@ function TabBar({ route, count, planCount }) {
     return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : t[0] === 'plan' && planCount ? html`<i class="dot soft">${planCount}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
 }
 
-function PlanPage({ st, set, items, onReorder, openInstall }) {
+function PlanPage({ st, set, items, onReorder, openInstall, flash }) {
   if (!items.length) return html`<div class="wrap page narrow"><div class="page-head"><h1>Your guide lives here</h1>
       <p class="lead">Add a product to your cart and its guide appears here: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
     <div class="stack g12">
@@ -274,13 +274,14 @@ function PlanPage({ st, set, items, onReorder, openInstall }) {
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
     <${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap." />
     <div class="card plancard"><div><div class="small muted">Your plan</div><b>${items.map(i => i.name).join(', ')}</b></div>
-      <button type="button" class="btn block" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button>
+      <button type="button" class="btn block" onClick=${() => printDoc()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button>
+      <button type="button" class="btn outline block" onClick=${() => exportWeb(st, flash)}><${Icon} name="share" size=${16} /> Send my guide as a web page</button>
       <div class="pair"><a class="btn outline" href="#/build">Edit plan</a><a class="btn outline" href="#/protocols">All protocols</a></div></div>
   </div>`;
 }
 
 // Every compound's protocol in one list, grouped by goal. Rows open the product's how-to-use page.
-function ProtocolsPage({ st, exportPdf, openInstall }) {
+function ProtocolsPage({ st, exportPdf, openInstall, flash }) {
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(null);
   const toggle = id => setSel(s => Object.assign({}, s, { [id]: !s[id] }));
@@ -302,7 +303,7 @@ function ProtocolsPage({ st, exportPdf, openInstall }) {
   return html`<div class="wrap page narrow">
     <a class="back" href="#/plan"><${Icon} name="back" size=${18} /> My plan</a>
     <div class="page-head"><h1>All protocols</h1>
-      <p class="lead">${sel ? 'Tick the protocols you want in your PDF, then save.' : 'The dose week by week, mixing and timing for every compound on the price list. Tap one to open it.'}</p>
+      <p class="lead">${sel ? 'Tick the protocols you want, then save them as a PDF or a web page.' : 'The dose week by week, mixing and timing for every compound on the price list. Tap one to open it.'}</p>
       <div class="row g8 wrapx">${sel ? html`<button type="button" class="btn sm outline" onClick=${() => setSel(null)}>Cancel</button>`
         : html`<button type="button" class="btn sm outline" onClick=${startSel}><${Icon} name="print" size=${16} /> Export as PDF</button>`}</div></div>
     <label class="field"><span class="sr">Search protocols</span><input class="input" type="search" style="border-radius:var(--pill);padding-left:22px" placeholder="Search — reta, bpc, ghk…" value=${q} onInput=${e => setQ(e.target.value)} /></label>
@@ -317,7 +318,8 @@ function ProtocolsPage({ st, exportPdf, openInstall }) {
     ${sel ? null : html`<${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap." />`}
     <p class="small muted" style="margin-top:22px">Dosing something that isn't here? <a href="#/build" style="color:var(--ink);font-weight:600">Build a protocol yourself</a>.</p>
     ${sel ? html`<div class="selbar screen"><span>${chosen.length ? chosen.length + ' selected' : 'Tick protocols to export'}</span>
-      <button type="button" class="btn" disabled=${!chosen.length} onClick=${() => exportPdf(chosen.map(id => [id, idxOf(id)]))}><${Icon} name="print" size=${16} /> Save as PDF</button></div>` : null}
+      <span class="row g6"><button type="button" class="btn sm outline" disabled=${!chosen.length} onClick=${() => exportWeb(stForPicks(st, chosen.map(id => [id, idxOf(id)])), flash)}>Web page</button>
+      <button type="button" class="btn" disabled=${!chosen.length} onClick=${() => exportPdf(chosen.map(id => [id, idxOf(id)]))}><${Icon} name="print" size=${16} /> Save as PDF</button></span></div>` : null}
   </div>`;
 }
 
@@ -342,8 +344,10 @@ function App() {
   const [a2hs, setA2hs] = useState(false);
   const openInstall = () => setA2hs(true);
   const [exp, setExp] = useState(null);
-  useEffect(() => { if (!exp) return; const t = setTimeout(() => window.print(), 120); return () => clearTimeout(t); }, [exp]);
+  useEffect(() => { if (!exp) return; const t = setTimeout(() => printDoc(), 120); return () => clearTimeout(t); }, [exp]);
   const exportPdf = picks => setExp({ picks, n: Date.now() });
+  // The web-page export embeds the font and wordmark, so fetch them ahead of the tap.
+  useEffect(() => { const t = setTimeout(warmWebAssets, 1200); return () => clearTimeout(t); }, []);
   const items = planItems(st);
   const o = computeOrder(sh, Date.now());
   const [hasPrev, setHasPrev] = useState(() => { try { return !!localStorage.getItem('wpda-hub-prev'); } catch (e) { return false; } });
@@ -386,6 +390,7 @@ function App() {
     if (d > 0) { const b = key.split(':'); const p = SHOP_BY_SKU[b[0]]; if (p) flash('Added ' + p.name + ' · ' + (b[1] === '1' ? '1 vial' : b[1] + ' vials')); }
   };
   const act = {
+    flash,
     add: id => set(s => {
       if (id === 'stack') {
         const ids = ['reta', 'tesa', 'mots', 'klow']; const w = s.bac.stack || BAC_BASE;
@@ -427,17 +432,17 @@ function App() {
   const reorder = sku => { if (!sku) return; bump(sku + ':1', 1); location.hash = '#/order'; };
   const planReady = o.items.some(it => SKU_PROTOCOL[it.p.sku]);
 
-  const expSt = exp ? Object.assign({}, st, { order: exp.picks.map(x => x[0]), customs: {}, own: {}, mode: {}, notes: '', inotes: {}, sizeIdx: Object.assign({}, st.sizeIdx, exp.picks.reduce((a, x) => { a[x[0]] = x[1]; return a; }, {})) }) : null;
+  const expSt = exp ? stForPicks(st, exp.picks) : null;
   const docSt = Object.assign({}, expSt || st, { preview: !exp && st.preview && route.page === 'build' });
   const docItems = expSt ? planItems(expSt) : items;
   let page;
   if (route.page === 'product') page = html`<${ProductPage} sku=${route.sku} st=${st} set=${set} sh=${sh} bump=${bump} tab=${ptab} setTab=${setPtab} flash=${flash} exportPdf=${exportPdf} />`;
   else if (route.page === 'order') page = html`<${OrderSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} onSent=${onSent} planReady=${planReady} />`;
   else if (route.page === 'guide') page = html`<${Guide} st=${st} set=${set} chapter=${route.chapter} />`;
-  else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} openInstall=${openInstall} />`;
+  else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} openInstall=${openInstall} flash=${flash} />`;
   else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
   else if (route.page === 'coa') page = html`<${CoaSection} />`;
-  else if (route.page === 'protocols') page = html`<${ProtocolsPage} st=${st} exportPdf=${exportPdf} openInstall=${openInstall} />`;
+  else if (route.page === 'protocols') page = html`<${ProtocolsPage} st=${st} exportPdf=${exportPdf} openInstall=${openInstall} flash=${flash} />`;
   else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} /><${AfterOrder} /><${GuideCard} />`;
 
   return html`${route.page === 'shop' ? html`<${Ticker} />` : null}<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />
