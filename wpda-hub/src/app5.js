@@ -73,8 +73,10 @@ function Tracker({ st, set, items, onReorder }) {
     const per = w && w.perAmt;
     const left = vialAmt > 0 && per > 0 ? Math.max(0, Math.floor((vialAmt - used) / per + 1e-9)) : null;
     const age = daysBetween(parseDay(mixedOn), t0);
-    return { it, vialAmt, used, left, age, pct: vialAmt > 0 ? Math.max(0, Math.min(1, 1 - used / vialAmt)) : 0, low: (left !== null && left <= 3) || age > 28 };
+    return { it, vialAmt, used, left, age, pct: vialAmt > 0 ? Math.max(0, Math.min(1, 1 - used / vialAmt)) : 0, low: (left !== null && left <= 3) || age > 28, sup: protocolSupply(it) };
   });
+  const oralSupply = items.filter(it => it.oral).map(it => ({ it, sup: protocolSupply(it) }));
+  const weekOf = sup => di >= 0 && sup.dur ? (wk <= sup.dur.max ? 'Week ' + wk + ' of ' + (sup.dur.min === sup.dur.max ? sup.dur.max + (sup.dur.open ? '+' : '') : sup.dur.min + '–' + sup.dur.max) : (sup.dur.open ? 'Week ' + wk : 'Past week ' + sup.dur.max)) : '';
   return html`<div>
     <div class="page-head"><div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h1 id="h-today">${di < 0 ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h1>
       <p class="muted">${di < 0 ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before.' : 'Week ' + wk + ' · day ' + (di + 1) + '. Tick each dose as you take it.'}</p></div>
@@ -97,15 +99,20 @@ function Tracker({ st, set, items, onReorder }) {
       </div>`; })}
       ${!doses.length && di >= 0 ? html`<div class="empty">No doses scheduled on ${fmtDay(day)}.</div>` : null}
     </div>
-    ${supply.length ? html`<h3 style="font-size:20px;margin:26px 0 10px">Vials</h3>
+    ${supply.length || oralSupply.length ? html`<h3 style="font-size:20px;margin:26px 0 10px">Duration and vials</h3>
       <div class="cgrid">${supply.map(s => html`<div class="card" style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
-        <div class="row g8"><b class="grow" style="color:var(--ink)">${s.it.name}</b><span class="tiny muted">${s.left !== null ? '≈ ' + s.left + ' dose' + (s.left === 1 ? '' : 's') + ' left' : ''}</span></div>
+        <div class="row g8"><b class="grow" style="color:var(--ink)">${s.it.name}${s.it.kind === 'listed' && s.it.p.sizes ? ' ' + s.it.vial : ''}</b><span class="tiny muted">${s.left !== null ? '≈ ' + s.left + ' dose' + (s.left === 1 ? '' : 's') + ' left' : ''}</span></div>
+        ${s.sup.durText ? html`<div class="pfull"><span><b>${s.sup.durText}</b>${s.sup.count ? html` · <b>${s.sup.text}</b>${s.sup.forText ? ' ' + s.sup.forText : ''}` : null}</span>${weekOf(s.sup) ? html`<i>${weekOf(s.sup)}</i>` : null}</div>` : null}
         <div style="height:8px;border-radius:999px;background:var(--sunken);overflow:hidden"><div style=${'height:100%;border-radius:999px;width:' + Math.round(s.pct * 100) + '%;background:' + (s.low ? 'var(--bad)' : 'var(--ink)')}></div></div>
         <div class="tiny muted">Mixed ${s.age <= 0 ? 'today' : s.age + ' day' + (s.age === 1 ? '' : 's') + ' ago'} · use within 4 weeks of mixing</div>
         ${s.low ? html`<div class="warn tiny">${s.age > 28 ? 'This vial has been mixed for over four weeks. Start a fresh one.' : 'Running low. Reorder now so you do not miss a dose.'}</div>` : null}
         <div class="row g8 wrapx"><button type="button" class="btn sm outline" onClick=${() => saveTr(Object.assign({}, tr, { mixed: Object.assign({}, tr.mixed, { [s.it.key]: dk }) }))}>I mixed a new vial</button>
           ${s.it.p && PROTOCOL_SKUS[s.it.p.id] ? html`<button type="button" class="btn sm soft" onClick=${() => onReorder(PROTOCOL_SKUS[s.it.p.id][s.it.sizeIdx || 0] || PROTOCOL_SKUS[s.it.p.id].filter(Boolean)[0])}>Reorder</button>` : null}</div>
-      </div>`)}</div>` : null}
+      </div>`)}${oralSupply.map(s => html`<div class="card" style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+        <b style="color:var(--ink)">${s.it.name}</b>
+        ${s.sup.durText ? html`<div class="pfull"><span><b>${s.sup.durText}</b>${s.sup.count ? html` · <b>${s.sup.text}</b>` : null}</span>${weekOf(s.sup) ? html`<i>${weekOf(s.sup)}</i>` : null}</div>` : null}
+        <div class="tiny muted">Capsules · no mixing</div></div>`)}</div>
+      ${supply.some(s => s.sup.shelf) ? html`<p class="tiny muted" style="margin-top:8px">Each vial is used within 4 weeks of mixing, so the count allows for what's left over in the early weeks.</p>` : null}` : null}
     <label class="field" style="margin-top:20px"><span>How do you feel? (energy, sleep, appetite, side effects)</span><textarea class="textarea" placeholder="Saved on this device with the day's doses." value=${(tr.notes || {})[dk] || ''} onInput=${e => saveTr(Object.assign({}, tr, { notes: Object.assign({}, tr.notes, { [dk]: e.target.value }) }))}></textarea></label>
   </div>`;
 }
@@ -265,7 +272,13 @@ function ProtocolsPage({ st, exportPdf, openInstall }) {
   const rows = PRODUCTS.filter(p => PROTOCOL_SKUS[p.id] && PROTOCOL_SKUS[p.id].filter(Boolean).length).map(p => {
     const skus = PROTOCOL_SKUS[p.id].filter(Boolean); const sp = SHOP_BY_SKU[skus[0]];
     const it = listedItem(p, Object.assign({}, st, { mode: {}, sizeIdx: Object.assign({}, st.sizeIdx, { [p.id]: SKU_PROTOCOL[skus[0]][1] }) }));
-    return { p, sku: skus[0], goal: sp.goal, name: skus.length > 1 ? splitName(sp.name)[0] : sp.name, strengths: skus.length > 1 ? skus.map(k => splitName(SHOP_BY_SKU[k].name)[1]).join(', ') : '', freq: it.freqText, duration: it.duration, oral: it.oral, mine: st.order.indexOf(p.id) > -1 };
+    // duration and vials: one count for a single strength, one per strength when there are several
+    const sups = skus.map(k => protocolSupply(listedItem(p, Object.assign({}, st, { mode: {}, sizeIdx: Object.assign({}, st.sizeIdx, { [p.id]: SKU_PROTOCOL[k][1] }) }))));
+    const weeksFor = sups[0].dur && sups[0].dur.open ? ' for ' + sups[0].dur.min + ' weeks' : '';
+    const perSize = skus.length > 1 && sups.every(s => s.count) ? skus.map((k, i) => sups[i].text.split(' ')[0] + ' × ' + splitName(SHOP_BY_SKU[k].name)[1]) : null;
+    const vials = perSize ? '' : (sups[0].count ? sups[0].text + weeksFor : '');
+    const strengths = skus.length > 1 ? (perSize ? perSize.slice(0, -1).join(', ') + ' or ' + perSize[perSize.length - 1] + ' vials' + weeksFor : skus.map(k => splitName(SHOP_BY_SKU[k].name)[1]).join(', ')) : '';
+    return { p, sku: skus[0], goal: sp.goal, name: skus.length > 1 ? splitName(sp.name)[0] : sp.name, strengths, vials, freq: it.freqText, duration: it.duration, oral: it.oral, mine: st.order.indexOf(p.id) > -1 };
   }).filter(r => !term || (r.name + ' ' + r.p.name + ' ' + GOAL_LABELS[r.goal] + ' ' + r.sku).toLowerCase().includes(term));
   return html`<div class="wrap page narrow">
     <a class="back" href="#/plan"><${Icon} name="back" size=${18} /> My plan</a>
@@ -277,7 +290,7 @@ function ProtocolsPage({ st, exportPdf, openInstall }) {
     ${GOALS.filter(g => rows.some(r => r.goal === g)).map(g => html`<section class="pgroup" aria-labelledby=${'pg-' + g}>
       <h2 id=${'pg-' + g}><img src=${GOAL_ICONS[g]} alt="" />${GOAL_LABELS[g]}</h2>
       ${rows.filter(r => r.goal === g).map(r => { const body = html`<img src=${PRODUCT_PHOTOS[r.sku] || GOAL_ICONS[g]} alt="" loading="lazy" />
-        <span class="grow"><b>${r.name}</b><span>${[r.freq, r.duration, r.oral ? 'Capsules' : ''].filter(x => x && x !== '—').join(' · ')}</span>${r.strengths ? html`<span>${r.strengths}</span>` : null}</span>`;
+        <span class="grow"><b>${r.name}</b><span>${[r.freq, r.oral ? 'Capsules' : ''].filter(x => x && x !== '—').join(' · ')}</span><span class="pdur">${[r.duration, r.vials].filter(x => x && x !== '—').join(' · ')}</span>${r.strengths ? html`<span>${r.strengths}</span>` : null}</span>`;
         return sel ? html`<button type="button" class="prow2" role="checkbox" aria-checked=${String(!!sel[r.p.id])} onClick=${() => toggle(r.p.id)}>${body}<span class=${'tick' + (sel[r.p.id] ? ' on' : '')}>${sel[r.p.id] ? html`<${Icon} name="check" size=${16} />` : null}</span></button>`
           : html`<a class="prow2" href=${'#/p/' + r.sku}>${body}${r.mine ? html`<i>In My plan</i>` : null}<${Icon} name="chev" size=${18} /></a>`; })}
     </section>`)}

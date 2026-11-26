@@ -9,7 +9,7 @@ function supplyPlan(items) {
   // First four weeks: injections, vials, water.
   let injections = 0, vials = 0, water = 0;
   const lines = items.map(it => {
-    if (it.oral) return { it, inj: 0, vials: null };
+    if (it.oral) return { it, inj: 0, vials: null, sup: protocolSupply(it) };
     let inj = 0, amount = 0, amountKnown = true;
     for (let wk = 1; wk <= 4; wk++) {
       const w = it.week(wk);
@@ -21,7 +21,7 @@ function supplyPlan(items) {
     const vialAmt = it.kind === 'listed' ? (vialStrength(it.p, it.sizeIdx || 0) || {}).v : num(it.model && it.model.vial);
     const nv = amountKnown && vialAmt > 0 ? Math.max(1, Math.ceil(amount / vialAmt - 1e-9)) : 1;
     injections += inj; vials += nv; water += nv * (it.water || 0);
-    return { it, inj, vials: nv };
+    return { it, inj, vials: nv, sup: protocolSupply(it) };
   });
   return { lines, injections, vials, water, syringes: injections + vials, swabs: injections + vials * 2 };
 }
@@ -66,7 +66,7 @@ function Doc({ st, items }) {
     <div class="dpage">
       <h2 class="dh">What you need</h2><p class="dsub">Quantities cover the first four weeks.</p>
       <div class="tblwrap"><table class="tbl"><thead><tr><th scope="col">Item</th><th scope="col">How many</th><th scope="col">Notes</th></tr></thead><tbody>
-        ${sup.lines.map(l => html`<tr><td><b style="color:var(--ink)">${l.it.name}</b></td><td>${l.it.oral ? 'One bottle' : l.vials + ' vial' + (l.vials === 1 ? '' : 's')}</td><td>${l.it.oral ? l.it.vial : l.it.vial + ' vial' + (l.it.vialStart ? ' · one vial lasts about ' + weeksText(l.it.vialStart) + ' at the starting dose' : '')}</td></tr>`)}
+        ${sup.lines.map(l => html`<tr><td><b style="color:var(--ink)">${l.it.name}</b></td><td>${l.it.oral ? 'One bottle' : l.vials + ' vial' + (l.vials === 1 ? '' : 's')}</td><td>${l.it.oral ? l.it.vial : l.it.vial + ' vial' + (l.it.vialStart ? ' · one vial lasts about ' + weeksText(Math.min(l.it.vialStart, MIXED_WEEKS)) + ' at the starting dose' : '')}${l.sup.count ? html`<br /><b style="color:var(--ink)">Full protocol:</b> ${l.sup.line}` : null}</td></tr>`)}
         ${sup.vials ? html`<tr><td><b style="color:var(--ink)">Bacteriostatic water</b></td><td>${sup.vials} vial${sup.vials === 1 ? '' : 's'}</td><td>Included free with every optml vial. You need ${trimNum(sup.water, 2)}ml in total.</td></tr>` : null}
         ${sup.injections ? html`<tr><td><b style="color:var(--ink)">Insulin syringes</b></td><td>About ${sup.syringes}</td><td>1ml (100 unit), 31G, 6–8mm. One per injection plus one per vial you mix.</td></tr>
         <tr><td><b style="color:var(--ink)">Alcohol swabs</b></td><td>About ${sup.swabs}</td><td>One per injection, two per vial you mix.</td></tr>
@@ -84,8 +84,8 @@ function Doc({ st, items }) {
         <div><h2 class="dh" style="margin:0">${it.name}</h2><div class="dsub" style="margin:0">${it.sub}${it.kind === 'own' ? ' · custom titration' : ''}</div></div></div>
       ${it.desc ? html`<p class="small" style="margin:10px 0">${it.desc}</p>` : null}
       <dl class="kv"><div><dt>${it.vialLabel}</dt><dd>${it.vial || '—'}</dd></div>${!it.oral ? html`<div><dt>Bac water</dt><dd>${it.water ? trimNum(it.water, 2) + 'ml' : '—'}</dd></div><div><dt>Strength once mixed</dt><dd>${it.conc || '—'}</dd></div>` : null}
-        <div><dt>When</dt><dd>${it.timing || it.whenLabel}</dd></div><div><dt>How often</dt><dd>${it.freqText}</dd></div><div><dt>Site</dt><dd>${it.site}</dd></div>${it.duration ? html`<div><dt>Duration</dt><dd>${it.duration}</dd></div>` : null}</dl>
-      ${!it.oral && it.water ? html`<div class="note"><b style="color:var(--ink)">To mix:</b> add ${trimNum(it.water, 2)}ml of bac water slowly down the inside wall of the vial. Roll gently, never shake. Write today's date on the label and refrigerate at 2–8°C.${it.vialStart ? ' One vial lasts about ' + weeksText(it.vialStart) + ' at the starting dose' + (it.vialTop && Math.abs(it.vialTop - it.vialStart) > 0.4 ? ' and ' + weeksText(it.vialTop) + ' at the top dose.' : '.') : ''}</div>` : null}
+        <div><dt>When</dt><dd>${it.timing || it.whenLabel}</dd></div><div><dt>How often</dt><dd>${it.freqText}</dd></div><div><dt>Site</dt><dd>${it.site}</dd></div>${it.duration ? html`<div><dt>Duration</dt><dd>${it.duration}</dd></div>` : null}${protocolSupply(it).count ? html`<div><dt>${it.oral ? 'Bottles needed' : 'Vials needed'}</dt><dd>${protocolSupply(it).text}${protocolSupply(it).forText ? ' ' + protocolSupply(it).forText : ''}</dd></div>` : null}</dl>
+      ${!it.oral && it.water ? html`<div class="note"><b style="color:var(--ink)">To mix:</b> add ${trimNum(it.water, 2)}ml of bac water slowly down the inside wall of the vial. Roll gently, never shake. Write today's date on the label and refrigerate at 2–8°C.${it.vialStart ? ' One vial lasts about ' + weeksText(Math.min(it.vialStart, MIXED_WEEKS)) + ' at the starting dose' + (it.vialTop && Math.abs(Math.min(it.vialTop, MIXED_WEEKS) - Math.min(it.vialStart, MIXED_WEEKS)) > 0.4 ? ' and ' + weeksText(Math.min(it.vialTop, MIXED_WEEKS)) + ' at the top dose.' : '.') + ' Use a mixed vial within 4 weeks.' : ''}</div>` : null}
       <h3 class="dh3">Dose plan</h3>
       <div class="tblwrap"><table class="tbl"><thead><tr>${it.headers.map(h => html`<th scope="col">${h}</th>`)}</tr></thead><tbody>${it.tableRows.map(r => html`<tr>${r.map((c, i) => html`<td>${i === r.length - 1 ? html`<b style="color:var(--ink)">${c}</b>` : c}</td>`)}</tr>`)}</tbody></table></div>
       ${it.rows.some(r => r.warn) ? html`<div class="warn" style="margin-top:10px">${it.rows.find(r => r.warn).warn}</div>` : null}

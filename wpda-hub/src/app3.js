@@ -7,7 +7,7 @@ function TitrationEditor({ m, onChange }) {
   const addStep = () => { const last = m.steps[m.steps.length - 1] || { weeks: '4', weekly: '', freq: '1' }; onChange({ steps: m.steps.concat([{ weeks: '4', weekly: last.weekly, freq: last.freq }]) }); };
   const delStep = i => onChange({ steps: m.steps.filter((_, j) => j !== i) });
   return html`<div class="stack g10">
-    <div class="row g8" style="justify-content:space-between"><div class="lbl">Titration · weekly dose by phase</div><span class="tiny muted">${L.totalWeeks ? L.totalWeeks + ' weeks planned' : 'Last phase ongoing'}</span></div>
+    <div class="row g8" style="justify-content:space-between"><div class="lbl">Titration · weekly dose by phase</div><span class="tiny muted">${L.totalWeeks ? L.totalWeeks + ' weeks planned' + (L.vialsNeeded ? ' · ' + L.vialsNeeded + ' vial' + (L.vialsNeeded === 1 ? '' : 's') : '') : 'Last phase ongoing'}</span></div>
     ${m.steps.map((s, i) => { const r = L.rows[i]; return html`<div class="tstep">
       <div class="row g8"><b style="color:var(--ink);font-size:14px">Phase ${i + 1}</b><span class="tiny muted grow">${r ? r.label : ''}</span>
         ${m.steps.length > 1 ? html`<button type="button" class="iconbtn sm" aria-label=${'Remove phase ' + (i + 1)} onClick=${() => delStep(i)}><${Icon} name="close" size=${16} /></button>` : null}</div>
@@ -60,6 +60,7 @@ function ItemEditor({ it, st, set, act }) {
         ${p.sizes ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">Vial size</div><${Pills} label="Vial size" value=${it.sizeIdx} options=${p.sizes.map((s, i) => ({ v: i, label: s }))} onPick=${i => set(s => ({ sizeIdx: Object.assign({}, s.sizeIdx, { [p.id]: i }) }))} /></div>` : null}
         ${it.bacOk ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">Bac water added</div><${Pills} label="Bac water" value=${it.bac} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { [p.id]: v }) }))} /></div>` : null}
         ${it.conc ? html`<div class="okbox">${it.vial} + ${trimNum(it.water, 2)}ml water = <b>${it.conc}</b></div>` : null}
+        ${protocolSupply(it).durText ? html`<div class="small" style="color:var(--ink);font-weight:600">Full protocol: ${protocolSupply(it).line}</div>` : null}
         <${Ladder} rows=${it.rows} syringes=${!it.oral} />` : null}
       ${it.kind === 'own' ? html`<${ModelFields} m=${it.model} onChange=${patch => act.model(it.key, patch)} />` : null}
       ${it.kind === 'custom' ? html`<${ModelFields} m=${it.model} isCustom onChange=${patch => act.model(it.key, patch)} />` : null}
