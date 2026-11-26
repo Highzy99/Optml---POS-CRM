@@ -204,12 +204,33 @@ function parseRoute() {
 
 function Ticker() {
   const row = hidden => html`<div class="tk-row" aria-hidden=${hidden ? 'true' : null}>
+    ${SALE_ON ? html`<span><b>${SALE_HEAD}</b></span><i></i><span>Ends ${SALE_ENDS_TEXT}</span><i></i>` : null}
     <span>Free express shipping over $200 AUD</span><i></i><span><${ShipCountdown} /></span><i></i>
     <span>Free bac water with every vial</span><i></i><span>Batch-matched certificate with every order</span><i></i></div>`;
   return html`<div class="ticker screen"><div class="tk-track">${row(false)}${row(true)}</div></div>`;
 }
 
+// The hero while a sale is on: black panel, the offer in the headline, the end time, a live countdown.
+function SaleHero() {
+  return html`<section class="wrap"><div class="shero bf">
+    <figure class="sh-photo"><img src="assets/brand/hero-box.webp" alt="Open blue optml box with two labelled vials in a fitted tray" fetchpriority="high" />
+      <figcaption class="sh-pill"><img src="assets/features/save.svg" alt="" />${SALE_CLAIM > SALE.pct ? SALE.pct + '% off everything else' : 'Every product reduced'}</figcaption></figure>
+    <div class="sh-copy">
+      <h1>${SALE.name}.<br />${SALE_CLAIM > SALE.pct ? 'Up to ' + SALE_CLAIM + '% off.' : SALE.pct + '% off everything.'}</h1>
+      <p class="lead">Every product on the list is reduced, boxed with free bac water and a batch certificate. Ends ${SALE_ENDS_TEXT}.</p>
+      <div class="bfend"><span class="lbl">Prices go back in</span><${SaleClock} boxes=${true} /></div>
+      <ul class="sh-feats">
+        <li><a href="#shop"><img src="assets/features/save.svg" alt="" /><span><b>${SALE_CLAIM > SALE.pct ? 'Up to ' + SALE_CLAIM + '% off' : SALE.pct + '% off'}</b>See the deals</span></a></li>
+        <li><div><img src="assets/features/auto.svg" alt="" /><span><b>Free bac water</b>In every box</span></div></li>
+        <li><div><img src="assets/features/discreet.svg" alt="" /><span><b>Free express</b>Orders over $200</span></div></li>
+        <li><a href="#/coa"><img src="assets/features/tested.svg" alt="" /><span><b>98%+ purity</b>View certificates</span></a></li>
+      </ul>
+    </div>
+  </div></section>`;
+}
+
 function ShopHero() {
+  if (SALE_ON) return html`<${SaleHero} />`;
   const best = Math.max.apply(null, SHOP_PRODUCTS.map(p => Math.max.apply(null, TIERS.filter(n => n > 1 && p.prices[n]).map(n => 1 - p.prices[n] / (p.prices[1] * n)).concat([0]))));
   return html`<section class="wrap"><div class="shero">
     <figure class="sh-photo"><img src="assets/brand/hero-box.webp" alt="Open blue optml box with two labelled vials in a fitted tray" fetchpriority="high" />
@@ -251,7 +272,10 @@ function Header({ route, count, total, planCount }) {
   const cur = p => (route.page === p || (p === 'shop' && route.page === 'product')) ? 'page' : null;
   const [stuck, setStuck] = useState(false);
   useEffect(() => { const on = () => setStuck(window.scrollY > 4); on(); window.addEventListener('scroll', on, { passive: true }); return () => window.removeEventListener('scroll', on); }, []);
-  return html`<header class=${'top screen' + (stuck ? ' stuck' : '')}><div class="wrap inner">
+  return html`<header class=${'top screen' + (stuck ? ' stuck' : '')}>
+    ${SALE_PREVIEW ? html`<div class="bfprev">Preview. ${SALE.name} is not live and these prices are placeholders.</div>` : null}
+    ${SALE_ON && route.page !== 'pay' ? html`<a class="bfbar" href="#/"><span>${SALE.name} prices end in</span><${SaleClock} /></a>` : null}
+    <div class="wrap inner">
     <a href="#/" aria-label="optml price list home" style="justify-self:start;display:flex;align-items:center;min-height:40px;text-decoration:none"><img class="logo" src="assets/brand/optml-wordmark-dark.svg" alt="optml" style="height:24px" /></a>
     <a class=${'btn sm plan' + (count ? '' : ' outline')} href="#/order" aria-label=${count ? 'Your order, ' + count + ' pack' + (count === 1 ? '' : 's') + ', ' + money(total) : 'Your order, empty'}>${count ? html`${money(total)}<span class="count">${count}</span>` : 'Order'}</a>
     <nav aria-label="Pages" class="desk"><a href="#/" aria-current=${cur('shop')}>Price list</a><a href="#/guide" aria-current=${cur('guide')}>How to use</a><a href="#/plan" aria-current=${cur('plan') || cur('protocols')}>My plan${planCount ? html`<i class="navdot">${planCount}</i>` : null}</a><a href="#/coa" aria-current=${cur('coa')}>Certificates</a><a href="#/build" aria-current=${cur('build')}>Build a protocol</a></nav>
@@ -348,6 +372,8 @@ function App() {
   const exportPdf = picks => setExp({ picks, n: Date.now() });
   // The web-page export embeds the font and wordmark, so fetch them ahead of the tap.
   useEffect(() => { const t = setTimeout(warmWebAssets, 1200); return () => clearTimeout(t); }, []);
+  // A sale that's switched on but hasn't started yet: reload at the start time so the prices change by themselves.
+  useEffect(() => { const wait = SALE_STARTS - Date.now(); if (!SALE.on || SALE_ON || wait <= 0 || wait > 2147e6) return; const t = setTimeout(() => location.reload(), wait + 500); return () => clearTimeout(t); }, []);
   const items = planItems(st);
   const o = computeOrder(sh, Date.now());
   const [hasPrev, setHasPrev] = useState(() => { try { return !!localStorage.getItem('wpda-hub-prev'); } catch (e) { return false; } });

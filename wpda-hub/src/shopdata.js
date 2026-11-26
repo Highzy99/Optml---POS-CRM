@@ -125,3 +125,13 @@ const PRODUCT_PHOTOS = {};
 
 // Top sellers carousel, best first. From POS sales 25 Oct to 23 Nov 2026 (vials sold and number of orders). Edit this list to change the carousel.
 const TOP_SELLERS = ['RE20', 'WO20', 'CJ10', 'KL80', 'MO10', 'TE10'];
+
+// ---- Sale (Black Friday) ----
+// on:false  → nobody sees it. Open the site with ?bf=1 to preview it on your own device (?bf=0 to leave the preview).
+// on:true   → everyone sees it from `starts` until `ends`, then prices go back by themselves.
+// pct       → % off every retail price (1, 3 and 5 vials). Wholesale 10-packs are never discounted.
+// door      → doorbusters: sku → sale price for ONE vial (packs are that price × vials).
+// claim     → the biggest "up to X% off" the headline may say. It is capped at the real biggest saving, so it can't overclaim.
+// PLACEHOLDER PRICING: pct and door are stand-ins for the design preview until the real deal is chosen.
+const SALE = { on: false, name: 'Black Friday', starts: '2026-11-27T00:00:00+10:00', ends: '2026-11-30T23:59:59+10:00',
+  pct: 40, door: { ME10: 23, GH10: 17, GH50: 17 }, claim: 70 };

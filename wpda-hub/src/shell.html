@@ -647,6 +647,40 @@ button.prow2 { width: 100%; background: none; border: 0; border-bottom: 1px soli
 .coacard .pur { font-weight: 700; color: var(--ink); }
 footer.foot { margin-top: 56px; }
 
+/* ---------- Sale (Black Friday) ---------- */
+.bfbar { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 34px; padding: 4px 12px; background: var(--ink); color: rgba(255,255,255,.86); font-size: 13.5px; font-weight: 500; text-decoration: none; }
+.bfbar .bfc { color: #92e8a6; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.bfprev { background: #ffe9dc; color: #5f240f; font-size: 12.5px; font-weight: 600; text-align: center; padding: 5px 12px; }
+.shero.bf { background: var(--ink); }
+.shero.bf .sh-copy h1 { color: #fff; }
+.shero.bf .sh-copy .lead { color: rgba(255,255,255,.82); }
+.shero.bf .sh-feats a, .shero.bf .sh-feats div { background: rgba(255,255,255,.1); color: rgba(255,255,255,.72); }
+.shero.bf .sh-feats a:hover { background: rgba(255,255,255,.16); }
+.shero.bf .sh-feats b { color: #fff; }
+.shero.bf .sh-feats img:not(.seal) { filter: brightness(0) invert(1); }
+.bfend { display: flex; flex-direction: column; gap: 8px; }
+.bfend .lbl { font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: rgba(255,255,255,.7); }
+.bfclock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 340px; }
+.bfclock span { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 10px 4px 8px; border-radius: 14px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.7); font-size: 11.5px; font-weight: 500; }
+.bfclock b { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.05; color: #92e8a6; font-variant-numeric: tabular-nums; }
+.pcard.bf .pflag { background: var(--ink); color: #fff; display: inline-flex; align-items: center; gap: 6px; }
+.pcard.bf .pflag i { font-style: normal; font-weight: 600; }
+.pcard.door { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.pcard.door .pflag { background: #92e8a6; color: #1b3a22; }
+.pbuy .pp { display: inline-flex; align-items: baseline; gap: 6px; }
+.pbuy .pp s { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.6); }
+.pbuy .pp b { color: #92e8a6; }
+.otot .bfsave { color: #92e8a6; } .otot .bfsave b { color: #92e8a6; }
+.plid-chip.bfchip { background: var(--ink); color: #fff; }
+@media (max-width: 639.98px) {
+  .shero.bf .bfend { order: 3; padding: 0 12px 14px; }
+  .shero.bf .sh-feats { order: 4; }
+  .shero.bf .sh-photo { order: 5; }
+  .pgrid .pcard.bf .pflag i { display: none; }
+  .pgrid .pbuy .pp s { display: none; }
+}
+@media (max-width: 380px) { .tsell-track .pbuy .pp s { display: none; } }
+
 /* ---------- Export document ---------- */
 /* Compact, and built from plain blocks: cards sit in rows of two and a heading is wrapped with what follows it,
    so pages break between rows, never through a card or straight after a heading (Safari can't split grids or

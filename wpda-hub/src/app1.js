@@ -249,7 +249,7 @@ function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash, exportPdf }) 
         <h1>${base}${strength ? html`<span>${strength}</span>` : null}</h1>
         ${sizes.length > 1 ? html`<nav class="strengths" aria-label="Vial strength">${sizes.map(s => html`<a href=${'#/p/' + s} aria-current=${s === sku ? 'page' : null}>${splitName(SHOP_BY_SKU[s].name)[1] || s}</a>`)}</nav>` : null}
       </div>
-      <div class="plid-foot"><span class="lock"><img src=${GOAL_ICONS[sp.goal]} alt="" /><span>${GOAL_LABELS[sp.goal]}</span></span>
+      <div class="plid-foot">${SALE_ON && sp.reg ? html`<span class="plid-chip bfchip">${SALE.name} −${Math.round((1 - sp.prices[1] / sp.reg[1]) * 100)}%</span>` : null}<span class="lock"><img src=${GOAL_ICONS[sp.goal]} alt="" /><span>${GOAL_LABELS[sp.goal]}</span></span>
         ${coa ? html`<a class="plid-chip" href=${COA_BASE + coa[2]} target="_blank" rel="noopener" aria-label=${coa[0] + ' pure, open the certificate of analysis'}>${coa[0]} pure<${Icon} name="ext" size=${14} /></a>` : null}</div>
     </div>
     <div style="margin-top:12px"><${Tiers} p=${sp} sh=${sh} bump=${bump} /></div>

@@ -2,6 +2,42 @@
 
 const WHOLESALE = /^\/wholesale/i.test(location.pathname) || /[?&]wholesale\b/i.test(location.search);
 const TIERS = WHOLESALE ? [1, 3, 5, 10] : [1, 3, 5];
+
+// ---- Sale engine. When the sale is on, each product's prices become the sale prices and `was` becomes the price
+// charged the day before (never an older, higher figure), so every crossed-out price on the site is a real one.
+const SALE_STARTS = Date.parse(SALE.starts), SALE_ENDS = Date.parse(SALE.ends);
+const SALE_PREVIEW = (() => { try { const v = new URLSearchParams(location.search).get('bf');
+  if (v === '1') localStorage.setItem('optml-bf-preview', '1'); if (v === '0') localStorage.removeItem('optml-bf-preview');
+  return !SALE.on && localStorage.getItem('optml-bf-preview') === '1'; } catch (e) { return false; } })();
+const SALE_ON = !WHOLESALE && Date.now() < SALE_ENDS && ((SALE.on && Date.now() >= SALE_STARTS) || SALE_PREVIEW);
+let SALE_MAX = 0;
+if (SALE_ON) SHOP_PRODUCTS.forEach(p => {
+  const reg = Object.assign({}, p.prices), next = {}, door = SALE.door[p.sku];
+  Object.keys(reg).forEach(k => { const n = +k;
+    if (n === 10) { next[n] = reg[n]; return; }
+    const cut = Math.round(reg[n] * (1 - SALE.pct / 100)); next[n] = door ? Math.min(cut, door * n) : cut;
+    SALE_MAX = Math.max(SALE_MAX, 1 - next[n] / reg[n]); });
+  p.reg = reg; p.was = reg; p.prices = next; p.door = !!door;
+});
+const SALE_CLAIM = SALE_ON ? Math.min(SALE.claim, Math.round(SALE_MAX * 100)) : 0;
+const SALE_HEAD = SALE_ON ? SALE.name + '. ' + (SALE_CLAIM > SALE.pct ? 'Up to ' + SALE_CLAIM + '% off.' : SALE.pct + '% off everything.') : '';
+const SALE_ENDS_TEXT = (() => { const d = new Date(SALE_ENDS); const o = { timeZone: 'Australia/Brisbane' };
+  return d.toLocaleDateString('en-AU', Object.assign({ weekday: 'long', day: 'numeric', month: 'long' }, o)) + ', ' + d.toLocaleTimeString('en-AU', Object.assign({ hour: 'numeric', minute: '2-digit' }, o)).replace(/\s/g, '') + ' AEST'; })();
+const SALE_DOORS = SALE_ON ? Object.keys(SALE.door).filter(k => SHOP_PRODUCTS.some(p => p.sku === k)) : [];
+function useCountdown(to) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const ms = Math.max(0, to - now);
+  return { ms, d: Math.floor(ms / 864e5), h: Math.floor(ms % 864e5 / 36e5), m: Math.floor(ms % 36e5 / 6e4), s: Math.floor(ms % 6e4 / 1e3) };
+}
+// Counts down to the end of the sale; at zero the page reloads on normal prices.
+function SaleClock({ boxes }) {
+  const c = useCountdown(SALE_ENDS); const over = c.ms <= 0; const pad = n => String(n).padStart(2, '0');
+  useEffect(() => { if (over) location.reload(); }, [over]);
+  const say = 'Ends in ' + c.d + ' days, ' + c.h + ' hours, ' + c.m + ' minutes';
+  return boxes ? html`<div class="bfclock" role="timer" aria-label=${say}>${[['Days', c.d], ['Hours', c.h], ['Mins', c.m], ['Secs', c.s]].map(x => html`<span><b>${pad(x[1])}</b>${x[0]}</span>`)}</div>`
+    : html`<b class="bfc" role="timer" aria-label=${say}>${(c.d ? c.d + 'd ' : '') + pad(c.h) + 'h ' + pad(c.m) + 'm ' + pad(c.s) + 's'}</b>`;
+}
 const WA_NUMBER = '61468315677';
 const ORDER_EMAIL = 'hello@stayoptml.com';
 const PAYMENT_NOTE = 'Pay by PayID once we confirm your order. Details come by reply.';
@@ -70,7 +106,8 @@ function computeOrder(sh, now) {
   const subtotal = items.reduce((s, it) => s + it.amount, 0);
   const packCount = items.reduce((s, it) => s + it.qty, 0);
   const codes = parseCodes(DEFAULT_CODES);
-  const rule = sh.code && codes[sh.code] ? codes[sh.code] : null;
+  const rule = !SALE_ON && sh.code && codes[sh.code] ? codes[sh.code] : null;   // codes don't stack on sale prices
+  const saleSaved = SALE_ON ? items.reduce((s, it) => s + Math.max(0, ((it.p.reg && it.p.reg[it.n]) || 0) * it.qty - it.amount), 0) : 0;
   let discount = 0, codeNote = '', codeActive = false;
   if (rule) {
     if (subtotal > 0 && subtotal >= rule.min) { discount = rule.fixed ? Math.min(rule.value, subtotal) : Math.round(subtotal * rule.value / 100); codeActive = true; codeNote = sh.code + ' applied: ' + (rule.fixed ? money(rule.value) : rule.value + '%') + ' off'; }
@@ -114,7 +151,7 @@ function computeOrder(sh, now) {
     .concat(['', '*Payment*', 'PayID — details sent on confirmation', 'Status: awaiting confirmation', '', '_Sent from the optml price list_']);
   const waText = lines.join('\n');
   const plainText = waText.replace(new RegExp('[*_' + String.fromCharCode(96) + ']', 'g'), '');
-  return { items, subtotal, packCount, discount, codeNote, codeActive, rule, afterDiscount, nz, nzExp, shipFee, shipName, freeShip, shipping, total, remaining,
+  return { items, subtotal, packCount, discount, codeNote, codeActive, rule, saleSaved, afterDiscount, nz, nzExp, shipFee, shipName, freeShip, shipping, total, remaining,
     ok, err, regionWarn, missing, detailsOk, waText, plainText,
     orderHref: 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(waText),
     emailHref: 'mailto:' + ORDER_EMAIL + '?subject=' + encodeURIComponent('optml order ' + sh.ref) + '&body=' + encodeURIComponent(plainText) };
@@ -126,7 +163,7 @@ function tierInfo(p, n, qty) {
   const wasN = (p.was && p.was[n]) || 0;
   const onSale = wasN > p.prices[n];
   return { n, qty, price: money(p.prices[n]), was: onSale ? money(wasN) : '', label: n === 1 ? '1 vial' : n + ' vials',
-    each: n > 1 ? money(Math.round(p.prices[n] / n)) + ' each' : '', saveAmt: saveAmt > 0 ? 'Save ' + money(saveAmt) : '',
+    each: n > 1 ? money(Math.round(p.prices[n] / n)) + ' each' : '', saveAmt: SALE_ON && onSale ? 'Save ' + money(wasN - p.prices[n]) : saveAmt > 0 ? 'Save ' + money(saveAmt) : '',
     badge: onSale ? '−' + Math.round((1 - p.prices[n] / wasN) * 100) + '%' : (save >= 5 ? 'Save ' + save + '%' : '') };
 }
 
@@ -168,8 +205,8 @@ function Tiers({ p, sh, bump, compact }) {
       </div>`
       : html`<button type="button" class=${'tier' + (n === bestN ? ' best' : '')} aria-label=${'Add ' + t.label + ' of ' + p.name + ', ' + t.price + (n === bestN ? ', best value' : '')} onClick=${() => bump(key, 1)}>
         ${n === bestN ? html`<span class="tag">Best value</span>` : null}<span class="tl">${t.label}</span><span class="tp">${t.price}</span>
-        <span class="tn">${n === 1 ? (t.was ? html`<s>${t.was}</s>` : null) : t.each}</span>
-        ${!compact && n > 1 && t.saveAmt ? html`<span class="sv">${t.saveAmt}</span>` : null}
+        <span class="tn">${n === 1 || SALE_ON ? (t.was ? html`<s>${t.was}</s>` : null) : t.each}</span>
+        ${!compact && (n > 1 || SALE_ON) && t.saveAmt ? html`<span class="sv">${t.saveAmt}</span>` : null}
       </button>`;
   })}</div>`;
 }
@@ -186,9 +223,9 @@ function ProductCard({ g, cur, sh, onOpen }) {
   const p = cur.p; const coa = COAS[p.sku]; const t1 = tierInfo(p, 1, 0);
   const inOrder = g.items.reduce((a, x) => a + TIERS.reduce((b, n) => b + (sh.cart[x.p.sku + ':' + n] || 0), 0), 0);
   const photo = PRODUCT_PHOTOS[p.sku];
-  return html`<article class=${'pcard s-' + g.goal}>
+  return html`<article class=${'pcard s-' + g.goal + (SALE_ON ? ' bf' : '') + (SALE_ON && p.door ? ' door' : '')}>
     <div class="pmedia" onClick=${() => onOpen(g.key, p.sku)}>
-      ${t1.was ? html`<span class="pflag">${t1.badge}</span>` : null}
+      ${t1.was ? html`<span class="pflag">${SALE_ON && p.door ? html`<i>Doorbuster</i>` : null}${t1.badge}</span>` : null}
       ${photo ? html`<img class="pphoto" src=${photo} alt=${p.name + ' vial'} loading="lazy" />` : html`<img class="pglyph" src=${GOAL_ICONS[g.goal]} alt="" />`}
       <button type="button" class=${'padd' + (inOrder ? ' has' : '')} aria-label=${inOrder ? g.base + ': ' + inOrder + ' in your order. Change packs' : 'Choose a pack of ' + p.name}>${inOrder ? inOrder : '+'}</button>
     </div>
@@ -196,7 +233,7 @@ function ProductCard({ g, cur, sh, onOpen }) {
       <a class="ptitle" href=${'#/p/' + p.sku}>${g.base}${g.items.length === 1 && cur.strength ? ' ' + cur.strength : ''}</a>
       <span class="psub">${coa ? html`<a class="pur-btn" href=${COA_BASE + coa[2]} target="_blank" rel="noopener" aria-label=${coa[0] + ' pure. Open the certificate of analysis for ' + p.name}><i class="okdot"></i>${coa[0]} pure<${Icon} name="ext" size=${12} /></a>` : 'Research peptide'}</span>
       ${g.items.length > 1 ? html`<div class="dose-row" role="group" aria-label=${g.base + ' strength'}>${g.items.map(x => html`<button type="button" class="dose-pill" aria-pressed=${String(x.p.sku === p.sku)} aria-label=${g.base + ' ' + x.strength + ': choose a pack'} onClick=${() => onOpen(g.key, x.p.sku)}>${x.strength}</button>`)}</div>` : null}
-      <button type="button" class="pbuy" aria-label=${'Add ' + p.name + ' to cart, from ' + t1.price + '. Choose a pack'} onClick=${() => onOpen(g.key, p.sku)}><span>Add to cart</span><b>${t1.price}</b></button>
+      <button type="button" class="pbuy" aria-label=${'Add ' + p.name + ' to cart, from ' + t1.price + '. Choose a pack'} onClick=${() => onOpen(g.key, p.sku)}><span>Add to cart</span>${SALE_ON && t1.was ? html`<span class="pp"><s>${t1.was}</s><b>${t1.price}</b></span>` : html`<b>${t1.price}</b>`}</button>
     </div>
   </article>`;
 }
@@ -226,18 +263,18 @@ function QuickAdd({ g, cur, setPick, sh, bump, o, onClose }) {
   </div>`;
 }
 
-function TopSellers({ groups, current, pick, sh, onOpen }) {
+function TopSellers({ groups, current, pick, sh, onOpen, title = 'Top sellers', skus = TOP_SELLERS, id = 'h-top' }) {
   const ref = useRef(null);
   const [edge, setEdge] = useState({ start: true, end: false });
   const sync = () => { const el = ref.current; if (el) setEdge({ start: el.scrollLeft < 8, end: el.scrollLeft + el.clientWidth > el.scrollWidth - 8 }); };
   useEffect(() => { sync(); window.addEventListener('resize', sync); return () => window.removeEventListener('resize', sync); }, []);
   const step = dir => { const el = ref.current; if (!el) return; const card = el.querySelector('.pcard'); const w = card ? card.getBoundingClientRect().width + 14 : 240;
     el.scrollBy({ left: dir * w * Math.max(1, Math.floor(el.clientWidth / w)), behavior: 'smooth' }); };
-  const items = TOP_SELLERS.map(sku => { const g = groups.find(x => x.items.some(i => i.p.sku === sku)); return g ? { g, top: g.items.find(i => i.p.sku === sku) } : null; }).filter(Boolean);
+  const items = skus.map(sku => { const g = groups.find(x => x.items.some(i => i.p.sku === sku)); return g ? { g, top: g.items.find(i => i.p.sku === sku) } : null; }).filter(Boolean);
   if (!items.length) return null;
-  return html`<section class="tsell" aria-labelledby="h-top">
-    <div class="tsell-head"><h2 id="h-top">Top sellers</h2>
-      <div class="tsell-nav"><button type="button" aria-label="Previous top sellers" disabled=${edge.start} onClick=${() => step(-1)}><${Icon} name="back" size=${18} /></button><button type="button" aria-label="More top sellers" disabled=${edge.end} onClick=${() => step(1)}><${Icon} name="arrow" size=${18} /></button></div></div>
+  return html`<section class="tsell" aria-labelledby=${id}>
+    <div class="tsell-head"><h2 id=${id}>${title}</h2>
+      <div class="tsell-nav"><button type="button" aria-label=${'Previous ' + title.toLowerCase()} disabled=${edge.start} onClick=${() => step(-1)}><${Icon} name="back" size=${18} /></button><button type="button" aria-label=${'More ' + title.toLowerCase()} disabled=${edge.end} onClick=${() => step(1)}><${Icon} name="arrow" size=${18} /></button></div></div>
     <div class="tsell-track" ref=${ref} onScroll=${sync}>
       ${items.map(x => { const cur = pick[x.g.key] ? current(x.g) : x.top;
         return html`<${ProductCard} key=${x.g.key} g=${x.g} cur=${cur} sh=${sh} onOpen=${onOpen} />`; })}
@@ -259,6 +296,7 @@ function ShopSection({ sh, setSh, bump, o }) {
   const browsing = !q && sh.goal === 'all';
   const open = (key, sku) => { if (sku) setPick(key, sku); setQuick(key); };
   return html`<section id="shop" aria-labelledby="h-shop"><div class="wrap">
+    ${browsing && SALE_DOORS.length ? html`<${TopSellers} groups=${allGroups} current=${current} pick=${pick} sh=${sh} onOpen=${open} title=${SALE.name + ' doorbusters'} skus=${SALE_DOORS} id="h-door" />` : null}
     ${browsing ? html`<${TopSellers} groups=${allGroups} current=${current} pick=${pick} sh=${sh} onOpen=${open} />` : null}
     <h2 id="h-shop" class=${browsing ? 'allhead' : 'sr'}>${WHOLESALE ? 'Wholesale price list' : 'All products'}</h2>
     <div class="finder">
@@ -314,6 +352,7 @@ function OrderHead({ refNo, step, title }) {
 }
 function OrderTotals({ o, sh }) {
   return html`<div class="otot">
+    ${o.saleSaved ? html`<div class="bfsave"><span>${SALE.name} saving</span><b>−${money(o.saleSaved)}</b></div>` : null}
     <div><span>Subtotal (AUD)</span><b>${money(o.subtotal)}</b></div>
     ${o.discount ? html`<div><span>Discount · ${sh.code}</span><b>−${money(o.discount)}</b></div>` : null}
     <div><span>${o.shipName}</span><b>${o.freeShip ? 'Free' : money(o.shipFee)}</b></div>
@@ -338,8 +377,9 @@ function OrderSection({ sh, setSh, bump, o, planReady }) {
           ${it.key.split(':')[1] === '1' ? html`<${PackNudge} p=${it.p} sh=${sh} bump=${bump} dark />` : null}</div>`)}</div>
         ${!o.nz ? html`<div class="shipbar"><div class="tiny">${o.freeShip ? 'Free express shipping unlocked' : 'Add ' + money(o.remaining) + ' more for free express shipping'}</div><div class="bar"><i style=${'width:' + Math.min(100, Math.round(o.afterDiscount / FREE_SHIP_AT * 100)) + '%'}></i></div></div>` : null}
         <${OrderTotals} o=${o} sh=${sh} />
-        <div>${sh.code ? html`<div class="row g8 wrapx tiny"><span>${o.codeNote}</span><button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ code: '', codeOpen: false, codeError: '' })}>Remove code</button></div>`
+        <div>${sh.code && !SALE_ON ? html`<div class="row g8 wrapx tiny"><span>${o.codeNote}</span><button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ code: '', codeOpen: false, codeError: '' })}>Remove code</button></div>`
           : sh.codeOpen ? html`<div class="row g8"><label class="grow"><span class="sr">Discount code</span><input class="input" placeholder="Discount code" value=${sh.codeInput} onInput=${e => setSh({ codeInput: e.target.value.toUpperCase(), codeError: '' })} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } }} /></label><button type="button" class="btn on-dark sm" onClick=${applyCode}>Apply</button></div>${sh.codeError ? html`<div class="tiny" style="color:#fff;font-weight:600;margin-top:6px">${sh.codeError}</div>` : null}`
+          : SALE_ON ? html`<span class="tiny" style="color:rgba(255,255,255,.8)">${SALE.name} prices are already applied. Codes are paused until it ends.</span>`
           : html`<button type="button" class="linkbtn" onClick=${() => setSh({ codeOpen: true, codeError: '' })}>Have a discount code?</button>`}</div>
         <a class="btn on-dark block" href="#/checkout">${waiting ? 'Update order and checkout' : 'Checkout'} · ${money(o.total)} AUD</a>
         ${planReady ? html`<a class="planlink" href="#/plan"><${Icon} name="plan" size=${18} /><span>The guide for these is ready in <b>My plan</b></span><${Icon} name="chev" size=${16} /></a>` : null}`}
@@ -411,7 +451,8 @@ function CheckoutPage({ sh, setSh, o, onSent }) {
       ${o.nz ? html`<div class="seg" role="group" aria-label="NZ shipping"><button type="button" aria-pressed=${String(!o.nzExp)} onClick=${() => setSh({ nzShip: 'standard' })}>Standard · $20</button><button type="button" aria-pressed=${String(o.nzExp)} onClick=${() => setSh({ nzShip: 'express' })}>Express · $25</button></div>` : null}
       <label class="field"><span>Delivery notes (optional)</span><textarea class="textarea" value=${sh.notes} onInput=${field('notes')}></textarea></label>
       <div class="stack g8">
-        <button type="button" class="btn block" disabled=${!!sh.busy} onClick=${place}>${sh.busy ? 'Placing your order…' : 'Confirm your order · ' + money(o.total) + ' AUD'}</button>
+        <button type="button" class="btn block" disabled=${!!sh.busy || SALE_PREVIEW} onClick=${place}>${sh.busy ? 'Placing your order…' : 'Confirm your order · ' + money(o.total) + ' AUD'}</button>
+        ${SALE_PREVIEW ? html`<div class="warn">Preview only: these ${SALE.name} prices aren't final, so orders are switched off here. Open the site with ?bf=0 to leave the preview.</div>` : null}
         ${!o.detailsOk ? html`<div class="small" style="color:var(--ink);font-weight:600">Still needed: ${o.missing.join(', ')}</div>` : null}
         ${sh.placeError ? html`<div class="warn">${sh.placeError}</div>` : null}
         <p class="tiny muted">Next you'll see our PayID details. Nothing is charged on this site. Your details are saved as you fill them in, so we can help finish your order if you get stuck.</p>
