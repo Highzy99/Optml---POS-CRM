@@ -586,6 +586,7 @@ button.tier:active { transform: scale(.97); }
 .linkbtn { background: none; border: 0; color: #fff; text-decoration: underline; text-underline-offset: 3px; font-size: 14px; cursor: pointer; padding: 0; min-height: 32px; }
 .odetails { display: flex; flex-direction: column; gap: 16px; margin-top: 28px; }
 .odetails .field small { color: var(--bad); font-weight: 600; }
+.fpair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .odetails .btn.block { min-height: 56px; font-size: 17px; font-weight: 700; }
 .orderbox .btn.on-dark { color: var(--ink); font-weight: 700; }
 .orderbox .btn.on-dark-outline { border-color: rgba(255,255,255,.6); }
@@ -1596,18 +1597,23 @@ const WA_NUMBER = '61468315677';
 const ORDER_EMAIL = 'hello@stayoptml.com';
 const PAYMENT_NOTE = 'Pay by PayID once we confirm your order. Details come by reply.';
 const PAYID = '0408769377';
-// Orders also go straight into the OPTML POS (Supabase function submit_web_order). WhatsApp stays the main channel:
-// if this call fails the order still reaches us by message, so errors are ignored.
+// Orders go straight into the OPTML POS (Supabase function submit_web_order):
+//   stage "started" = the customer has typed a name and mobile at checkout but hasn't confirmed yet (saved quietly as they go,
+//                     so a checkout that's abandoned still leaves us their details and cart);
+//   stage "placed"  = they pressed Confirm your order (pending payment).
+// WhatsApp still carries the whole order at the end, so a failed call never blocks the customer.
 const POS_RPC = 'https://suhxeslmyugjedjqwgtz.supabase.co/rest/v1/rpc/submit_web_order';
 const POS_KEY = 'sb_publishable_qnqBl5G9ybuh_9n9YpXSPw_kptUSiZi';
-function submitToPos(sh, o) {
-  const p = { ref: sh.ref, wholesale: WHOLESALE, country: o.nz ? 'NZ' : 'AU', nz_ship: sh.nzShip,
+function posPayload(sh, o, stage) {
+  return { ref: sh.ref, stage: stage || 'placed', wholesale: WHOLESALE, country: o.nz ? 'NZ' : 'AU', nz_ship: sh.nzShip,
     items: o.items.map(it => ({ sku: it.p.sku, name: it.p.name, pack: it.n, qty: it.qty, amount: it.amount })),
     subtotal: o.subtotal, code: o.codeActive ? sh.code : '', discount: o.discount, shipping: o.shipping, total: o.total,
     name: sh.name.trim(), phone: sh.phone.trim(), email: sh.email.trim(), street: sh.street.trim(), suburb: sh.suburb.trim(),
     region: sh.region, postcode: sh.postcode.trim(), notes: sh.notes.trim(), message: o.waText };
+}
+function postToPos(p, keepalive) {
   try {
-    return fetch(POS_RPC, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: POS_KEY, Authorization: 'Bearer ' + POS_KEY }, body: JSON.stringify({ p }) })
+    return fetch(POS_RPC, { method: 'POST', keepalive: !!keepalive, headers: { 'Content-Type': 'application/json', apikey: POS_KEY, Authorization: 'Bearer ' + POS_KEY }, body: JSON.stringify({ p }) })
       .then(r => r.ok ? r.json() : null).catch(() => null);
   } catch (e) { return Promise.resolve(null); }
 }
@@ -1926,8 +1932,8 @@ function OrderSection({ sh, setSh, bump, o, planReady }) {
         <div>${sh.code ? html`<div class="row g8 wrapx tiny"><span>${o.codeNote}</span><button type="button" class="btn sm on-dark-outline" onClick=${() => setSh({ code: '', codeOpen: false, codeError: '' })}>Remove code</button></div>`
           : sh.codeOpen ? html`<div class="row g8"><label class="grow"><span class="sr">Discount code</span><input class="input" placeholder="Discount code" value=${sh.codeInput} onInput=${e => setSh({ codeInput: e.target.value.toUpperCase(), codeError: '' })} onKeyDown=${e => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } }} /></label><button type="button" class="btn on-dark sm" onClick=${applyCode}>Apply</button></div>${sh.codeError ? html`<div class="tiny" style="color:#fff;font-weight:600;margin-top:6px">${sh.codeError}</div>` : null}`
           : html`<button type="button" class="linkbtn" onClick=${() => setSh({ codeOpen: true, codeError: '' })}>Have a discount code?</button>`}</div>
-        ${planReady ? html`<a class="planlink" href="#/plan"><${Icon} name="plan" size=${18} /><span>The guide for these is ready in <b>My plan</b></span><${Icon} name="chev" size=${16} /></a>` : null}
-        <a class="btn on-dark block" href="#/checkout">${waiting ? 'Update order and checkout' : 'Checkout'} · ${money(o.total)} AUD</a>`}
+        <a class="btn on-dark block" href="#/checkout">${waiting ? 'Update order and checkout' : 'Checkout'} · ${money(o.total)} AUD</a>
+        ${planReady ? html`<a class="planlink" href="#/plan"><${Icon} name="plan" size=${18} /><span>The guide for these is ready in <b>My plan</b></span><${Icon} name="chev" size=${16} /></a>` : null}`}
     </div>
   </div>`;
 }
@@ -1936,15 +1942,39 @@ function OrderSection({ sh, setSh, bump, o, planReady }) {
 function CheckoutPage({ sh, setSh, o, onSent }) {
   const field = k => e => { const v = e.target.value; setSh(prev => { const next = { [k]: v }; if (k === 'postcode' && prev.country !== 'NZ' && /^\d{4}$/.test(v) && !prev.region) { const s = stateFromPostcode(v); if (s) next.region = s; } return next; }); };
   const blur = k => () => setSh(prev => ({ touched: Object.assign({}, prev.touched, { [k]: true }) }));
-  const inp = (k, label, extra = {}) => html`<label class="field"><span>${label}</span><input class="input" style=${o.err[k] ? 'border-color:var(--bad)' : ''} value=${sh[k]} onInput=${field(k)} onBlur=${blur(k)} aria-invalid=${o.err[k] ? 'true' : 'false'} ...${extra} />${o.err[k] ? html`<small>${o.err[k]}</small>` : null}</label>`;
+  const inp = (k, label, extra = {}) => html`<label class="field"><span>${label}</span><input class="input" id=${'f-' + k} style=${o.err[k] ? 'border-color:var(--bad)' : ''} value=${sh[k]} onInput=${field(k)} onBlur=${blur(k)} aria-invalid=${o.err[k] ? 'true' : 'false'} ...${extra} />${o.err[k] ? html`<small>${o.err[k]}</small>` : null}</label>`;
+  // Save the checkout to the POS as "started" once there's a name and a mobile, and again whenever it changes, so an
+  // order that never gets confirmed still reaches us. Sent a moment after typing stops, and when the page is left.
+  const draftSig = o.items.length && o.ok.name && o.ok.phone && !sh.placed ? JSON.stringify([sh.ref, o.items.map(it => [it.key, it.qty]), sh.name.trim(), sh.phone.trim(), sh.email.trim(), sh.street.trim(), sh.suburb.trim(), sh.region, sh.postcode.trim(), sh.notes.trim(), sh.country, sh.nzShip, o.codeActive ? sh.code : '']) : '';
+  const live = useRef(null); live.current = { sh, o, sig: draftSig };
+  const draft = useRef({ sent: '', stop: false });
+  const saveDraft = keep => { const c = live.current, d = draft.current; if (!c.sig || d.stop || c.sig === d.sent) return; d.sent = c.sig; postToPos(posPayload(c.sh, c.o, 'started'), keep); };
+  useEffect(() => { if (!draftSig) return; const t = setTimeout(() => saveDraft(false), 1500); return () => clearTimeout(t); }, [draftSig]);
+  useEffect(() => {
+    const leave = () => saveDraft(true);
+    const vis = () => { if (document.visibilityState === 'hidden') leave(); };
+    window.addEventListener('pagehide', leave); document.addEventListener('visibilitychange', vis);
+    return () => { window.removeEventListener('pagehide', leave); document.removeEventListener('visibilitychange', vis); leave(); };
+  }, []);
   if (!o.items.length) return html`<div class="wrap page narrow" id="order"><div class="orderbox"><${OrderHead} refNo=${sh.ref} step=${2} title="Checkout" /><div class="oempty"><p>Your cart is empty.</p><a class="btn on-dark sm" href="#/">Browse the price list</a></div></div></div>`;
   const place = async () => {
-    if (!o.detailsOk || sh.busy) { if (!o.detailsOk) setSh({ touched: { name: true, phone: true, email: true, street: true, suburb: true, region: true, postcode: true } }); return; }
+    if (sh.busy) return;
+    if (!o.detailsOk) {
+      setSh({ touched: { name: true, phone: true, email: true, street: true, suburb: true, region: true, postcode: true } });
+      // take them to the first thing that's missing instead of leaving them at the button
+      const first = ['name', 'phone', 'email', 'street', 'suburb', 'region', 'postcode'].find(k => !o.ok[k]);
+      const el = first && document.getElementById('f-' + first);
+      if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); try { el.focus({ preventScroll: true }); } catch (e) {} }
+      return;
+    }
+    draft.current.stop = true;
     setSh({ busy: true, placeError: '' });
-    const r = await submitToPos(sh, o);
-    if (r && !r.ok && r.error === 'details') { setSh({ busy: false, placeError: 'Check your name and mobile number, then try again.' }); return; }
-    // saved in the POS → pay page; if we couldn't reach it, still carry on: the WhatsApp message at the end carries the whole order
-    setSh({ busy: false, placed: { id: r && r.ok ? r.id : '', token: r && r.ok ? (r.token || '') : '', ref: sh.ref, total: o.total, payid: (r && r.payid) || PAYID, at: Date.now(), text: o.waText, offline: !(r && r.ok) }, proof: null, done: false, upState: '', upError: '', upPreview: '' });
+    const payload = posPayload(sh, o, 'placed');
+    const r = await postToPos(payload);
+    if (r && !r.ok && r.error === 'details') { draft.current.stop = false; setSh({ busy: false, placeError: 'Check your name and mobile number, then try again.' }); return; }
+    // saved in the POS → pay page. If we couldn't reach it, carry on anyway: the pay page keeps retrying in the background
+    // and the WhatsApp message at the end carries the whole order.
+    setSh({ busy: false, placed: { id: r && r.ok ? r.id : '', token: r && r.ok ? (r.token || '') : '', ref: sh.ref, total: o.total, payid: (r && r.payid) || PAYID, at: Date.now(), text: o.waText, offline: !(r && r.ok), payload: r ? null : payload }, proof: null, done: false, upState: '', upError: '', upPreview: '' });
     onSent(o.items); location.hash = '#/pay';
   };
   return html`<div class="wrap page narrow" id="order">
@@ -1965,8 +1995,8 @@ function CheckoutPage({ sh, setSh, o, onSent }) {
       <div class="fgrid light">
         ${inp('street', 'Street address', { autocomplete: 'street-address' })}
         ${inp('suburb', o.nz ? 'Suburb / town' : 'Suburb', { autocomplete: 'address-level2' })}
-        <label class="field"><span>${o.nz ? 'Region' : 'State'}</span><select class="select" style=${o.err.region ? 'border-color:var(--bad)' : ''} value=${sh.region} onChange=${field('region')} onBlur=${blur('region')}><option value="">Choose…</option>${(o.nz ? NZ_REGIONS : STATES).map(r => html`<option value=${r}>${r}</option>`)}</select>${o.err.region ? html`<small>${o.err.region}</small>` : null}</label>
-        ${inp('postcode', 'Postcode', { autocomplete: 'postal-code', inputmode: 'numeric' })}
+        <div class="fpair"><label class="field"><span>${o.nz ? 'Region' : 'State'}</span><select class="select" id="f-region" style=${o.err.region ? 'border-color:var(--bad)' : ''} value=${sh.region} onChange=${field('region')} onBlur=${blur('region')}><option value="">Choose…</option>${(o.nz ? NZ_REGIONS : STATES).map(r => html`<option value=${r}>${r}</option>`)}</select>${o.err.region ? html`<small>${o.err.region}</small>` : null}</label>
+        ${inp('postcode', 'Postcode', { autocomplete: 'postal-code', inputmode: 'numeric' })}</div>
       </div>
       ${o.regionWarn ? html`<div class="warn">${o.regionWarn}</div>` : null}
       ${o.nz ? html`<div class="seg" role="group" aria-label="NZ shipping"><button type="button" aria-pressed=${String(!o.nzExp)} onClick=${() => setSh({ nzShip: 'standard' })}>Standard · $20</button><button type="button" aria-pressed=${String(o.nzExp)} onClick=${() => setSh({ nzShip: 'express' })}>Express · $25</button></div>` : null}
@@ -1975,7 +2005,7 @@ function CheckoutPage({ sh, setSh, o, onSent }) {
         <button type="button" class="btn block" disabled=${!!sh.busy} onClick=${place}>${sh.busy ? 'Placing your order…' : 'Confirm your order · ' + money(o.total) + ' AUD'}</button>
         ${!o.detailsOk ? html`<div class="small" style="color:var(--ink);font-weight:600">Still needed: ${o.missing.join(', ')}</div>` : null}
         ${sh.placeError ? html`<div class="warn">${sh.placeError}</div>` : null}
-        <p class="tiny muted">Next you'll see our PayID details. Nothing is charged on this site.</p>
+        <p class="tiny muted">Next you'll see our PayID details. Nothing is charged on this site. Your details are saved as you fill them in, so we can help finish your order if you get stuck.</p>
       </div>
     </div>
   </div>`;
@@ -1984,6 +2014,29 @@ function CheckoutPage({ sh, setSh, o, onSent }) {
 // 3 · Pay: PayID details → payment screenshot → WhatsApp
 function PayPage({ sh, setSh, hasPlan }) {
   const pl = sh.placed;
+  // The POS couldn't be reached at Confirm: keep trying while this page is open (and as soon as the phone is back online).
+  useEffect(() => {
+    if (!pl || !pl.offline || !pl.payload) return;
+    let dead = false, n = 0, t = null;
+    const attempt = async () => {
+      if (dead) return;
+      const r = await postToPos(pl.payload);
+      if (dead) return;
+      if (r && r.ok) { setSh(s => s.placed && s.placed.ref === pl.ref ? { placed: Object.assign({}, s.placed, { id: r.id, token: r.token || '', payid: r.payid || s.placed.payid, offline: false, payload: null }) } : {}); return; }
+      if (r) { setSh(s => s.placed && s.placed.ref === pl.ref ? { placed: Object.assign({}, s.placed, { payload: null }) } : {}); return; }   // turned down, trying again won't help
+      if (++n < 7) t = setTimeout(attempt, Math.min(60000, 4000 * Math.pow(2, n)));
+    };
+    t = setTimeout(attempt, 3000);
+    const online = () => { clearTimeout(t); attempt(); };
+    window.addEventListener('online', online);
+    return () => { dead = true; clearTimeout(t); window.removeEventListener('online', online); };
+  }, [pl && pl.ref, pl && pl.offline]);
+  // …and once it's saved, upload the screenshot they'd already chosen.
+  useEffect(() => {
+    if (!pl || !pl.token || sh.upState !== 'local' || !sh.upPreview) return;
+    setSh({ upState: 'busy' });
+    uploadProof(pl.id, pl.token, sh.upPreview).then(ok => setSh(ok ? { upState: 'done', proof: { at: Date.now() } } : { upState: 'local' }));
+  }, [pl && pl.token]);
   if (!pl) return html`<div class="wrap page narrow" id="order"><div class="orderbox"><${OrderHead} refNo=${sh.ref} step=${3} title="Payment" /><div class="oempty"><p>There's no order waiting for payment.</p><a class="btn on-dark sm" href="#/order">Go to your cart</a></div></div></div>`;
   const payid = pl.payid || PAYID; const proof = !!sh.proof;
   const pick = async e => {

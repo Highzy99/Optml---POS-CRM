@@ -4,7 +4,7 @@ create extension if not exists pg_net;
 create table if not exists public.web_orders(
   id text primary key,                       -- the order ref (OPT-XXXXX); -2, -3… if a ref is reused for a later order
   ref text not null,
-  status text not null default 'new',        -- new | changed | accepted | dismissed
+  status text not null default 'new',        -- started (typed their details at checkout, not confirmed yet) | new | changed | accepted | dismissed
   wholesale boolean not null default false,
   name text, phone text, email text, street text, suburb text, region text, postcode text, country text default 'AU',
   notes text, code text,
@@ -14,8 +14,14 @@ create table if not exists public.web_orders(
   message text, revisions int not null default 1, sale_id text, replied_at timestamptz,
   upload_token uuid not null default gen_random_uuid(),   -- private key the customer's browser gets back, so only they can attach a screenshot
   proof_at timestamptz, proof_count int not null default 0,
+  draft_saves int not null default 0,                     -- how many times a checkout-in-progress was saved before it was confirmed
   created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
+-- (in case an earlier version of this table is already there)
+alter table public.web_orders add column if not exists upload_token uuid not null default gen_random_uuid();
+alter table public.web_orders add column if not exists proof_at timestamptz;
+alter table public.web_orders add column if not exists proof_count int not null default 0;
+alter table public.web_orders add column if not exists draft_saves int not null default 0;
 create index if not exists web_orders_updated_idx on public.web_orders(updated_at desc);
 create index if not exists web_orders_ref_idx on public.web_orders(ref);
 alter table public.web_orders enable row level security;
@@ -26,10 +32,13 @@ drop trigger if exists trg_audit on public.web_orders;
 create trigger trg_audit after insert or update or delete on public.web_orders for each row execute function public.audit_trg();
 
 -- the price list calls this (no login). Checks the order, re-prices it from the POS price list, saves it.
+-- stage 'started' = saved quietly while the customer fills in the checkout, so an abandoned checkout still leaves their
+-- details and cart; stage 'placed' (the default) = they pressed Confirm your order.
 create or replace function public.submit_web_order(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
   v_ref text := upper(btrim(coalesce(p->>'ref','')));
+  v_draft boolean := coalesce(p->>'stage','') = 'started';
   v_phone_digits text := regexp_replace(coalesce(p->>'phone',''),'\D','','g');
   v_name text := left(btrim(coalesce(p->>'name','')),80);
   v_items jsonb := coalesce(p->'items','[]'::jsonb);
@@ -84,24 +93,28 @@ begin
   -- same ref = the customer changed and resent it; a ref reused a day after it was dealt with = a new order
   select * into ex from public.web_orders where ref = v_ref order by created_at desc limit 1;
   if found and not (ex.status in ('accepted','dismissed') and ex.updated_at < now() - interval '24 hours') then
-    if ex.revisions >= 50 then return jsonb_build_object('ok',false,'error','too_many'); end if;
+    -- a checkout still being filled in never touches an order that's already placed, or one you've dismissed
+    if v_draft and ex.status <> 'started' then return jsonb_build_object('ok',true,'id',ex.id,'ref',v_ref,'kept',true); end if;
+    if ex.revisions + ex.draft_saves >= (case when v_draft or ex.status = 'started' then 400 else 50 end) then return jsonb_build_object('ok',false,'error','too_many'); end if;
     v_id := ex.id;
     update public.web_orders set
-      status = case when ex.status = 'accepted' then 'changed' when ex.status = 'dismissed' then 'new' else ex.status end,
+      status = case when v_draft then 'started' when ex.status = 'accepted' then 'changed' when ex.status in ('dismissed','started') then 'new' else ex.status end,
       wholesale = v_wholesale, name = v_name, phone = left(btrim(p->>'phone'),20), email = left(btrim(coalesce(p->>'email','')),120),
       street = left(btrim(coalesce(p->>'street','')),160), suburb = left(btrim(coalesce(p->>'suburb','')),80), region = left(btrim(coalesce(p->>'region','')),40),
       postcode = left(btrim(coalesce(p->>'postcode','')),10), country = v_country, notes = left(btrim(coalesce(p->>'notes','')),500), code = v_code,
       items = v_out, subtotal = round(coalesce((p->>'subtotal')::numeric,0),2), discount = round(coalesce((p->>'discount')::numeric,0),2),
       shipping = round(coalesce((p->>'shipping')::numeric,0),2), total = v_client_total, list_total = v_total, price_ok = v_ok, price_note = nullif(btrim(v_note),''),
-      message = left(coalesce(p->>'message',''),8000), revisions = ex.revisions + 1, updated_at = now()
+      message = left(coalesce(p->>'message',''),8000),
+      revisions = case when v_draft then ex.revisions when ex.status = 'started' then 1 else ex.revisions + 1 end,
+      draft_saves = ex.draft_saves + case when v_draft then 1 else 0 end, updated_at = now()
     where id = ex.id
     returning upload_token into v_token;
   else
     v_id := v_ref;
     if found then select count(*) + 1 into n from public.web_orders where ref = v_ref; v_id := v_ref || '-' || n; end if;
-    insert into public.web_orders(id, ref, wholesale, name, phone, email, street, suburb, region, postcode, country, notes, code, items,
+    insert into public.web_orders(id, ref, status, wholesale, name, phone, email, street, suburb, region, postcode, country, notes, code, items,
       subtotal, discount, shipping, total, list_total, price_ok, price_note, message)
-    values (v_id, v_ref, v_wholesale, v_name, left(btrim(p->>'phone'),20), left(btrim(coalesce(p->>'email','')),120),
+    values (v_id, v_ref, case when v_draft then 'started' else 'new' end, v_wholesale, v_name, left(btrim(p->>'phone'),20), left(btrim(coalesce(p->>'email','')),120),
       left(btrim(coalesce(p->>'street','')),160), left(btrim(coalesce(p->>'suburb','')),80), left(btrim(coalesce(p->>'region','')),40),
       left(btrim(coalesce(p->>'postcode','')),10), v_country, left(btrim(coalesce(p->>'notes','')),500), v_code, v_out,
       round(coalesce((p->>'subtotal')::numeric,0),2), round(coalesce((p->>'discount')::numeric,0),2), round(coalesce((p->>'shipping')::numeric,0),2),
@@ -142,18 +155,18 @@ end $$;
 revoke all on function public.attach_payment_proof(text, uuid, text) from public;
 grant execute on function public.attach_payment_proof(text, uuid, text) to anon, authenticated;
 
--- Telegram alert to your own chat (settings.telegram.alert_chat) for each new or changed web order
+-- Telegram alert to your own chat (settings.telegram.alert_chat) for each new or changed web order (not for checkouts still in progress)
 create or replace function public.web_order_alert() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare tg jsonb; v_lines text; v_msg text;
 begin
-  if TG_OP = 'UPDATE' and NEW.message is not distinct from OLD.message and NEW.proof_at is not distinct from OLD.proof_at then return NEW; end if;
-  if NEW.status not in ('new','changed') then return NEW; end if;
+  if TG_OP = 'UPDATE' and NEW.message is not distinct from OLD.message and NEW.proof_at is not distinct from OLD.proof_at and NEW.status is not distinct from OLD.status then return NEW; end if;
+  if NEW.status not in ('new','changed') then return NEW; end if;   -- nothing for a checkout that's still being filled in
   select value into tg from public.settings where key = 'telegram';
   if coalesce(tg->>'token','') = '' or coalesce(tg->>'alert_chat','') = '' then return NEW; end if;
   select string_agg((i->>'qty') || '× ' || (i->>'name') || case when (i->>'pack')::int > 1 then ' (' || (i->>'pack') || '-pack)' else '' end, E'\n')
     into v_lines from jsonb_array_elements(NEW.items) i;
-  v_msg := case when TG_OP = 'INSERT' then '🛒 New web order (pending payment) ' when NEW.proof_at is distinct from OLD.proof_at then '💸 Payment screenshot received for ' else '✏️ Web order changed ' end || NEW.id
+  v_msg := case when TG_OP = 'INSERT' or OLD.status in ('started','dismissed') then '🛒 New web order (pending payment) ' when NEW.proof_at is distinct from OLD.proof_at then '💸 Payment screenshot received for ' else '✏️ Web order changed ' end || NEW.id
     || case when NEW.wholesale then ' (wholesale)' else '' end || E'\n'
     || coalesce(NEW.name,'') || ' · ' || coalesce(NEW.phone,'') || E'\n\n' || coalesce(v_lines,'')
     || E'\n\nTotal $' || to_char(NEW.total,'FM999990.00')
