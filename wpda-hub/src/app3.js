@@ -70,7 +70,10 @@ function ItemEditor({ it, st, set, act }) {
 }
 
 function planLink(st) {
-  return location.origin + location.pathname + '#plan=' + encodePlan(planPayload(Object.assign({}, st, { start: '' })));
+  // A start date chosen in the builder travels with the link. One that only exists because doses were ticked on this
+  // device (the tracker sets it on the first tick) stays behind, so the person opening the link starts fresh.
+  let ticked = false; try { ticked = !!loadTrack(st.planId).auto; } catch (e) {}
+  return location.origin + location.pathname + '#plan=' + encodePlan(planPayload(Object.assign({}, st, { start: ticked ? '' : st.start })));
 }
 
 function Builder({ st, set, items, act }) {
@@ -97,6 +100,8 @@ function Builder({ st, set, items, act }) {
       <div class="fgrid">
         <label class="field"><span>Client name</span><input class="input" autocomplete="off" placeholder="e.g. Sarah M" value=${st.client} onInput=${e => set({ client: e.target.value })} /></label>
         <label class="field"><span>Prepared by</span><input class="input" placeholder="Your name or clinic" value=${st.by} onInput=${e => set({ by: e.target.value })} /></label>
+        <label class="field"><span>Start date (optional)</span><input class="input" type="date" value=${st.start} onInput=${e => set({ start: e.target.value })} />
+          <small>${st.start ? html`Dates show in the tracker, PDF and web page. <button type="button" class="linkish" onClick=${() => set({ start: '' })}>Remove</button>` : 'Leave it empty and the plan counts Day 1, Day 2…'}</small></label>
       </div>
       <label class="field"><span>Notes for the client</span><textarea class="textarea" placeholder="Goals, check-in dates, bloodwork reminders, anything they should know." value=${st.notes} onInput=${e => set({ notes: e.target.value })}></textarea></label>
     </div></div>
