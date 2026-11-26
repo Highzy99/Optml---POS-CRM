@@ -318,7 +318,8 @@ footer.foot a { color: var(--white); }
 .top .plan { min-height: 40px; padding: 0 6px 0 16px; gap: 10px; font-weight: 600; }
 .top .plan.outline { padding: 0 16px; }
 .top .plan .count { min-width: 28px; height: 28px; font-size: 13px; }
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: rgba(255,255,255,.96); backdrop-filter: saturate(1.4) blur(16px); -webkit-backdrop-filter: saturate(1.4) blur(16px); border-top: 1px solid var(--n200); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 8px env(safe-area-inset-bottom); }
+html.typing .tabbar, html.typing .tray { display: none !important; }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: #fff; border-top: 1px solid var(--n200); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 8px env(safe-area-inset-bottom); }
 .tabbar a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 60px; font-size: 11.5px; font-weight: 500; color: var(--n500); text-decoration: none; }
 .tabbar a::before { content: ''; position: absolute; top: -1px; left: 50%; width: 28px; height: 3px; margin-left: -14px; border-radius: 0 0 3px 3px; background: transparent; }
 .tabbar a[aria-current="page"] { color: var(--ink); font-weight: 700; }
@@ -357,6 +358,15 @@ body:has(.qa-back) .toast { display: none; }
 .sh-feats b { font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; }
 .sh-feats img { width: 20px; height: 20px; flex: none; object-fit: contain; }
 .sh-feats img.seal { width: 24px; height: 24px; border-radius: 50%; margin: 0 -2px; }
+/* Phone: the wording leads, then the four features, then the photo */
+@media (max-width: 639.98px) {
+  .sh-copy { display: contents; }
+  .sh-copy h1 { order: 1; padding: 16px 12px 0; }
+  .sh-copy .lead { order: 2; padding: 10px 12px 14px; }
+  .sh-feats { order: 3; margin: 0 0 8px; }
+  .sh-photo { order: 4; aspect-ratio: 1 / 1; max-height: 46vh; }
+  .sh-photo > img { object-position: 50% 92%; }
+}
 @media (min-width: 640px) {
   .shero { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); padding: 12px; margin-top: 10px; }
   .sh-photo { order: 2; aspect-ratio: auto; max-height: none; min-height: 420px; }
@@ -606,6 +616,10 @@ button.prow2 { width: 100%; background: none; border: 0; border-bottom: 1px soli
 .datebtn { position: relative; overflow: hidden; }
 .datebtn input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; font-size: 16px; }
 .datebtn:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pfull { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 14px; line-height: 1.35; color: var(--n600); }
+.pfull b { color: var(--ink); font-weight: 700; }
+.pfull i { flex: none; font-style: normal; font-size: 12px; font-weight: 600; color: var(--n600); background: var(--paper); border-radius: var(--pill); padding: 3px 9px; }
+.prow2 .pdur { color: var(--ink); font-weight: 600; }
 .plancard { padding: 16px; margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
 .plancard b { display: block; color: var(--ink); font-size: 17px; line-height: 1.3; }
 .a2hs { display: flex; align-items: center; gap: 4px; margin-top: 14px; border: 1px solid var(--n200); border-radius: var(--r-lg); background: #fff; }
@@ -632,53 +646,59 @@ button.prow2 { width: 100%; background: none; border: 0; border-bottom: 1px soli
 footer.foot { margin-top: 56px; }
 
 /* ---------- Export document ---------- */
-.doc { display: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #2c2d31; }
+/* Compact, and built from plain blocks: cards sit in rows of two and a heading is wrapped with what follows it,
+   so pages break between rows, never through a card or straight after a heading (Safari can't split grids or
+   flex columns across pages). The on-screen preview is the same layout that prints. */
+.doc { display: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #2c2d31; font-size: 12.5px; line-height: 1.5; }
 .doc.show { display: block; margin-top: 24px; }
-.doc .paper { background: var(--white); border: 1px solid var(--n200); border-radius: var(--r-lg); padding: clamp(18px, 4vw, 40px); box-shadow: var(--shadow); }
-.doc .dpage + .dpage { margin-top: 40px; padding-top: 40px; border-top: 1px dashed var(--n300); }
-.doc h2.dh { font-size: 26px; letter-spacing: -.025em; margin-bottom: 6px; }
-.doc h3.dh3 { font-size: 18px; margin: 22px 0 10px; }
-.doc .dsub { font-size: 14px; color: var(--n600); margin-bottom: 16px; }
-.doc .cover { background: var(--wash); border-radius: 22px; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
-.doc .cover h1 { font-size: 40px; letter-spacing: -.035em; line-height: 1; }
-.doc .dmeta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--n700); }
-.doc .cblock { border: 1px solid var(--n200); border-radius: 16px; padding: 18px; margin-top: 14px; break-inside: avoid; }
-.doc .cblock .chead { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
-.doc .cblock .chead img, .doc .cblock .chead .av { width: 36px; height: 36px; flex: none; }
-.doc .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
-.doc .kv div { background: var(--paper); border-radius: 10px; padding: 8px 10px; }
-.doc .kv dt { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--n600); }
-.doc .kv dd { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: var(--ink); }
-.doc .tbl { font-size: 13px; }
-.doc .tbl th, .doc .tbl td { padding: 7px 9px; }
-.doc .checks { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-.doc .checks li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
-.doc .box { width: 16px; height: 16px; border: 1.5px solid var(--ink); border-radius: 4px; flex: none; margin-top: 2px; display: inline-block; }
+.doc .paper { background: var(--white); border: 1px solid var(--n200); border-radius: var(--r-lg); padding: clamp(16px, 4vw, 34px); box-shadow: var(--shadow); }
+.doc .dpage + .dpage { margin-top: 24px; }
+.doc .keep, .doc .row2, .doc .wkblock, .doc .stepc, .doc .note, .doc .warn, .doc .cover { break-inside: avoid; page-break-inside: avoid; }
+.doc .small { font-size: 12.5px; } .doc .tiny { font-size: 11px; }
+.doc h2.dh { font-size: 21px; letter-spacing: -.025em; margin-bottom: 4px; }
+.doc h3.dh3 { font-size: 15.5px; margin: 18px 0 8px; }
+.doc .dsub { font-size: 12.5px; color: var(--n600); margin-bottom: 10px; }
+.doc .cover { background: var(--wash); border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+.doc .cover h1 { font-size: 30px; letter-spacing: -.035em; line-height: 1.02; }
+.doc .cover .lbl { font-size: 10.5px; }
+.doc .dmeta { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--n700); }
+.doc .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 6px; margin: 8px 0; }
+.doc .kv div { background: var(--paper); border-radius: 10px; padding: 7px 10px; }
+.doc .kv dt { font-size: 9.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--n600); }
+.doc .kv dd { margin: 2px 0 0; font-size: 12.5px; font-weight: 600; color: var(--ink); line-height: 1.35; }
+.doc .tbl { font-size: 12px; }
+.doc .tbl th { font-size: 10px; padding: 6px 8px; }
+.doc .tbl td { padding: 6px 8px; }
+.doc .checks { list-style: none; padding: 0; margin: 0; }
+.doc .checks li { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; margin-top: 6px; }
+.doc .box { width: 14px; height: 14px; border: 1.5px solid var(--ink); border-radius: 4px; flex: none; margin-top: 2px; display: inline-block; }
 .doc .track td.on { background: var(--paper); }
-.doc .wkblock { break-inside: avoid; }
-.doc .track td { text-align: center; font-size: 12px; }
+.doc .track td { text-align: center; font-size: 11.5px; }
 .doc .track td:first-child { text-align: left; font-weight: 600; }
 .doc .track .box { margin: 0 auto 2px; display: block; }
-.doc .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-.doc .mini { border: 1px solid var(--n200); border-radius: 12px; padding: 12px 14px; break-inside: avoid; }
-.doc .mini h4 { font-size: 15px; margin-bottom: 4px; }
-.doc .mini p { font-size: 13px; line-height: 1.5; }
-.doc .dfoot { margin-top: 28px; font-size: 12px; color: var(--n600); line-height: 1.6; }
+.doc .row2 { display: flex; gap: 10px; margin-top: 10px; }
+.doc .row2 > * { flex: 1 1 0; min-width: 0; }
+.doc .mini { border: 1px solid var(--n200); border-radius: 12px; padding: 10px 12px; }
+.doc .mini h4 { font-size: 13.5px; margin-bottom: 3px; }
+.doc .mini p { font-size: 12px; line-height: 1.5; }
+.doc .stepc { gap: 10px; padding: 10px 12px; border-radius: 12px; margin-top: 8px; }
+.doc .stepc .n { width: 24px; height: 24px; font-size: 12px; }
+.doc .stepc h4 { font-size: 13.5px; margin-bottom: 2px; }
+.doc .stepc .tip { margin-top: 4px; font-size: 11.5px; }
+.doc .note { font-size: 12.5px; line-height: 1.55; padding: 10px 14px; margin-top: 10px; }
+.doc .warn { font-size: 12.5px; }
+.doc .dfoot { margin-top: 16px; font-size: 11px; color: var(--n600); line-height: 1.55; }
 
 @media print {
-  @page { size: A4; margin: 12mm; }
-  html, body { background: #fff !important; font-size: 12px; }
-  body.has-tray { padding-bottom: 0; }
-  .screen, .tray, .scrim { display: none !important; }
+  @page { size: A4; margin: 11mm 10mm; }
+  html, body { background: #fff !important; }
+  body, body.has-tray { padding: 0 !important; margin: 0 !important; }
+  .screen, .tray, .scrim, .qa-back { display: none !important; }
   .doc { display: block !important; margin: 0 !important; }
+  .doc .wrap { max-width: none; padding: 0; }
   .doc .paper { border: 0; padding: 0; box-shadow: none; border-radius: 0; }
-  .doc .dpage { break-before: page; }
-  .doc .dpage:first-child { break-before: auto; }
-  .doc .dpage + .dpage { margin-top: 0; padding-top: 0; border-top: 0; }
-  .doc .cblock, .doc .mini, .doc tr, .doc .stepc { break-inside: avoid; }
-  .doc h2, .doc h3 { break-after: avoid; }
+  .doc tr { break-inside: avoid; page-break-inside: avoid; }
   thead { display: table-header-group; }
-  .stepc { padding: 10px; }
 }
 </style>
 </head>

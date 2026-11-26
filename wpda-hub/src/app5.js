@@ -34,16 +34,10 @@ function Tracker({ st, set, items, onReorder }) {
   const [dayOff, setDayOff] = useState(0);
   useEffect(() => { setTr(loadTrack(st.planId)); }, [st.planId]);
   const saveTr = next => { setTr(next); try { localStorage.setItem(trackKey(st.planId), JSON.stringify(next)); } catch (e) {} };
-  const start = parseDay(st.start);
   const t0 = today0();
-  if (!start) {
-    return html`<div><div class="banner">
-      <div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h2 id="h-today" style="font-size:28px">Ready when you are</h2>
-      <p class="small">Set a start date and this becomes a daily tracker: what to take today, what to draw, where to inject next and when to reorder.</p>
-      <div class="pair"><button type="button" class="btn" onClick=${() => set({ start: isoDay(t0) })}>Start today</button>
-        <label class="btn outline datebtn"><${Icon} name="plan" size=${17} /> Pick a date<input type="date" aria-label="Pick a start date" value=${st.start} onClick=${e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (x) {} }} onInput=${e => set({ start: e.target.value })} /></label></div>
-    </div></div>`;
-  }
+  // Nothing to set up: day 1 is today until the first dose is ticked, then the plan counts from that day.
+  const started = parseDay(st.start);
+  const start = started || t0;
   const day = addDays(t0, dayOff);
   const dk = isoDay(day);
   const di = daysBetween(start, day);
@@ -56,28 +50,37 @@ function Tracker({ st, set, items, onReorder }) {
   const log = d => {
     const L = Object.assign({}, tr.logs);
     const dayLogs = Object.assign({}, L[dk] || {});
-    if (dayLogs[d.id]) { delete dayLogs[d.id]; L[dk] = dayLogs; saveTr(Object.assign({}, tr, { logs: L })); return; }
+    if (dayLogs[d.id]) {
+      delete dayLogs[d.id]; L[dk] = dayLogs;
+      // un-ticking the only dose puts the plan back to "not started"
+      const none = tr.auto && !Object.keys(L).some(k => Object.keys(L[k]).length);
+      saveTr(Object.assign({}, tr, { logs: L, auto: none ? false : tr.auto })); if (none) set({ start: '' });
+      return;
+    }
     dayLogs[d.id] = { site: d.oral || d.it.oral ? 'Oral' : suggested, amt: d.w.perAmt || 0, t: Date.now() };
     L[dk] = dayLogs;
-    saveTr(Object.assign({}, tr, { logs: L, rot: d.it.oral ? tr.rot : (tr.rot || 0) + 1 }));
+    saveTr(Object.assign({}, tr, { logs: L, rot: d.it.oral ? tr.rot : (tr.rot || 0) + 1, auto: started ? tr.auto : true }));
+    if (!started) set({ start: isoDay(t0) });
   };
   const setSite = (d, site) => { const L = Object.assign({}, tr.logs); L[dk] = Object.assign({}, L[dk], { [d.id]: Object.assign({}, L[dk][d.id], { site }) }); saveTr(Object.assign({}, tr, { logs: L })); };
   const strip = Array.from({ length: 7 }, (_, i) => { const d = addDays(t0, i - 3); const k = isoDay(d); const ds = dosesOn(items, start, d); const n = ds.filter(x => (tr.logs[k] || {})[x.id]).length; return { d, k, off: i - 3, total: ds.length, n }; });
   // Vial supply per injectable item
   const supply = items.filter(it => !it.oral).map(it => {
     const vialAmt = it.kind === 'listed' ? (vialStrength(it.p, it.sizeIdx || 0) || {}).v : num(it.model.vial);
-    const mixedOn = tr.mixed[it.key] || st.start;
+    const mixedOn = tr.mixed[it.key] || isoDay(start);
     let used = 0;
     Object.keys(tr.logs).forEach(k => { if (k >= mixedOn) Object.keys(tr.logs[k]).forEach(id => { if (id.split(':')[0] === it.key) used += tr.logs[k][id].amt || 0; }); });
     const w = it.week(wk);
     const per = w && w.perAmt;
     const left = vialAmt > 0 && per > 0 ? Math.max(0, Math.floor((vialAmt - used) / per + 1e-9)) : null;
     const age = daysBetween(parseDay(mixedOn), t0);
-    return { it, vialAmt, used, left, age, pct: vialAmt > 0 ? Math.max(0, Math.min(1, 1 - used / vialAmt)) : 0, low: (left !== null && left <= 3) || age > 28 };
+    return { it, vialAmt, used, left, age, pct: vialAmt > 0 ? Math.max(0, Math.min(1, 1 - used / vialAmt)) : 0, low: (left !== null && left <= 3) || age > 28, sup: protocolSupply(it) };
   });
+  const oralSupply = items.filter(it => it.oral).map(it => ({ it, sup: protocolSupply(it) }));
+  const weekOf = sup => di >= 0 && sup.dur ? (wk <= sup.dur.max ? 'Week ' + wk + ' of ' + (sup.dur.min === sup.dur.max ? sup.dur.max + (sup.dur.open ? '+' : '') : sup.dur.min + '–' + sup.dur.max) : (sup.dur.open ? 'Week ' + wk : 'Past week ' + sup.dur.max)) : '';
   return html`<div>
-    <div class="page-head"><div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h1 id="h-today">${di < 0 ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h1>
-      <p class="muted">${di < 0 ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before.' : 'Week ' + wk + ' · day ' + (di + 1) + '. Tick each dose as you take it.'}</p></div>
+    <div class="page-head"><div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h1 id="h-today">${di < 0 && started ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h1>
+      <p class="muted">${di < 0 ? (started ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before.' : 'Your plan starts the day you tick your first dose.') : 'Week ' + wk + ' · day ' + (di + 1) + '. ' + (started ? 'Tick each dose as you take it.' : 'Your plan starts the day you tick your first dose.')}</p></div>
     <div class="banner" style="gap:16px">
       <div class="row g16"><${Ring} done=${done} total=${doses.length} />
         <div class="grow">${next ? html`<div class="lbl">Up next</div><div style="font-size:21px;font-weight:700;color:var(--ink);line-height:1.2">${next.it.name}</div><div class="small">${next.slot} · ${next.w.dose}${next.units !== null ? ' · draw ' + String(next.w.draw).split(' · ')[0] : ''}</div>${!next.it.oral ? html`<div class="tiny muted" style="margin-top:2px">Inject at: <b style="color:var(--ink)">${suggested}</b></div>` : null}`
@@ -97,19 +100,42 @@ function Tracker({ st, set, items, onReorder }) {
       </div>`; })}
       ${!doses.length && di >= 0 ? html`<div class="empty">No doses scheduled on ${fmtDay(day)}.</div>` : null}
     </div>
-    ${supply.length ? html`<h3 style="font-size:20px;margin:26px 0 10px">Vials</h3>
+    ${supply.length || oralSupply.length ? html`<h3 style="font-size:20px;margin:26px 0 10px">Duration and vials</h3>
       <div class="cgrid">${supply.map(s => html`<div class="card" style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
-        <div class="row g8"><b class="grow" style="color:var(--ink)">${s.it.name}</b><span class="tiny muted">${s.left !== null ? '≈ ' + s.left + ' dose' + (s.left === 1 ? '' : 's') + ' left' : ''}</span></div>
+        <div class="row g8"><b class="grow" style="color:var(--ink)">${s.it.name}${s.it.kind === 'listed' && s.it.p.sizes ? ' ' + s.it.vial : ''}</b><span class="tiny muted">${s.left !== null ? '≈ ' + s.left + ' dose' + (s.left === 1 ? '' : 's') + ' left' : ''}</span></div>
+        ${s.sup.durText ? html`<div class="pfull"><span><b>${s.sup.durText}</b>${s.sup.count ? html` · <b>${s.sup.text}</b>${s.sup.forText ? ' ' + s.sup.forText : ''}` : null}</span>${weekOf(s.sup) ? html`<i>${weekOf(s.sup)}</i>` : null}</div>` : null}
         <div style="height:8px;border-radius:999px;background:var(--sunken);overflow:hidden"><div style=${'height:100%;border-radius:999px;width:' + Math.round(s.pct * 100) + '%;background:' + (s.low ? 'var(--bad)' : 'var(--ink)')}></div></div>
         <div class="tiny muted">Mixed ${s.age <= 0 ? 'today' : s.age + ' day' + (s.age === 1 ? '' : 's') + ' ago'} · use within 4 weeks of mixing</div>
         ${s.low ? html`<div class="warn tiny">${s.age > 28 ? 'This vial has been mixed for over four weeks. Start a fresh one.' : 'Running low. Reorder now so you do not miss a dose.'}</div>` : null}
         <div class="row g8 wrapx"><button type="button" class="btn sm outline" onClick=${() => saveTr(Object.assign({}, tr, { mixed: Object.assign({}, tr.mixed, { [s.it.key]: dk }) }))}>I mixed a new vial</button>
           ${s.it.p && PROTOCOL_SKUS[s.it.p.id] ? html`<button type="button" class="btn sm soft" onClick=${() => onReorder(PROTOCOL_SKUS[s.it.p.id][s.it.sizeIdx || 0] || PROTOCOL_SKUS[s.it.p.id].filter(Boolean)[0])}>Reorder</button>` : null}</div>
-      </div>`)}</div>` : null}
+      </div>`)}${oralSupply.map(s => html`<div class="card" style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+        <b style="color:var(--ink)">${s.it.name}</b>
+        ${s.sup.durText ? html`<div class="pfull"><span><b>${s.sup.durText}</b>${s.sup.count ? html` · <b>${s.sup.text}</b>` : null}</span>${weekOf(s.sup) ? html`<i>${weekOf(s.sup)}</i>` : null}</div>` : null}
+        <div class="tiny muted">Capsules · no mixing</div></div>`)}</div>
+      ${supply.some(s => s.sup.shelf) ? html`<p class="tiny muted" style="margin-top:8px">Each vial is used within 4 weeks of mixing, so the count allows for what's left over in the early weeks.</p>` : null}` : null}
     <label class="field" style="margin-top:20px"><span>How do you feel? (energy, sleep, appetite, side effects)</span><textarea class="textarea" placeholder="Saved on this device with the day's doses." value=${(tr.notes || {})[dk] || ''} onInput=${e => saveTr(Object.assign({}, tr, { notes: Object.assign({}, tr.notes, { [dk]: e.target.value }) }))}></textarea></label>
   </div>`;
 }
 
+
+// ---------- Bottom bars and the iPhone keyboard ----------
+// iOS can leave a fixed bar floating mid-screen once the keyboard closes. The bars hide while you type
+// and are laid out again once the screen has settled; the same happens when the browser's own bars resize the page.
+(function () {
+  const root = document.documentElement; let timer = null, vvTimer = null;
+  const typing = el => !!el && (el.tagName === 'TEXTAREA' || el.isContentEditable || (el.tagName === 'INPUT' && !/^(checkbox|radio|file|button|submit|reset|range|color|date|month|week|time|datetime-local)$/i.test(el.type || 'text')));
+  const relay = () => document.querySelectorAll('.tabbar, .tray').forEach(el => { const d = el.style.display; el.style.display = 'none'; void el.offsetHeight; el.style.display = d; });
+  const settle = () => { clearTimeout(timer); timer = setTimeout(() => { if (typing(document.activeElement)) return; root.classList.remove('typing'); relay(); }, 350); };
+  document.addEventListener('focusin', e => { if (typing(e.target)) { clearTimeout(timer); root.classList.add('typing'); } });
+  document.addEventListener('focusout', settle);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => {
+    if (root.classList.contains('typing')) { if (!typing(document.activeElement)) settle(); return; }
+    clearTimeout(vvTimer); vvTimer = setTimeout(relay, 200);
+  });
+  window.addEventListener('pageshow', relay);
+  window.addEventListener('orientationchange', () => setTimeout(relay, 300));
+})();
 
 // ---------- Add to Home Screen ----------
 const A2HS_KEY = 'optml-a2hs-dismissed';
@@ -238,7 +264,7 @@ function TabBar({ route, count, planCount }) {
     return html`<a href=${t[1]} aria-current=${on ? 'page' : null}><span class="ico"><${Icon} name=${t[3]} size=${23} />${t[0] === 'order' && count ? html`<i class="dot">${count}</i>` : t[0] === 'plan' && planCount ? html`<i class="dot soft">${planCount}</i>` : null}</span>${t[2]}</a>`; })}</nav>`;
 }
 
-function PlanPage({ st, set, items, onReorder, openInstall }) {
+function PlanPage({ st, set, items, onReorder, openInstall, flash }) {
   if (!items.length) return html`<div class="wrap page narrow"><div class="page-head"><h1>Your guide lives here</h1>
       <p class="lead">Add a product to your cart and its guide appears here: the units to draw, how to mix each vial, where to inject and what's due each day.</p></div>
     <div class="stack g12">
@@ -248,13 +274,14 @@ function PlanPage({ st, set, items, onReorder, openInstall }) {
     <${Tracker} st=${st} set=${set} items=${items} onReorder=${onReorder} />
     <${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap." />
     <div class="card plancard"><div><div class="small muted">Your plan</div><b>${items.map(i => i.name).join(', ')}</b></div>
-      <button type="button" class="btn block" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button>
+      <button type="button" class="btn block" onClick=${() => printDoc()}><${Icon} name="print" size=${16} /> Save my guide as PDF</button>
+      <button type="button" class="btn outline block" onClick=${() => exportWeb(st, flash)}><${Icon} name="share" size=${16} /> Send my guide as a web page</button>
       <div class="pair"><a class="btn outline" href="#/build">Edit plan</a><a class="btn outline" href="#/protocols">All protocols</a></div></div>
   </div>`;
 }
 
 // Every compound's protocol in one list, grouped by goal. Rows open the product's how-to-use page.
-function ProtocolsPage({ st, exportPdf, openInstall }) {
+function ProtocolsPage({ st, exportPdf, openInstall, flash }) {
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(null);
   const toggle = id => setSel(s => Object.assign({}, s, { [id]: !s[id] }));
@@ -265,19 +292,25 @@ function ProtocolsPage({ st, exportPdf, openInstall }) {
   const rows = PRODUCTS.filter(p => PROTOCOL_SKUS[p.id] && PROTOCOL_SKUS[p.id].filter(Boolean).length).map(p => {
     const skus = PROTOCOL_SKUS[p.id].filter(Boolean); const sp = SHOP_BY_SKU[skus[0]];
     const it = listedItem(p, Object.assign({}, st, { mode: {}, sizeIdx: Object.assign({}, st.sizeIdx, { [p.id]: SKU_PROTOCOL[skus[0]][1] }) }));
-    return { p, sku: skus[0], goal: sp.goal, name: skus.length > 1 ? splitName(sp.name)[0] : sp.name, strengths: skus.length > 1 ? skus.map(k => splitName(SHOP_BY_SKU[k].name)[1]).join(', ') : '', freq: it.freqText, duration: it.duration, oral: it.oral, mine: st.order.indexOf(p.id) > -1 };
+    // duration and vials: one count for a single strength, one per strength when there are several
+    const sups = skus.map(k => protocolSupply(listedItem(p, Object.assign({}, st, { mode: {}, sizeIdx: Object.assign({}, st.sizeIdx, { [p.id]: SKU_PROTOCOL[k][1] }) }))));
+    const weeksFor = sups[0].dur && sups[0].dur.open ? ' for ' + sups[0].dur.min + ' weeks' : '';
+    const perSize = skus.length > 1 && sups.every(s => s.count) ? skus.map((k, i) => sups[i].text.split(' ')[0] + ' × ' + splitName(SHOP_BY_SKU[k].name)[1]) : null;
+    const vials = perSize ? '' : (sups[0].count ? sups[0].text + weeksFor : '');
+    const strengths = skus.length > 1 ? (perSize ? perSize.slice(0, -1).join(', ') + ' or ' + perSize[perSize.length - 1] + ' vials' + weeksFor : skus.map(k => splitName(SHOP_BY_SKU[k].name)[1]).join(', ')) : '';
+    return { p, sku: skus[0], goal: sp.goal, name: skus.length > 1 ? splitName(sp.name)[0] : sp.name, strengths, vials, freq: it.freqText, duration: it.duration, oral: it.oral, mine: st.order.indexOf(p.id) > -1 };
   }).filter(r => !term || (r.name + ' ' + r.p.name + ' ' + GOAL_LABELS[r.goal] + ' ' + r.sku).toLowerCase().includes(term));
   return html`<div class="wrap page narrow">
     <a class="back" href="#/plan"><${Icon} name="back" size=${18} /> My plan</a>
     <div class="page-head"><h1>All protocols</h1>
-      <p class="lead">${sel ? 'Tick the protocols you want in your PDF, then save.' : 'The dose week by week, mixing and timing for every compound on the price list. Tap one to open it.'}</p>
+      <p class="lead">${sel ? 'Tick the protocols you want, then save them as a PDF or a web page.' : 'The dose week by week, mixing and timing for every compound on the price list. Tap one to open it.'}</p>
       <div class="row g8 wrapx">${sel ? html`<button type="button" class="btn sm outline" onClick=${() => setSel(null)}>Cancel</button>`
         : html`<button type="button" class="btn sm outline" onClick=${startSel}><${Icon} name="print" size=${16} /> Export as PDF</button>`}</div></div>
     <label class="field"><span class="sr">Search protocols</span><input class="input" type="search" style="border-radius:var(--pill);padding-left:22px" placeholder="Search — reta, bpc, ghk…" value=${q} onInput=${e => setQ(e.target.value)} /></label>
     ${GOALS.filter(g => rows.some(r => r.goal === g)).map(g => html`<section class="pgroup" aria-labelledby=${'pg-' + g}>
       <h2 id=${'pg-' + g}><img src=${GOAL_ICONS[g]} alt="" />${GOAL_LABELS[g]}</h2>
       ${rows.filter(r => r.goal === g).map(r => { const body = html`<img src=${PRODUCT_PHOTOS[r.sku] || GOAL_ICONS[g]} alt="" loading="lazy" />
-        <span class="grow"><b>${r.name}</b><span>${[r.freq, r.duration, r.oral ? 'Capsules' : ''].filter(x => x && x !== '—').join(' · ')}</span>${r.strengths ? html`<span>${r.strengths}</span>` : null}</span>`;
+        <span class="grow"><b>${r.name}</b><span>${[r.freq, r.oral ? 'Capsules' : ''].filter(x => x && x !== '—').join(' · ')}</span><span class="pdur">${[r.duration, r.vials].filter(x => x && x !== '—').join(' · ')}</span>${r.strengths ? html`<span>${r.strengths}</span>` : null}</span>`;
         return sel ? html`<button type="button" class="prow2" role="checkbox" aria-checked=${String(!!sel[r.p.id])} onClick=${() => toggle(r.p.id)}>${body}<span class=${'tick' + (sel[r.p.id] ? ' on' : '')}>${sel[r.p.id] ? html`<${Icon} name="check" size=${16} />` : null}</span></button>`
           : html`<a class="prow2" href=${'#/p/' + r.sku}>${body}${r.mine ? html`<i>In My plan</i>` : null}<${Icon} name="chev" size=${18} /></a>`; })}
     </section>`)}
@@ -285,7 +318,8 @@ function ProtocolsPage({ st, exportPdf, openInstall }) {
     ${sel ? null : html`<${InstallPrompt} onOpen=${openInstall} title="Add to your Home Screen" text="Open your protocol in one tap." />`}
     <p class="small muted" style="margin-top:22px">Dosing something that isn't here? <a href="#/build" style="color:var(--ink);font-weight:600">Build a protocol yourself</a>.</p>
     ${sel ? html`<div class="selbar screen"><span>${chosen.length ? chosen.length + ' selected' : 'Tick protocols to export'}</span>
-      <button type="button" class="btn" disabled=${!chosen.length} onClick=${() => exportPdf(chosen.map(id => [id, idxOf(id)]))}><${Icon} name="print" size=${16} /> Save as PDF</button></div>` : null}
+      <span class="row g6"><button type="button" class="btn sm outline" disabled=${!chosen.length} onClick=${() => exportWeb(stForPicks(st, chosen.map(id => [id, idxOf(id)])), flash)}>Web page</button>
+      <button type="button" class="btn" disabled=${!chosen.length} onClick=${() => exportPdf(chosen.map(id => [id, idxOf(id)]))}><${Icon} name="print" size=${16} /> Save as PDF</button></span></div>` : null}
   </div>`;
 }
 
@@ -310,8 +344,10 @@ function App() {
   const [a2hs, setA2hs] = useState(false);
   const openInstall = () => setA2hs(true);
   const [exp, setExp] = useState(null);
-  useEffect(() => { if (!exp) return; const t = setTimeout(() => window.print(), 120); return () => clearTimeout(t); }, [exp]);
+  useEffect(() => { if (!exp) return; const t = setTimeout(() => printDoc(), 120); return () => clearTimeout(t); }, [exp]);
   const exportPdf = picks => setExp({ picks, n: Date.now() });
+  // The web-page export embeds the font and wordmark, so fetch them ahead of the tap.
+  useEffect(() => { const t = setTimeout(warmWebAssets, 1200); return () => clearTimeout(t); }, []);
   const items = planItems(st);
   const o = computeOrder(sh, Date.now());
   const [hasPrev, setHasPrev] = useState(() => { try { return !!localStorage.getItem('wpda-hub-prev'); } catch (e) { return false; } });
@@ -354,6 +390,7 @@ function App() {
     if (d > 0) { const b = key.split(':'); const p = SHOP_BY_SKU[b[0]]; if (p) flash('Added ' + p.name + ' · ' + (b[1] === '1' ? '1 vial' : b[1] + ' vials')); }
   };
   const act = {
+    flash,
     add: id => set(s => {
       if (id === 'stack') {
         const ids = ['reta', 'tesa', 'mots', 'klow']; const w = s.bac.stack || BAC_BASE;
@@ -395,7 +432,7 @@ function App() {
   const reorder = sku => { if (!sku) return; bump(sku + ':1', 1); location.hash = '#/order'; };
   const planReady = o.items.some(it => SKU_PROTOCOL[it.p.sku]);
 
-  const expSt = exp ? Object.assign({}, st, { order: exp.picks.map(x => x[0]), customs: {}, own: {}, mode: {}, notes: '', inotes: {}, sizeIdx: Object.assign({}, st.sizeIdx, exp.picks.reduce((a, x) => { a[x[0]] = x[1]; return a; }, {})) }) : null;
+  const expSt = exp ? stForPicks(st, exp.picks) : null;
   const docSt = Object.assign({}, expSt || st, { preview: !exp && st.preview && route.page === 'build' });
   const docItems = expSt ? planItems(expSt) : items;
   let page;
@@ -404,10 +441,10 @@ function App() {
   else if (route.page === 'checkout') page = html`<${CheckoutPage} sh=${sh} setSh=${setSh} o=${o} onSent=${onSent} />`;
   else if (route.page === 'pay') page = html`<${PayPage} sh=${sh} setSh=${setSh} hasPlan=${items.length > 0} />`;
   else if (route.page === 'guide') page = html`<${Guide} st=${st} set=${set} chapter=${route.chapter} />`;
-  else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} openInstall=${openInstall} />`;
+  else if (route.page === 'plan') page = html`<${PlanPage} st=${st} set=${set} items=${items} onReorder=${reorder} openInstall=${openInstall} flash=${flash} />`;
   else if (route.page === 'build') page = html`<${Builder} st=${st} set=${set} items=${items} act=${act} />`;
   else if (route.page === 'coa') page = html`<${CoaSection} />`;
-  else if (route.page === 'protocols') page = html`<${ProtocolsPage} st=${st} exportPdf=${exportPdf} openInstall=${openInstall} />`;
+  else if (route.page === 'protocols') page = html`<${ProtocolsPage} st=${st} exportPdf=${exportPdf} openInstall=${openInstall} flash=${flash} />`;
   else page = html`<${ShopHero} /><${ShopSection} sh=${sh} setSh=${setSh} bump=${bump} o=${o} /><${AfterOrder} /><${GuideCard} />`;
 
   return html`${route.page === 'shop' ? html`<${Ticker} />` : null}<${Header} route=${route} count=${o.packCount} total=${o.total} planCount=${items.length} />

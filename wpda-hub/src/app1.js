@@ -126,6 +126,7 @@ function customItem(key, m, p) {
     note: p ? (p.note || '') : '',
     prep: L.water ? 'Add ' + trimNum(L.water, 2) + 'ml bac water' : '',
     vialStart: L.vialStart, vialTop: L.vialTop, vialsNeeded: L.vialsNeeded,
+    vialAmt: L.vial, weeklyAt: wk => { const r = rowForWeekCustom(L, wk); return r && r.weekly > 0 ? r.weekly : null; },
     week: wk => {
       const r = rowForWeekCustom(L, wk);
       if (!r) return null;
@@ -161,6 +162,11 @@ function listedItem(p, st) {
     headers: v.t.headers, tableRows: v.t.rows, rows, note: p.note || '', specs: v.specs,
     prep: oral ? 'No mixing — ' + (specOf(p, 'Form') || 'oral').toLowerCase() : (water ? 'Add ' + trimNum(water, 2) + 'ml bac water' : ''),
     vialStart: vw(st0), vialTop: vw(stN), vialsNeeded: null, sizeIdx: v.idx, bacOk: v.can, bac: v.w,
+    // weekly amount for a given week, only where the table says which weeks a row covers
+    vialAmt: vs ? vs.v : null,
+    weeklyAt: wk => { const ri = rowIndexForWeek(v.t.rows, wk); const r = parseWeekRange(v.t.rows[ri][0]); const s = steps[ri]; return r && wk >= r[0] && wk <= r[1] && s && vs && s.unit === vs.u && num(s.weekly) > 0 ? num(s.weekly) : null; },
+    bottle: oral ? parseInt((String(p.sub).match(/(\d+)\s*per bottle/i) || [])[1], 10) || null : null,
+    capsAt: wk => { const ri = rowIndexForWeek(v.t.rows, wk); const row = v.t.rows[ri]; const r = parseWeekRange(row[0]); return r && wk >= r[0] && wk <= r[1] ? capsPerWeek(row[row.length - 1]) : null; },
     week: wk => {
       const ri = rowIndexForWeek(v.t.rows, wk);
       const r = v.t.rows[ri];
@@ -232,7 +238,8 @@ function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash, exportPdf }) 
   const coa = COAS[sku];
   const sizes = p && PROTOCOL_SKUS[p.id] ? PROTOCOL_SKUS[p.id].filter(Boolean) : [];
   const first = it ? it.rows[0] : null;
-  const facts = it ? [['How often', it.freqText], ['When', it.timing || it.whenLabel], ['Site', it.site], ['Duration', it.duration]] : [];
+  const sup = it ? protocolSupply(it) : null;
+  const facts = it ? [['How often', it.freqText], ['When', it.timing || it.whenLabel], ['Site', it.site], ['Duration', it.duration]].concat(sup.count ? [[it.oral ? 'Bottles needed' : 'Vials needed', sup.text + (sup.forText ? ' ' + sup.forText : '')]] : []) : [];
   const bac = sp.sku === 'NA1000' ? '10ml' : (it && it.oral ? '' : '3ml');
   const t = tab || 'use';
   return html`<div class="wrap page narrow">
@@ -257,6 +264,7 @@ function ProductPage({ sku, st, set, sh, bump, tab, setTab, flash, exportPdf }) 
       <div role="tabpanel" class="stack g16" style="margin-top:16px">
         ${t === 'use' ? html`
           <dl class="facts4" style="margin:0">${facts.map(f => html`<div class="fact"><dt>${f[0]}</dt><dd>${f[1] || '—'}</dd></div>`)}</dl>
+          ${sup.shelf ? html`<p class="tiny muted" style="margin-top:-8px">Each vial is used within 4 weeks of mixing, so the count allows for what's left over in the early weeks.</p>` : null}
           <div class="stack g8"><h2 style="font-size:19px;letter-spacing:-.02em">Dose by week${it.bacOk ? html` <span class="muted" style="font-weight:500;font-size:14px">mixed with ${trimNum(it.water, 2)}ml bac water</span>` : ''}</h2><${Ladder} rows=${it.rows} syringes=${!it.oral} /></div>
           ${p.note ? html`<div class="note">${p.note}</div>` : null}
           <div class="row g8 wrapx">${st.order.indexOf(p.id) > -1 ? html`<a class="btn soft" href="#/plan"><${Icon} name="check" size=${16} /> In My plan</a>`

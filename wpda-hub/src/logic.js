@@ -154,7 +154,7 @@ function computeLadder(m) {
   const unit = m.unit === 'iu' ? 'iu' : 'mg';
   const vial = num(m.vial), water = num(m.water);
   const perMl = vial > 0 && water > 0 ? vial / water : null;
-  let wk = 1, open = false, total = 0, allDefined = true;
+  let wk = 1, open = false, total = 0, allDefined = true; const run = [];
   const rows = (m.steps || []).map((s, i) => {
     const f = FREQ[s.freq] || FREQ['1'];
     const weekly = num(s.weekly);
@@ -168,7 +168,7 @@ function computeLadder(m) {
       if (n > 0) { end = wk + n - 1; label = start === end ? 'Week ' + start : 'Weeks ' + start + '–' + end; wk += n; }
       else { label = 'Week ' + start + '+'; open = true; }
     }
-    if (n > 0 && weekly > 0) total += n * weekly; else allDefined = false;
+    if (n > 0 && weekly > 0) { total += n * weekly; for (let k = 0; k < n; k++) run.push(weekly); } else allDefined = false;
     let warn = '';
     if (units !== null && units > 100) warn = 'More than one full 1ml syringe. Split it into two draws or use less bac water.';
     else if (units !== null && units > 0 && units < 2) warn = 'A very small draw is hard to measure. Add more bac water so each dose is bigger.';
@@ -185,7 +185,7 @@ function computeLadder(m) {
   return {
     unit, vial, water, perMl, rows,
     conc: perMl ? fmtAmt(perMl, unit) + ' per ml · 10 units = ' + fmtAmt(perMl / 10, unit) : '',
-    vialsNeeded: allDefined && vial > 0 && rows.length ? Math.ceil(total / vial - 1e-9) : null,
+    vialsNeeded: allDefined && vial > 0 && rows.length ? vialsForRun(run, vial) : null,
     totalWeeks: allDefined ? wk - 1 : null,
     vialStart: firstW ? firstW.vialWeeks : null,
     vialTop: lastW ? lastW.vialWeeks : null
@@ -199,6 +199,80 @@ function rowForWeekCustom(ladder, wk) {
     if (wk >= r.start && (r.end === null || wk <= r.end)) return r;
   }
   return rows.length ? rows[rows.length - 1] : null;
+}
+
+// ---------- How long a protocol runs and how many vials it takes ----------
+
+// Once mixed, a vial is used within about 4 weeks (the storage rule shown across the site),
+// so whatever is still in a vial 4 weeks after mixing is not counted on.
+const MIXED_WEEKS = 4;
+
+function parseDuration(txt) {
+  const s = String(txt || '');
+  let m = s.match(/(\d+)\s*[–-]\s*(\d+)\s*weeks?/i);
+  if (m) return { min: parseInt(m[1], 10), max: parseInt(m[2], 10), open: false };
+  m = s.match(/(\d+)\s*\+\s*weeks?/i);
+  if (m) return { min: parseInt(m[1], 10), max: parseInt(m[1], 10), open: true };
+  m = s.match(/(\d+)\s*weeks?/i);
+  if (m) return { min: parseInt(m[1], 10), max: parseInt(m[1], 10), open: false };
+  return null;
+}
+
+// Vials to cover a list of weekly amounts. A dose can finish one vial and start the next.
+function vialsForRun(weekly, vialAmt) {
+  let vials = 0, left = 0, age = 0;
+  weekly.forEach(amount => {
+    if (left > 1e-9 && age >= MIXED_WEEKS) left = 0;
+    let need = amount;
+    while (need > 1e-9) {
+      if (left <= 1e-9) { vials++; left = vialAmt; age = 0; }
+      const use = Math.min(left, need); left -= use; need -= use;
+    }
+    age++;
+  });
+  return vials;
+}
+
+// Capsules a week from a cell such as "1 capsule twice daily". Null when it depends on training days.
+function capsPerWeek(cell) {
+  const s = String(cell || '');
+  const m = s.match(/(\d+)\s*capsules?/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  if (/twice daily/i.test(s)) return n * 14;
+  const on = s.match(/(\d)\s*days on/i);
+  if (on) return n * parseInt(on[1], 10);
+  return /daily/i.test(s) ? n * 7 : null;
+}
+
+// it: a plan item (listed, own titration or custom). Returns the duration and, where the doses
+// are known for every week of it, how many vials (or bottles of capsules) the protocol takes.
+function protocolSupply(it) {
+  const dur = parseDuration(it.duration);
+  const word = it.oral ? 'bottle' : 'vial';
+  const out = { dur, durText: it.duration || '', count: null, word, text: '', forText: '', line: it.duration || '', shelf: false };
+  if (!dur) return out;
+  const countFor = n => {
+    const a = [];
+    for (let wk = 1; wk <= n; wk++) {
+      const w = it.oral ? (it.capsAt ? it.capsAt(wk) : null) : (it.weeklyAt ? it.weeklyAt(wk) : null);
+      if (!(w > 0)) return null;
+      a.push(w);
+    }
+    const total = a.reduce((x, y) => x + y, 0);
+    if (it.oral) return it.bottle > 0 ? [Math.max(1, Math.ceil(total / it.bottle - 1e-9)), false] : null;
+    if (!(it.vialAmt > 0)) return null;
+    const v = vialsForRun(a, it.vialAmt);
+    return [v, v > Math.ceil(total / it.vialAmt - 1e-9)];
+  };
+  const lo = countFor(dur.min), hi = dur.max === dur.min ? lo : countFor(dur.max);
+  if (!lo || !hi) return out;
+  out.count = [lo[0], hi[0]];
+  out.shelf = lo[1] || hi[1];
+  out.text = (lo[0] === hi[0] ? lo[0] : lo[0] + '–' + hi[0]) + ' ' + word + (hi[0] === 1 ? '' : 's');
+  out.forText = dur.open ? 'for the first ' + dur.min + ' weeks' : '';
+  out.line = out.durText + ' · ' + out.text + (out.forText ? ' ' + out.forText : '');
+  return out;
 }
 
 function weeksText(w) {

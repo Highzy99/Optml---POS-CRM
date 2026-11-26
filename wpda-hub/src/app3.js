@@ -7,7 +7,7 @@ function TitrationEditor({ m, onChange }) {
   const addStep = () => { const last = m.steps[m.steps.length - 1] || { weeks: '4', weekly: '', freq: '1' }; onChange({ steps: m.steps.concat([{ weeks: '4', weekly: last.weekly, freq: last.freq }]) }); };
   const delStep = i => onChange({ steps: m.steps.filter((_, j) => j !== i) });
   return html`<div class="stack g10">
-    <div class="row g8" style="justify-content:space-between"><div class="lbl">Titration · weekly dose by phase</div><span class="tiny muted">${L.totalWeeks ? L.totalWeeks + ' weeks planned' : 'Last phase ongoing'}</span></div>
+    <div class="row g8" style="justify-content:space-between"><div class="lbl">Titration · weekly dose by phase</div><span class="tiny muted">${L.totalWeeks ? L.totalWeeks + ' weeks planned' + (L.vialsNeeded ? ' · ' + L.vialsNeeded + ' vial' + (L.vialsNeeded === 1 ? '' : 's') : '') : 'Last phase ongoing'}</span></div>
     ${m.steps.map((s, i) => { const r = L.rows[i]; return html`<div class="tstep">
       <div class="row g8"><b style="color:var(--ink);font-size:14px">Phase ${i + 1}</b><span class="tiny muted grow">${r ? r.label : ''}</span>
         ${m.steps.length > 1 ? html`<button type="button" class="iconbtn sm" aria-label=${'Remove phase ' + (i + 1)} onClick=${() => delStep(i)}><${Icon} name="close" size=${16} /></button>` : null}</div>
@@ -60,6 +60,7 @@ function ItemEditor({ it, st, set, act }) {
         ${p.sizes ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">Vial size</div><${Pills} label="Vial size" value=${it.sizeIdx} options=${p.sizes.map((s, i) => ({ v: i, label: s }))} onPick=${i => set(s => ({ sizeIdx: Object.assign({}, s.sizeIdx, { [p.id]: i }) }))} /></div>` : null}
         ${it.bacOk ? html`<div class="stack g8"><div class="small" style="font-weight:600;color:var(--ink)">Bac water added</div><${Pills} label="Bac water" value=${it.bac} options=${BAC_OPTIONS.map(v => ({ v, label: v + 'ml' }))} onPick=${v => set(s => ({ bac: Object.assign({}, s.bac, { [p.id]: v }) }))} /></div>` : null}
         ${it.conc ? html`<div class="okbox">${it.vial} + ${trimNum(it.water, 2)}ml water = <b>${it.conc}</b></div>` : null}
+        ${protocolSupply(it).durText ? html`<div class="small" style="color:var(--ink);font-weight:600">Full protocol: ${protocolSupply(it).line}</div>` : null}
         <${Ladder} rows=${it.rows} syringes=${!it.oral} />` : null}
       ${it.kind === 'own' ? html`<${ModelFields} m=${it.model} onChange=${patch => act.model(it.key, patch)} />` : null}
       ${it.kind === 'custom' ? html`<${ModelFields} m=${it.model} isCustom onChange=${patch => act.model(it.key, patch)} />` : null}
@@ -69,7 +70,7 @@ function ItemEditor({ it, st, set, act }) {
 }
 
 function planLink(st) {
-  return location.origin + location.pathname + '#plan=' + encodePlan(planPayload(st));
+  return location.origin + location.pathname + '#plan=' + encodePlan(planPayload(Object.assign({}, st, { start: '' })));
 }
 
 function Builder({ st, set, items, act }) {
@@ -89,14 +90,13 @@ function Builder({ st, set, items, act }) {
       <p class="lead">Pick from the range or add anything that is not on the list, set weekly doses and titrations, then export a client-ready PDF or send a link with a built-in daily tracker.</p></div>
     ${st.shared ? html`<div class="banner"><b style="color:var(--ink);font-size:17px">${st.client ? 'Protocol for ' + st.client : 'A protocol was shared with you'}${st.by ? ' · prepared by ' + st.by : ''}</b>
       <p class="small">Everything below is your plan. Your daily tracker is at the top of the page, and you can export the full PDF guide any time.</p>
-      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Export PDF</button><a class="btn sm outline" href="#/plan">Open my tracker</a>
+      <div class="row g8 wrapx"><button type="button" class="btn sm" onClick=${() => printDoc()}><${Icon} name="print" size=${16} /> Export PDF</button><a class="btn sm outline" href="#/plan">Open my tracker</a>
       ${act.hasPrev ? html`<button type="button" class="btn sm ghost" onClick=${act.restorePrev}>Restore my previous draft</button>` : null}</div></div>` : null}
 
     <div class="bstep"><span class="n">1</span><div class="stack g12"><div><h3>Who it is for</h3><p class="small muted">Appears on the cover of the PDF and in the shared link.</p></div>
       <div class="fgrid">
         <label class="field"><span>Client name</span><input class="input" autocomplete="off" placeholder="e.g. Sarah M" value=${st.client} onInput=${e => set({ client: e.target.value })} /></label>
         <label class="field"><span>Prepared by</span><input class="input" placeholder="Your name or clinic" value=${st.by} onInput=${e => set({ by: e.target.value })} /></label>
-        <label class="field"><span>Start date</span><input class="input" type="date" value=${st.start} onInput=${e => set({ start: e.target.value })} /></label>
       </div>
       <label class="field"><span>Notes for the client</span><textarea class="textarea" placeholder="Goals, check-in dates, bloodwork reminders, anything they should know." value=${st.notes} onInput=${e => set({ notes: e.target.value })}></textarea></label>
     </div></div>
@@ -109,10 +109,11 @@ function Builder({ st, set, items, act }) {
         : html`<div class="empty">Nothing in the plan yet. Tap a compound above, add one from the catalogue, or add a custom compound.</div>`}
     </div></div>
 
-    <div class="bstep"><span class="n">3</span><div class="stack g16"><div><h3>Export and share</h3><p class="small muted">The PDF includes the plan, a four-week tracker, a supplies list and the full mixing and injection guide. The link opens this page with the plan loaded and a daily tracker.</p></div>
-      ${items.length ? html`<div class="summary"><span>${items.length} compound${items.length === 1 ? '' : 's'}</span><span>${injPerWeek} injection${injPerWeek === 1 ? '' : 's'} a week to start</span>${st.start ? html`<span>Starts ${fmtDay(parseDay(st.start))}</span>` : html`<span style="background:var(--warn-soft);color:var(--warn-text)">Add a start date for a dated tracker</span>`}</div>` : null}
+    <div class="bstep"><span class="n">3</span><div class="stack g16"><div><h3>Export and share</h3><p class="small muted">The PDF and the web page both hold the plan, a four-week tracker, a supplies list and the full mixing and injection guide. The web page is one file that fits any screen, with boxes to tick. The link opens this page with the plan loaded and a daily tracker.</p></div>
+      ${items.length ? html`<div class="summary"><span>${items.length} compound${items.length === 1 ? '' : 's'}</span><span>${injPerWeek} injection${injPerWeek === 1 ? '' : 's'} a week to start</span></div>` : null}
       <div class="row g8 wrapx">
-        <button type="button" class="btn" disabled=${!items.length} onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Export PDF</button>
+        <button type="button" class="btn" disabled=${!items.length} onClick=${() => printDoc()}><${Icon} name="print" size=${16} /> Export PDF</button>
+        <button type="button" class="btn outline" disabled=${!items.length} onClick=${() => exportWeb(st, act.flash)}><${Icon} name="share" size=${16} /> Export web page</button>
         <button type="button" class="btn outline" disabled=${!items.length} onClick=${share}><${Icon} name="link" size=${16} /> Share link</button>
         <button type="button" class="btn ghost" disabled=${!items.length} onClick=${copy}>${copied || 'Copy link'}</button>
         <button type="button" class="btn ghost" disabled=${!items.length} aria-pressed=${String(st.preview)} onClick=${() => set({ preview: !st.preview })}><${Icon} name="eye" size=${16} /> ${st.preview ? 'Hide preview' : 'Preview document'}</button>
