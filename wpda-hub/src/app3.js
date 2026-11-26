@@ -70,7 +70,7 @@ function ItemEditor({ it, st, set, act }) {
 }
 
 function planLink(st) {
-  return location.origin + location.pathname + '#plan=' + encodePlan(planPayload(st));
+  return location.origin + location.pathname + '#plan=' + encodePlan(planPayload(Object.assign({}, st, { start: '' })));
 }
 
 function Builder({ st, set, items, act }) {
@@ -97,7 +97,6 @@ function Builder({ st, set, items, act }) {
       <div class="fgrid">
         <label class="field"><span>Client name</span><input class="input" autocomplete="off" placeholder="e.g. Sarah M" value=${st.client} onInput=${e => set({ client: e.target.value })} /></label>
         <label class="field"><span>Prepared by</span><input class="input" placeholder="Your name or clinic" value=${st.by} onInput=${e => set({ by: e.target.value })} /></label>
-        <label class="field"><span>Start date</span><input class="input" type="date" value=${st.start} onInput=${e => set({ start: e.target.value })} /></label>
       </div>
       <label class="field"><span>Notes for the client</span><textarea class="textarea" placeholder="Goals, check-in dates, bloodwork reminders, anything they should know." value=${st.notes} onInput=${e => set({ notes: e.target.value })}></textarea></label>
     </div></div>
@@ -111,7 +110,7 @@ function Builder({ st, set, items, act }) {
     </div></div>
 
     <div class="bstep"><span class="n">3</span><div class="stack g16"><div><h3>Export and share</h3><p class="small muted">The PDF includes the plan, a four-week tracker, a supplies list and the full mixing and injection guide. The link opens this page with the plan loaded and a daily tracker.</p></div>
-      ${items.length ? html`<div class="summary"><span>${items.length} compound${items.length === 1 ? '' : 's'}</span><span>${injPerWeek} injection${injPerWeek === 1 ? '' : 's'} a week to start</span>${st.start ? html`<span>Starts ${fmtDay(parseDay(st.start))}</span>` : html`<span style="background:var(--warn-soft);color:var(--warn-text)">Add a start date for a dated tracker</span>`}</div>` : null}
+      ${items.length ? html`<div class="summary"><span>${items.length} compound${items.length === 1 ? '' : 's'}</span><span>${injPerWeek} injection${injPerWeek === 1 ? '' : 's'} a week to start</span></div>` : null}
       <div class="row g8 wrapx">
         <button type="button" class="btn" disabled=${!items.length} onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Export PDF</button>
         <button type="button" class="btn outline" disabled=${!items.length} onClick=${share}><${Icon} name="link" size=${16} /> Share link</button>

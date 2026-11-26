@@ -331,7 +331,8 @@ footer.foot a { color: var(--white); }
 .top .plan { min-height: 40px; padding: 0 6px 0 16px; gap: 10px; font-weight: 600; }
 .top .plan.outline { padding: 0 16px; }
 .top .plan .count { min-width: 28px; height: 28px; font-size: 13px; }
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: rgba(255,255,255,.96); backdrop-filter: saturate(1.4) blur(16px); -webkit-backdrop-filter: saturate(1.4) blur(16px); border-top: 1px solid var(--n200); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 8px env(safe-area-inset-bottom); }
+html.typing .tabbar, html.typing .tray { display: none !important; }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: #fff; border-top: 1px solid var(--n200); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 8px env(safe-area-inset-bottom); }
 .tabbar a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 60px; font-size: 11.5px; font-weight: 500; color: var(--n500); text-decoration: none; }
 .tabbar a::before { content: ''; position: absolute; top: -1px; left: 50%; width: 28px; height: 3px; margin-left: -14px; border-radius: 0 0 3px 3px; background: transparent; }
 .tabbar a[aria-current="page"] { color: var(--ink); font-weight: 700; }
@@ -2572,7 +2573,7 @@ function ItemEditor({ it, st, set, act }) {
 }
 
 function planLink(st) {
-  return location.origin + location.pathname + '#plan=' + encodePlan(planPayload(st));
+  return location.origin + location.pathname + '#plan=' + encodePlan(planPayload(Object.assign({}, st, { start: '' })));
 }
 
 function Builder({ st, set, items, act }) {
@@ -2599,7 +2600,6 @@ function Builder({ st, set, items, act }) {
       <div class="fgrid">
         <label class="field"><span>Client name</span><input class="input" autocomplete="off" placeholder="e.g. Sarah M" value=${st.client} onInput=${e => set({ client: e.target.value })} /></label>
         <label class="field"><span>Prepared by</span><input class="input" placeholder="Your name or clinic" value=${st.by} onInput=${e => set({ by: e.target.value })} /></label>
-        <label class="field"><span>Start date</span><input class="input" type="date" value=${st.start} onInput=${e => set({ start: e.target.value })} /></label>
       </div>
       <label class="field"><span>Notes for the client</span><textarea class="textarea" placeholder="Goals, check-in dates, bloodwork reminders, anything they should know." value=${st.notes} onInput=${e => set({ notes: e.target.value })}></textarea></label>
     </div></div>
@@ -2613,7 +2613,7 @@ function Builder({ st, set, items, act }) {
     </div></div>
 
     <div class="bstep"><span class="n">3</span><div class="stack g16"><div><h3>Export and share</h3><p class="small muted">The PDF includes the plan, a four-week tracker, a supplies list and the full mixing and injection guide. The link opens this page with the plan loaded and a daily tracker.</p></div>
-      ${items.length ? html`<div class="summary"><span>${items.length} compound${items.length === 1 ? '' : 's'}</span><span>${injPerWeek} injection${injPerWeek === 1 ? '' : 's'} a week to start</span>${st.start ? html`<span>Starts ${fmtDay(parseDay(st.start))}</span>` : html`<span style="background:var(--warn-soft);color:var(--warn-text)">Add a start date for a dated tracker</span>`}</div>` : null}
+      ${items.length ? html`<div class="summary"><span>${items.length} compound${items.length === 1 ? '' : 's'}</span><span>${injPerWeek} injection${injPerWeek === 1 ? '' : 's'} a week to start</span></div>` : null}
       <div class="row g8 wrapx">
         <button type="button" class="btn" disabled=${!items.length} onClick=${() => window.print()}><${Icon} name="print" size=${16} /> Export PDF</button>
         <button type="button" class="btn outline" disabled=${!items.length} onClick=${share}><${Icon} name="link" size=${16} /> Share link</button>
@@ -2634,11 +2634,6 @@ function Builder({ st, set, items, act }) {
 }
 
 // ================= Export document (screen preview + print/PDF) =================
-
-function weekDates(st) {
-  const s = parseDay(st.start);
-  return wk => Array.from({ length: 7 }, (_, i) => s ? addDays(s, (wk - 1) * 7 + i) : null);
-}
 
 function supplyPlan(items) {
   // First four weeks: injections, vials, water.
@@ -2668,20 +2663,18 @@ function DocSyringeRow({ label, units }) {
 function Doc({ st, items }) {
   if (!items.length) return null;
   const generated = new Date();
-  const start = parseDay(st.start);
-  const dates = weekDates(st);
   const sup = supplyPlan(items);
   const title = st.client ? 'Protocol for ' + st.client : 'Your protocol';
   const groups = WHENS.map(w => ({ key: w[0], label: w[1], items: items.filter(i => i.when === w[0]) })).filter(g => g.items.length);
   const firstDraw = it => { const w = it.week(1); return w ? w.draw : ''; };
-  const dayHead = (wk, i) => { const d = dates(wk)[i]; return d ? DOW[d.getDay()] + ' ' + d.getDate() : 'Day ' + ((wk - 1) * 7 + i + 1); };
+  const dayHead = (wk, i) => 'Day ' + ((wk - 1) * 7 + i + 1);
   return html`<div class=${'doc' + (st.preview ? ' show' : '')} aria-label="Protocol document preview"><div class="wrap"><div class="paper">
 
     <div class="dpage">
       <div class="cover">
         <div class="row g12" style="justify-content:space-between"><img src="assets/brand/wordmark-dark.svg" alt="World Peptide Dosage Association" style="height:30px;width:auto" /><img src="assets/brand/label-circle.png" alt="" style="width:64px;height:64px" /></div>
         <div class="stack g8"><div class="lbl">Peptide protocol</div><h1>${title}</h1>
-          <div class="dmeta">${st.by ? html`<span><b>Prepared by</b> ${st.by}</span>` : null}<span><b>Starts</b> ${start ? fmtLong(start) : 'on the day you choose'}</span><span><b>Created</b> ${fmtLong(generated)}</span></div></div>
+          <div class="dmeta">${st.by ? html`<span><b>Prepared by</b> ${st.by}</span>` : null}<span><b>Created</b> ${fmtLong(generated)}</span></div></div>
       </div>
       <h3 class="dh3">At a glance</h3>
       <div class="tblwrap"><table class="tbl"><thead><tr><th scope="col">Compound</th><th scope="col">Vial and water</th><th scope="col">First dose</th><th scope="col">Draw</th><th scope="col">When</th></tr></thead>
@@ -2692,7 +2685,7 @@ function Doc({ st, items }) {
         <li><span class="box"></span><span>Check your supplies against the next page. Bacteriostatic water comes free with every optml vial.</span></li>
         <li><span class="box"></span><span>Mix each vial with the volume of bac water shown for it (step-by-step guide near the end). Label it with the date.</span></li>
         <li><span class="box"></span><span>Learn to read the syringe: 100 units is 1ml, every unit is 0.01ml.</span></li>
-        <li><span class="box"></span><span>First injection: ${items.filter(i => !i.oral).map(i => i.name + ' ' + firstDraw(i).split(' · ')[0]).join(', ') || 'see your plan'}${start ? ' on ' + fmtDay(start) : ''}.</span></li>
+        <li><span class="box"></span><span>First injection: ${items.filter(i => !i.oral).map(i => i.name + ' ' + firstDraw(i).split(' · ')[0]).join(', ') || 'see your plan'}.</span></li>
         <li><span class="box"></span><span>Tick each dose off in the four-week tracker and rotate your injection site every time.</span></li>
       </ul>
       <p class="dfoot">${DISCLAIMER}</p>
@@ -2731,7 +2724,7 @@ function Doc({ st, items }) {
 
     <div class="dpage">
       <h2 class="dh">Four-week tracker</h2><p class="dsub">Tick each dose as you take it. The number is what to draw on a 1ml insulin syringe. Write the site you used underneath if it helps you rotate.</p>
-      ${[1, 2, 3, 4].map(wk => html`<div class="wkblock"><h3 class="dh3">Week ${wk}${start ? ' · from ' + fmtDay(dates(wk)[0]) : ''}</h3>
+      ${[1, 2, 3, 4].map(wk => html`<div class="wkblock"><h3 class="dh3">Week ${wk}</h3>
         <div class="tblwrap"><table class="tbl track"><thead><tr><th scope="col">Compound</th>${Array.from({ length: 7 }, (_, i) => html`<th scope="col">${dayHead(wk, i)}</th>`)}</tr></thead>
         <tbody>${items.map(it => { const w = it.week(wk); return html`<tr><td>${it.name}</td>${Array.from({ length: 7 }, (_, i) => w && w.days.indexOf(i) > -1 ? html`<td class="on"><span class="box"></span>${w.perDay > 1 ? html`<span class="box"></span>` : null}${shortDraw(w.draw)}</td>` : html`<td></td>`)}</tr>`; })}</tbody></table></div></div>`)}
     </div>
@@ -2801,16 +2794,10 @@ function Tracker({ st, set, items, onReorder }) {
   const [dayOff, setDayOff] = useState(0);
   useEffect(() => { setTr(loadTrack(st.planId)); }, [st.planId]);
   const saveTr = next => { setTr(next); try { localStorage.setItem(trackKey(st.planId), JSON.stringify(next)); } catch (e) {} };
-  const start = parseDay(st.start);
   const t0 = today0();
-  if (!start) {
-    return html`<div><div class="banner">
-      <div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h2 id="h-today" style="font-size:28px">Ready when you are</h2>
-      <p class="small">Set a start date and this becomes a daily tracker: what to take today, what to draw, where to inject next and when to reorder.</p>
-      <div class="pair"><button type="button" class="btn" onClick=${() => set({ start: isoDay(t0) })}>Start today</button>
-        <label class="btn outline datebtn"><${Icon} name="plan" size=${17} /> Pick a date<input type="date" aria-label="Pick a start date" value=${st.start} onClick=${e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (x) {} }} onInput=${e => set({ start: e.target.value })} /></label></div>
-    </div></div>`;
-  }
+  // Nothing to set up: day 1 is today until the first dose is ticked, then the plan counts from that day.
+  const started = parseDay(st.start);
+  const start = started || t0;
   const day = addDays(t0, dayOff);
   const dk = isoDay(day);
   const di = daysBetween(start, day);
@@ -2823,17 +2810,24 @@ function Tracker({ st, set, items, onReorder }) {
   const log = d => {
     const L = Object.assign({}, tr.logs);
     const dayLogs = Object.assign({}, L[dk] || {});
-    if (dayLogs[d.id]) { delete dayLogs[d.id]; L[dk] = dayLogs; saveTr(Object.assign({}, tr, { logs: L })); return; }
+    if (dayLogs[d.id]) {
+      delete dayLogs[d.id]; L[dk] = dayLogs;
+      // un-ticking the only dose puts the plan back to "not started"
+      const none = tr.auto && !Object.keys(L).some(k => Object.keys(L[k]).length);
+      saveTr(Object.assign({}, tr, { logs: L, auto: none ? false : tr.auto })); if (none) set({ start: '' });
+      return;
+    }
     dayLogs[d.id] = { site: d.oral || d.it.oral ? 'Oral' : suggested, amt: d.w.perAmt || 0, t: Date.now() };
     L[dk] = dayLogs;
-    saveTr(Object.assign({}, tr, { logs: L, rot: d.it.oral ? tr.rot : (tr.rot || 0) + 1 }));
+    saveTr(Object.assign({}, tr, { logs: L, rot: d.it.oral ? tr.rot : (tr.rot || 0) + 1, auto: started ? tr.auto : true }));
+    if (!started) set({ start: isoDay(t0) });
   };
   const setSite = (d, site) => { const L = Object.assign({}, tr.logs); L[dk] = Object.assign({}, L[dk], { [d.id]: Object.assign({}, L[dk][d.id], { site }) }); saveTr(Object.assign({}, tr, { logs: L })); };
   const strip = Array.from({ length: 7 }, (_, i) => { const d = addDays(t0, i - 3); const k = isoDay(d); const ds = dosesOn(items, start, d); const n = ds.filter(x => (tr.logs[k] || {})[x.id]).length; return { d, k, off: i - 3, total: ds.length, n }; });
   // Vial supply per injectable item
   const supply = items.filter(it => !it.oral).map(it => {
     const vialAmt = it.kind === 'listed' ? (vialStrength(it.p, it.sizeIdx || 0) || {}).v : num(it.model.vial);
-    const mixedOn = tr.mixed[it.key] || st.start;
+    const mixedOn = tr.mixed[it.key] || isoDay(start);
     let used = 0;
     Object.keys(tr.logs).forEach(k => { if (k >= mixedOn) Object.keys(tr.logs[k]).forEach(id => { if (id.split(':')[0] === it.key) used += tr.logs[k][id].amt || 0; }); });
     const w = it.week(wk);
@@ -2845,8 +2839,8 @@ function Tracker({ st, set, items, onReorder }) {
   const oralSupply = items.filter(it => it.oral).map(it => ({ it, sup: protocolSupply(it) }));
   const weekOf = sup => di >= 0 && sup.dur ? (wk <= sup.dur.max ? 'Week ' + wk + ' of ' + (sup.dur.min === sup.dur.max ? sup.dur.max + (sup.dur.open ? '+' : '') : sup.dur.min + '–' + sup.dur.max) : (sup.dur.open ? 'Week ' + wk : 'Past week ' + sup.dur.max)) : '';
   return html`<div>
-    <div class="page-head"><div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h1 id="h-today">${di < 0 ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h1>
-      <p class="muted">${di < 0 ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before.' : 'Week ' + wk + ' · day ' + (di + 1) + '. Tick each dose as you take it.'}</p></div>
+    <div class="page-head"><div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h1 id="h-today">${di < 0 && started ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h1>
+      <p class="muted">${di < 0 ? (started ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before.' : 'Your plan starts the day you tick your first dose.') : 'Week ' + wk + ' · day ' + (di + 1) + '. ' + (started ? 'Tick each dose as you take it.' : 'Your plan starts the day you tick your first dose.')}</p></div>
     <div class="banner" style="gap:16px">
       <div class="row g16"><${Ring} done=${done} total=${doses.length} />
         <div class="grow">${next ? html`<div class="lbl">Up next</div><div style="font-size:21px;font-weight:700;color:var(--ink);line-height:1.2">${next.it.name}</div><div class="small">${next.slot} · ${next.w.dose}${next.units !== null ? ' · draw ' + String(next.w.draw).split(' · ')[0] : ''}</div>${!next.it.oral ? html`<div class="tiny muted" style="margin-top:2px">Inject at: <b style="color:var(--ink)">${suggested}</b></div>` : null}`
@@ -2884,6 +2878,24 @@ function Tracker({ st, set, items, onReorder }) {
   </div>`;
 }
 
+
+// ---------- Bottom bars and the iPhone keyboard ----------
+// iOS can leave a fixed bar floating mid-screen once the keyboard closes. The bars hide while you type
+// and are laid out again once the screen has settled; the same happens when the browser's own bars resize the page.
+(function () {
+  const root = document.documentElement; let timer = null, vvTimer = null;
+  const typing = el => !!el && (el.tagName === 'TEXTAREA' || el.isContentEditable || (el.tagName === 'INPUT' && !/^(checkbox|radio|file|button|submit|reset|range|color|date|month|week|time|datetime-local)$/i.test(el.type || 'text')));
+  const relay = () => document.querySelectorAll('.tabbar, .tray').forEach(el => { const d = el.style.display; el.style.display = 'none'; void el.offsetHeight; el.style.display = d; });
+  const settle = () => { clearTimeout(timer); timer = setTimeout(() => { if (typing(document.activeElement)) return; root.classList.remove('typing'); relay(); }, 350); };
+  document.addEventListener('focusin', e => { if (typing(e.target)) { clearTimeout(timer); root.classList.add('typing'); } });
+  document.addEventListener('focusout', settle);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => {
+    if (root.classList.contains('typing')) { if (!typing(document.activeElement)) settle(); return; }
+    clearTimeout(vvTimer); vvTimer = setTimeout(relay, 200);
+  });
+  window.addEventListener('pageshow', relay);
+  window.addEventListener('orientationchange', () => setTimeout(relay, 300));
+})();
 
 // ---------- Add to Home Screen ----------
 const A2HS_KEY = 'optml-a2hs-dismissed';

@@ -1,10 +1,5 @@
 // ================= Export document (screen preview + print/PDF) =================
 
-function weekDates(st) {
-  const s = parseDay(st.start);
-  return wk => Array.from({ length: 7 }, (_, i) => s ? addDays(s, (wk - 1) * 7 + i) : null);
-}
-
 function supplyPlan(items) {
   // First four weeks: injections, vials, water.
   let injections = 0, vials = 0, water = 0;
@@ -33,20 +28,18 @@ function DocSyringeRow({ label, units }) {
 function Doc({ st, items }) {
   if (!items.length) return null;
   const generated = new Date();
-  const start = parseDay(st.start);
-  const dates = weekDates(st);
   const sup = supplyPlan(items);
   const title = st.client ? 'Protocol for ' + st.client : 'Your protocol';
   const groups = WHENS.map(w => ({ key: w[0], label: w[1], items: items.filter(i => i.when === w[0]) })).filter(g => g.items.length);
   const firstDraw = it => { const w = it.week(1); return w ? w.draw : ''; };
-  const dayHead = (wk, i) => { const d = dates(wk)[i]; return d ? DOW[d.getDay()] + ' ' + d.getDate() : 'Day ' + ((wk - 1) * 7 + i + 1); };
+  const dayHead = (wk, i) => 'Day ' + ((wk - 1) * 7 + i + 1);
   return html`<div class=${'doc' + (st.preview ? ' show' : '')} aria-label="Protocol document preview"><div class="wrap"><div class="paper">
 
     <div class="dpage">
       <div class="cover">
         <div class="row g12" style="justify-content:space-between"><img src="assets/brand/wordmark-dark.svg" alt="World Peptide Dosage Association" style="height:30px;width:auto" /><img src="assets/brand/label-circle.png" alt="" style="width:64px;height:64px" /></div>
         <div class="stack g8"><div class="lbl">Peptide protocol</div><h1>${title}</h1>
-          <div class="dmeta">${st.by ? html`<span><b>Prepared by</b> ${st.by}</span>` : null}<span><b>Starts</b> ${start ? fmtLong(start) : 'on the day you choose'}</span><span><b>Created</b> ${fmtLong(generated)}</span></div></div>
+          <div class="dmeta">${st.by ? html`<span><b>Prepared by</b> ${st.by}</span>` : null}<span><b>Created</b> ${fmtLong(generated)}</span></div></div>
       </div>
       <h3 class="dh3">At a glance</h3>
       <div class="tblwrap"><table class="tbl"><thead><tr><th scope="col">Compound</th><th scope="col">Vial and water</th><th scope="col">First dose</th><th scope="col">Draw</th><th scope="col">When</th></tr></thead>
@@ -57,7 +50,7 @@ function Doc({ st, items }) {
         <li><span class="box"></span><span>Check your supplies against the next page. Bacteriostatic water comes free with every optml vial.</span></li>
         <li><span class="box"></span><span>Mix each vial with the volume of bac water shown for it (step-by-step guide near the end). Label it with the date.</span></li>
         <li><span class="box"></span><span>Learn to read the syringe: 100 units is 1ml, every unit is 0.01ml.</span></li>
-        <li><span class="box"></span><span>First injection: ${items.filter(i => !i.oral).map(i => i.name + ' ' + firstDraw(i).split(' · ')[0]).join(', ') || 'see your plan'}${start ? ' on ' + fmtDay(start) : ''}.</span></li>
+        <li><span class="box"></span><span>First injection: ${items.filter(i => !i.oral).map(i => i.name + ' ' + firstDraw(i).split(' · ')[0]).join(', ') || 'see your plan'}.</span></li>
         <li><span class="box"></span><span>Tick each dose off in the four-week tracker and rotate your injection site every time.</span></li>
       </ul>
       <p class="dfoot">${DISCLAIMER}</p>
@@ -96,7 +89,7 @@ function Doc({ st, items }) {
 
     <div class="dpage">
       <h2 class="dh">Four-week tracker</h2><p class="dsub">Tick each dose as you take it. The number is what to draw on a 1ml insulin syringe. Write the site you used underneath if it helps you rotate.</p>
-      ${[1, 2, 3, 4].map(wk => html`<div class="wkblock"><h3 class="dh3">Week ${wk}${start ? ' · from ' + fmtDay(dates(wk)[0]) : ''}</h3>
+      ${[1, 2, 3, 4].map(wk => html`<div class="wkblock"><h3 class="dh3">Week ${wk}</h3>
         <div class="tblwrap"><table class="tbl track"><thead><tr><th scope="col">Compound</th>${Array.from({ length: 7 }, (_, i) => html`<th scope="col">${dayHead(wk, i)}</th>`)}</tr></thead>
         <tbody>${items.map(it => { const w = it.week(wk); return html`<tr><td>${it.name}</td>${Array.from({ length: 7 }, (_, i) => w && w.days.indexOf(i) > -1 ? html`<td class="on"><span class="box"></span>${w.perDay > 1 ? html`<span class="box"></span>` : null}${shortDraw(w.draw)}</td>` : html`<td></td>`)}</tr>`; })}</tbody></table></div></div>`)}
     </div>

@@ -34,16 +34,10 @@ function Tracker({ st, set, items, onReorder }) {
   const [dayOff, setDayOff] = useState(0);
   useEffect(() => { setTr(loadTrack(st.planId)); }, [st.planId]);
   const saveTr = next => { setTr(next); try { localStorage.setItem(trackKey(st.planId), JSON.stringify(next)); } catch (e) {} };
-  const start = parseDay(st.start);
   const t0 = today0();
-  if (!start) {
-    return html`<div><div class="banner">
-      <div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h2 id="h-today" style="font-size:28px">Ready when you are</h2>
-      <p class="small">Set a start date and this becomes a daily tracker: what to take today, what to draw, where to inject next and when to reorder.</p>
-      <div class="pair"><button type="button" class="btn" onClick=${() => set({ start: isoDay(t0) })}>Start today</button>
-        <label class="btn outline datebtn"><${Icon} name="plan" size=${17} /> Pick a date<input type="date" aria-label="Pick a start date" value=${st.start} onClick=${e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (x) {} }} onInput=${e => set({ start: e.target.value })} /></label></div>
-    </div></div>`;
-  }
+  // Nothing to set up: day 1 is today until the first dose is ticked, then the plan counts from that day.
+  const started = parseDay(st.start);
+  const start = started || t0;
   const day = addDays(t0, dayOff);
   const dk = isoDay(day);
   const di = daysBetween(start, day);
@@ -56,17 +50,24 @@ function Tracker({ st, set, items, onReorder }) {
   const log = d => {
     const L = Object.assign({}, tr.logs);
     const dayLogs = Object.assign({}, L[dk] || {});
-    if (dayLogs[d.id]) { delete dayLogs[d.id]; L[dk] = dayLogs; saveTr(Object.assign({}, tr, { logs: L })); return; }
+    if (dayLogs[d.id]) {
+      delete dayLogs[d.id]; L[dk] = dayLogs;
+      // un-ticking the only dose puts the plan back to "not started"
+      const none = tr.auto && !Object.keys(L).some(k => Object.keys(L[k]).length);
+      saveTr(Object.assign({}, tr, { logs: L, auto: none ? false : tr.auto })); if (none) set({ start: '' });
+      return;
+    }
     dayLogs[d.id] = { site: d.oral || d.it.oral ? 'Oral' : suggested, amt: d.w.perAmt || 0, t: Date.now() };
     L[dk] = dayLogs;
-    saveTr(Object.assign({}, tr, { logs: L, rot: d.it.oral ? tr.rot : (tr.rot || 0) + 1 }));
+    saveTr(Object.assign({}, tr, { logs: L, rot: d.it.oral ? tr.rot : (tr.rot || 0) + 1, auto: started ? tr.auto : true }));
+    if (!started) set({ start: isoDay(t0) });
   };
   const setSite = (d, site) => { const L = Object.assign({}, tr.logs); L[dk] = Object.assign({}, L[dk], { [d.id]: Object.assign({}, L[dk][d.id], { site }) }); saveTr(Object.assign({}, tr, { logs: L })); };
   const strip = Array.from({ length: 7 }, (_, i) => { const d = addDays(t0, i - 3); const k = isoDay(d); const ds = dosesOn(items, start, d); const n = ds.filter(x => (tr.logs[k] || {})[x.id]).length; return { d, k, off: i - 3, total: ds.length, n }; });
   // Vial supply per injectable item
   const supply = items.filter(it => !it.oral).map(it => {
     const vialAmt = it.kind === 'listed' ? (vialStrength(it.p, it.sizeIdx || 0) || {}).v : num(it.model.vial);
-    const mixedOn = tr.mixed[it.key] || st.start;
+    const mixedOn = tr.mixed[it.key] || isoDay(start);
     let used = 0;
     Object.keys(tr.logs).forEach(k => { if (k >= mixedOn) Object.keys(tr.logs[k]).forEach(id => { if (id.split(':')[0] === it.key) used += tr.logs[k][id].amt || 0; }); });
     const w = it.week(wk);
@@ -78,8 +79,8 @@ function Tracker({ st, set, items, onReorder }) {
   const oralSupply = items.filter(it => it.oral).map(it => ({ it, sup: protocolSupply(it) }));
   const weekOf = sup => di >= 0 && sup.dur ? (wk <= sup.dur.max ? 'Week ' + wk + ' of ' + (sup.dur.min === sup.dur.max ? sup.dur.max + (sup.dur.open ? '+' : '') : sup.dur.min + '–' + sup.dur.max) : (sup.dur.open ? 'Week ' + wk : 'Past week ' + sup.dur.max)) : '';
   return html`<div>
-    <div class="page-head"><div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h1 id="h-today">${di < 0 ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h1>
-      <p class="muted">${di < 0 ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before.' : 'Week ' + wk + ' · day ' + (di + 1) + '. Tick each dose as you take it.'}</p></div>
+    <div class="page-head"><div class="eyebrow">${st.client ? st.client.trim().split(/\s+/)[0] + "'s protocol" : 'Your protocol'}</div><h1 id="h-today">${di < 0 && started ? 'Starts ' + fmtDay(start) : dayOff === 0 ? 'Today' : fmtDay(day)}</h1>
+      <p class="muted">${di < 0 ? (started ? 'Your plan starts in ' + (-di) + ' day' + (-di === 1 ? '' : 's') + '. Mix your vials the day before.' : 'Your plan starts the day you tick your first dose.') : 'Week ' + wk + ' · day ' + (di + 1) + '. ' + (started ? 'Tick each dose as you take it.' : 'Your plan starts the day you tick your first dose.')}</p></div>
     <div class="banner" style="gap:16px">
       <div class="row g16"><${Ring} done=${done} total=${doses.length} />
         <div class="grow">${next ? html`<div class="lbl">Up next</div><div style="font-size:21px;font-weight:700;color:var(--ink);line-height:1.2">${next.it.name}</div><div class="small">${next.slot} · ${next.w.dose}${next.units !== null ? ' · draw ' + String(next.w.draw).split(' · ')[0] : ''}</div>${!next.it.oral ? html`<div class="tiny muted" style="margin-top:2px">Inject at: <b style="color:var(--ink)">${suggested}</b></div>` : null}`
@@ -117,6 +118,24 @@ function Tracker({ st, set, items, onReorder }) {
   </div>`;
 }
 
+
+// ---------- Bottom bars and the iPhone keyboard ----------
+// iOS can leave a fixed bar floating mid-screen once the keyboard closes. The bars hide while you type
+// and are laid out again once the screen has settled; the same happens when the browser's own bars resize the page.
+(function () {
+  const root = document.documentElement; let timer = null, vvTimer = null;
+  const typing = el => !!el && (el.tagName === 'TEXTAREA' || el.isContentEditable || (el.tagName === 'INPUT' && !/^(checkbox|radio|file|button|submit|reset|range|color|date|month|week|time|datetime-local)$/i.test(el.type || 'text')));
+  const relay = () => document.querySelectorAll('.tabbar, .tray').forEach(el => { const d = el.style.display; el.style.display = 'none'; void el.offsetHeight; el.style.display = d; });
+  const settle = () => { clearTimeout(timer); timer = setTimeout(() => { if (typing(document.activeElement)) return; root.classList.remove('typing'); relay(); }, 350); };
+  document.addEventListener('focusin', e => { if (typing(e.target)) { clearTimeout(timer); root.classList.add('typing'); } });
+  document.addEventListener('focusout', settle);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => {
+    if (root.classList.contains('typing')) { if (!typing(document.activeElement)) settle(); return; }
+    clearTimeout(vvTimer); vvTimer = setTimeout(relay, 200);
+  });
+  window.addEventListener('pageshow', relay);
+  window.addEventListener('orientationchange', () => setTimeout(relay, 300));
+})();
 
 // ---------- Add to Home Screen ----------
 const A2HS_KEY = 'optml-a2hs-dismissed';
