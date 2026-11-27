@@ -85,7 +85,7 @@ New Sale → Complete
    │
    ├─ Awaiting payment  →  status "New"  →  change to "Paid" when money lands → Resend to courier
    │
-   └─ Walk-in  →  no courier message, straight to Delivered when you choose
+   └─ Walk-in  →  courier still gets the Telegram order (marked WALK-IN, nothing to post) and their share · Delivered when you choose
 ```
 
 **Statuses:** New → Paid → Sent to Courier → Dispatched → Delivered (or Cancelled)
@@ -119,9 +119,9 @@ After the sale you land on the sale's detail page.
 - *Business API (auto-send)*: messages go out automatically through Meta's WhatsApp Business Platform. You need a Meta Business app with WhatsApp added, a registered number (it can't be the same number you use in the WhatsApp Business app unless you migrate it), a **permanent** System User access token with `whatsapp_business_messaging`, and an **approved message template** for dispatch (customers you haven't chatted with in 24 h can only receive templates). Create the template with body `Hi {{1}}! Your order has been dispatched… Track here: https://auspost.com.au/mypost/track/#/details/{{2}}`, then enter the Phone number ID, token, template name and language in Settings and hit *Send test to my number*. If an API send fails the app falls back to opening WhatsApp.
 - Optional: put your courier's WhatsApp number in Settings and every shipped sale gets a *Courier on WhatsApp* button carrying the order message (same text as Telegram).
 
-**Courier payments** (⋯ → Courier payments) — the courier's share accrues on every courier-shipped order the moment it's marked Dispatched. The tracker shows what's owed now, earned this month, paid to date, the unpaid orders with each one's share, and a payment history. **Record payment** defaults to the full balance (or enter what you actually paid — it settles the oldest orders first and carries any remainder as credit). **Statement** prints a settlement page; if the courier's WhatsApp number is set you can send them the list in one tap. Home flags it when something has been owed for more than a week. Every sale's profit card shows whether its courier share is *owed* or *paid*.
+**Courier payments** (⋯ → Courier payments) — the courier's share accrues on every courier-shipped order the moment it's marked Dispatched, and on every walk-in as soon as it's paid (same %, with no postage or packaging taken off). The tracker shows what's owed now, earned this month, paid to date, the unpaid orders with each one's share, and a payment history. **Record payment** defaults to the full balance (or enter what you actually paid — it settles the oldest orders first and carries any remainder as credit). **Statement** prints a settlement page; if the courier's WhatsApp number is set you can send them the list in one tap. Home flags it when something has been owed for more than a week. Every sale's profit card shows whether its courier share is *owed* or *paid*.
 
-**Fulfilment** — three options at checkout: **Courier** (Telegram goes to the courier when paid, courier earns their share), **I'll post it** (nothing goes to the courier, no share, you still get tracking + the dispatch message), **Walk-in**. Change it later from the sale page if plans change.
+**Fulfilment** — three options at checkout: **Courier** (Telegram goes to the courier when paid, courier earns their share), **I'll post it** (nothing goes to the courier, no share, you still get tracking + the dispatch message), **Walk-in** (handed over in person: no shipping, but the courier still gets the Telegram order and earns their share). Change it later from the sale page if plans change.
 
 **Quotes** — in New Sale, build the cart, then tap **Quote** (top right). It writes the quote from your template (items, bac water, shipping, total, payment options), lets you edit it, and either opens it in WhatsApp to the customer's number or copies it. The template is editable under Settings → Quote message.
 
